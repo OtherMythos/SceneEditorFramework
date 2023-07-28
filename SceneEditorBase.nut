@@ -9,6 +9,13 @@ enum SceneTreeEntryType{
     EMPTY,
     MESH
 };
+
+enum SceneEditorGUIPanelId{
+    SCENE_TREE
+
+};
+
+
 ::SceneEditorFramework.getNameForSceneEntryType <- function(t){
     switch(t){
         case SceneTreeEntryType.NONE: return "none";
@@ -23,19 +30,19 @@ enum SceneTreeEntryType{
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
+    mActiveGUI_ = null;
+    mBus_ = null;
 
     constructor(){
-
+        mActiveGUI_ = {};
+        mBus_ = SceneEditorBus();
     }
 
     function loadSceneTree(parentNode, filePath){
-        local tree = ::SceneEditorFramework.SceneTree();
+        local tree = ::SceneEditorFramework.SceneTree(parentNode);
 
         local parser = ::SceneEditorFramework.FileParser();
         parser.parseForSceneTree(filePath, tree);
-
-        //Add XML scene parsing, make it work suitably well.
-        //Parse a file and creat the directory tree.
 
         return tree;
     }
@@ -44,9 +51,28 @@ enum SceneTreeEntryType{
         mActiveTree_ = sceneTree;
     }
 
+    function setupGUIWindow(winType, window){
+        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
+
+        local targetClass = ::SceneEditorFramework.GUIPanel;
+        switch(winType){
+            case SceneEditorGUIPanelId.SCENE_TREE:{
+                targetClass = ::SceneEditorFramework.GUISceneTree;
+                break;
+            }
+        }
+
+        local guiInstance = targetClass(window, this);
+        mActiveGUI_.rawset(winType, guiInstance);
+    }
+
 
 };
 
 _doFile("res://sceneEditorFramework/SceneEditorSceneTreeEntry.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneTree.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneFileParser.nut");
+_doFile("res://sceneEditorFramework/SceneEditorBus.nut");
+
+_doFile("res://sceneEditorFramework/SceneEditorGUIPanel.nut");
+_doFile("res://sceneEditorFramework/SceneEditorGUISceneTree.nut");

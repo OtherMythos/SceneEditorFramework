@@ -42,6 +42,7 @@
         }
 
         local currentChild = node.getFirstChildElement();
+        local startedWrap = false;
         while(currentChild != null){
 
             local name = currentChild.getName();
@@ -63,13 +64,18 @@
             }
             else{
                 if(getNodeTypeForName(name) != SceneTreeEntryType.NONE){
-                    entries.append(CHILD_ENTRY);
+                    if(!startedWrap){
+                        entries.append(CHILD_ENTRY);
+                    }
                     parseNodeForSceneTree_(currentChild, entries);
-                    entries.append(TERM_ENTRY);
+                    startedWrap = true;
                 }
             }
 
             currentChild = currentChild.nextSiblingElement();
+        }
+        if(startedWrap){
+            entries.append(TERM_ENTRY);
         }
     }
 
