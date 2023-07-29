@@ -2,10 +2,14 @@
 
     mEntries_ = null;
     mParentNode_ = null;
+    mBus_ = null;
 
-    constructor(parentNode){
+    mCurrentSelection = -1;
+
+    constructor(parentNode, bus){
         mEntries_ = [];
         mParentNode_ = parentNode;
+        mBus_ = bus;
     }
 
     function debugPrintGetPadding_(indent){
@@ -75,6 +79,19 @@
         }
 
         return newNode;
+    }
+
+    function setCurrentSelection(entryId){
+        if(mEntries_ == null) return;
+        local e = mEntries_[entryId];
+        assert(e.nodeType != SceneTreeEntryType.CHILD && e.nodeType != SceneTreeEntryType.TERM);
+        mCurrentSelection = entryId;
+
+        mBus_.transmitEvent(SceneEditorBusEvents.SCENE_TREE_SELECTION_CHANGED, e);
+    }
+
+    function notifySelectionChanged(buttonId){
+        setCurrentSelection(buttonId);
     }
 
 }

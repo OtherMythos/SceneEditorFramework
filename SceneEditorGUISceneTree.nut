@@ -1,21 +1,29 @@
 ::SceneEditorFramework.GUISceneTree <- class extends ::SceneEditorFramework.GUIPanel{
 
-    constructor(parent, baseObj){
-        base.constructor(parent, baseObj);
+    mSceneTree_ = null;
+
+    constructor(parent, tree, baseObj, bus){
+        base.constructor(parent, baseObj, bus);
+
+        mSceneTree_ = tree;
 
         setup();
     }
 
     function setup(){
-        local layout = _gui.createLayoutLine();
-
         local label = mParent_.createLabel();
         label.setText("Scene Tree");
+
+        local containerWin = mParent_.createWindow();
+        local startY = label.getPosition().y + label.getSize().y;
+        containerWin.setPosition(0, startY);
+        local parentSize = mParent_.getSizeAfterClipping();
+        containerWin.setSize(parentSize.x, parentSize.y - startY);
 
         //TODO find a better way to get this.
         local activeTree = mBaseObj_.mActiveTree_;
         local indent = -1;
-        local vertical = 0;
+        local height = 0;
         foreach(c,entry in activeTree.mEntries_){
             local nodeType = entry.nodeType;
             if(nodeType == SceneTreeEntryType.CHILD){
@@ -26,15 +34,21 @@
                 indent--;
                 continue;
             }
-            local entry = mParent_.createLabel();
-            entry.setPosition(indent * 30, vertical * 20);
+            local entry = containerWin.createButton();
             local testText = ::SceneEditorFramework.getNameForSceneEntryType(nodeType);
             entry.setText(testText);
-            vertical++;
-            //layout.addCell(entry);
+            entry.setPosition(indent * 30, height);
+            entry.setUserId(c);
+            entry.attachListenerForEvent(buttonSelected, _GUI_ACTION_PRESSED, this);
+            height += entry.getSize().y;
         }
 
-        layout.layout();
+        containerWin.sizeScrollToFit();
+    }
+
+    function buttonSelected(widget, action){
+        local buttonId = widget.getUserId();
+        mSceneTree_.notifySelectionChanged(buttonId);
     }
 
 };

@@ -11,8 +11,14 @@ enum SceneTreeEntryType{
 };
 
 enum SceneEditorGUIPanelId{
-    SCENE_TREE
+    SCENE_TREE,
+    OBJECT_PROPERTIES,
 
+};
+
+enum SceneEditorBusEvents{
+    NONE,
+    SCENE_TREE_SELECTION_CHANGED
 };
 
 
@@ -39,7 +45,7 @@ enum SceneEditorGUIPanelId{
     }
 
     function loadSceneTree(parentNode, filePath){
-        local tree = ::SceneEditorFramework.SceneTree(parentNode);
+        local tree = ::SceneEditorFramework.SceneTree(parentNode, mBus_);
 
         local parser = ::SceneEditorFramework.FileParser();
         parser.parseForSceneTree(filePath, tree);
@@ -54,15 +60,21 @@ enum SceneEditorGUIPanelId{
     function setupGUIWindow(winType, window){
         if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
 
-        local targetClass = ::SceneEditorFramework.GUIPanel;
+        //local newInstance = ::SceneEditorFramework.GUIPanel;
+        local guiInstance = null;
         switch(winType){
             case SceneEditorGUIPanelId.SCENE_TREE:{
-                targetClass = ::SceneEditorFramework.GUISceneTree;
+                assert(mActiveTree_);
+                guiInstance = ::SceneEditorFramework.GUISceneTree(window, mActiveTree_, this, mBus_);
+                break;
+            }
+            case SceneEditorGUIPanelId.OBJECT_PROPERTIES:{
+                guiInstance = ::SceneEditorFramework.GUIObjectProperties(window, this, mBus_);
                 break;
             }
         }
 
-        local guiInstance = targetClass(window, this);
+        //local guiInstance = targetClass(window, this);
         mActiveGUI_.rawset(winType, guiInstance);
     }
 
@@ -76,3 +88,4 @@ _doFile("res://sceneEditorFramework/SceneEditorBus.nut");
 
 _doFile("res://sceneEditorFramework/SceneEditorGUIPanel.nut");
 _doFile("res://sceneEditorFramework/SceneEditorGUISceneTree.nut");
+_doFile("res://sceneEditorFramework/SceneEditorGUIObjectProperties.nut");
