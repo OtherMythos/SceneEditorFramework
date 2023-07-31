@@ -13,6 +13,7 @@
         mBus_ = bus;
 
         mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_);
+        mMoveHandles_.setVisible(false);
     }
 
     function update(){
@@ -72,6 +73,7 @@
             }
 
             lastNode = constructObjectForEntry(c, currentNode.top());
+            c.node = lastNode;
         }
         assert(currentNode.len() == 1);
     }
@@ -97,7 +99,57 @@
         assert(e.nodeType != SceneTreeEntryType.CHILD && e.nodeType != SceneTreeEntryType.TERM);
         mCurrentSelection = entryId;
 
+        mMoveHandles_.setVisible(true);
+        //mMoveHandles_.setPosition(e.position);
+        //local targetPos = getAbsolutePositionForEntry_(entryId);
+        local targetPos = mEntries_[entryId].node.getDerivedPositionVec3();
+        mMoveHandles_.setPosition(targetPos);
+
         mBus_.transmitEvent(SceneEditorBusEvents.SCENE_TREE_SELECTION_CHANGED, e);
+    }
+
+    function getAbsolutePositionForEntry_(entryIdx){
+        local totalPos = mEntries_[entryIdx].position.copy();
+
+        local current = entryIdx;
+        while(current != 0){
+            current = getIndexOfParentForEntry_(current);
+            if(current == null) break
+            local entry = mEntries_[current];
+            totalPos += entry.position;
+        }
+
+        return totalPos;
+    }
+
+    function getIndexOfParentForEntry_(index){
+        local parent = getParentChildIndexForEntry_(index) - 1;
+        return parent <= 0 ? null : parent;
+    }
+    function getParentChildIndexForEntry_(index){
+        local itIndex = index;
+
+        local childCount = 0;
+        do{
+            local entry = mEntries_[itIndex];
+            if(entry.nodeType == SceneTreeEntryType.TERM) childCount++;
+            if(entry.nodeType == SceneTreeEntryType.CHILD){
+                if(childCount == 0){
+                    return itIndex;
+                }
+                childCount--;
+            }
+
+            itIndex--;
+        }while(itIndex != 0);
+
+        //If we're at index 0 and child count 0 then the root node was found as the parent.
+        if(childCount == 0){
+            return 0;
+        }
+
+        //Nothing was found, and this most likely means a malformed scene tree.
+        return -1;
     }
 
     function notifySelectionChanged(buttonId){

@@ -8,7 +8,7 @@
     constructor(parent){
         base.constructor(parent);
 
-        setup(parent);
+        setup(mParentNode_);
     }
 
     function setup(parent){
