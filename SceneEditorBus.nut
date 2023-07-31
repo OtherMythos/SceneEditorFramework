@@ -2,7 +2,7 @@ enum SceneEditorBusEvents{
     NONE,
 };
 
-::SceneEditorBus <- class{
+::SceneEditorFramework.SceneEditorBus <- class{
 
     mSubscribed_ = null;
 

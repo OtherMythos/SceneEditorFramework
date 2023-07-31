@@ -41,7 +41,8 @@ enum SceneEditorBusEvents{
 
     constructor(){
         mActiveGUI_ = {};
-        mBus_ = SceneEditorBus();
+        mBus_ = ::SceneEditorFramework.SceneEditorBus();
+        setupDatablocks();
     }
 
     function loadSceneTree(parentNode, filePath){
@@ -51,6 +52,12 @@ enum SceneEditorBusEvents{
         parser.parseForSceneTree(filePath, tree);
 
         return tree;
+    }
+
+    function update(){
+        if(mActiveTree_ != null){
+            mActiveTree_.update();
+        }
     }
 
     function setActiveSceneTree(sceneTree){
@@ -78,6 +85,37 @@ enum SceneEditorBusEvents{
         mActiveGUI_.rawset(winType, guiInstance);
     }
 
+    function setupDatablocks(){
+        local handleColours = [
+            //Regular
+            [ColourValue(1, 0, 1, 1), ColourValue(0, 1, 0, 1), ColourValue(0, 0, 1, 1)],
+            //Highlighted
+            [ColourValue(0.6, 0, 0.6, 1), ColourValue(0, 0.6, 0, 1), ColourValue(0, 0, 0.6, 1)]
+        ];
+        local bases = [
+            "SceneEditorFramework/handle",
+            "SceneEditorFramework/handleHighlight"
+        ];
+
+        local macroblock = _hlms.getMacroblock({
+            "depthCheck": false,
+            "depthWrite": false,
+        });
+        foreach(cc,i in handleColours){
+            local targetBase = bases[cc];
+            foreach(c,y in i){
+                local datablock = _hlms.unlit.createDatablock(targetBase + c.tostring(), null, macroblock);
+                datablock.setColour(y);
+            }
+        }
+    }
+
+    function sceneSafeUpdate(){
+        if(!mActiveTree_) return;
+
+        mActiveTree_.sceneSafeUpdate();
+    }
+
 
 };
 
@@ -85,6 +123,9 @@ _doFile("res://sceneEditorFramework/SceneEditorSceneTreeEntry.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneTree.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneFileParser.nut");
 _doFile("res://sceneEditorFramework/SceneEditorBus.nut");
+
+_doFile("res://sceneEditorFramework/SceneEditorGizmo.nut");
+_doFile("res://sceneEditorFramework/SceneEditorGizmoObjectHandles.nut");
 
 _doFile("res://sceneEditorFramework/SceneEditorGUIPanel.nut");
 _doFile("res://sceneEditorFramework/SceneEditorGUISceneTree.nut");

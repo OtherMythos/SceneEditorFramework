@@ -3,6 +3,7 @@
     mEntries_ = null;
     mParentNode_ = null;
     mBus_ = null;
+    mMoveHandles_ = null;
 
     mCurrentSelection = -1;
 
@@ -10,6 +11,15 @@
         mEntries_ = [];
         mParentNode_ = parentNode;
         mBus_ = bus;
+
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_);
+    }
+
+    function update(){
+        //TODO move out.
+        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        mMoveHandles_.update(ray);
     }
 
     function debugPrintGetPadding_(indent){
@@ -92,6 +102,13 @@
 
     function notifySelectionChanged(buttonId){
         setCurrentSelection(buttonId);
+    }
+
+    function sceneSafeUpdate(){
+        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        local result = _scene.testRayForObjectArray(ray, 1 << 10);
+        mMoveHandles_.notifyNewQueryResults(result);
     }
 
 }
