@@ -38,6 +38,13 @@
     function update(ray){
     }
 
+    function updateCameraDist(cameraPos){
+        local dist = cameraPos.distance(mParentNode_.getPositionVec3());
+        dist *= 0.015;
+
+        mParentNode_.setScale(dist, dist, dist);
+    }
+
     function notifyNewQueryResults(results){
         local axis = getAxisForSceneNodeArray(results);
         if(axis != null){

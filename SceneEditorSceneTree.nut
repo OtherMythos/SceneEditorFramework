@@ -21,6 +21,8 @@
         local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
         local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         mMoveHandles_.update(ray);
+
+        mMoveHandles_.updateCameraDist(_camera.getPosition());
     }
 
     function debugPrintGetPadding_(indent){
