@@ -12,15 +12,15 @@
         mParentNode_ = parentNode;
         mBus_ = bus;
 
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_);
+        bus.subscribeObject(this);
+
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
     function update(){
         //TODO move out.
-        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
-        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
-        mMoveHandles_.update(ray);
+        mMoveHandles_.update();
 
         mMoveHandles_.updateCameraDist(_camera.getPosition());
     }
@@ -152,6 +152,13 @@
 
         //Nothing was found, and this most likely means a malformed scene tree.
         return -1;
+    }
+
+    function notifyBusEvent(event, data){
+        if(event == SceneEditorBusEvents.SELECTED_POSITION_CHANGE){
+            local e = mEntries_[mCurrentSelection];
+            e.setPosition(data);
+        }
     }
 
     function notifySelectionChanged(buttonId){

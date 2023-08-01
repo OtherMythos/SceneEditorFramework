@@ -1,12 +1,18 @@
 ::SceneEditorFramework.SceneEditorGizmoObjectHandles <- class extends ::SceneEditorFramework.SceneEditorGizmo{
 
+    mBus_ = null;
     mPositionHandles_ = null;
     mPositionNodes_ = null;
     mOperationInPlace_ = false;
     mHighlightAxis_ = null;
 
-    constructor(parent){
+    mPerformingAction_ = null;
+    mTestingPlane_ = null;
+
+    constructor(parent, bus){
         base.constructor(parent);
+
+        mBus_ = bus;
 
         setup(mParentNode_);
     }
@@ -35,7 +41,54 @@
         }
     }
 
-    function update(ray){
+    function update(){
+        beginActionState(_input.getMouseButton(0));
+
+        if(mPerformingAction_ && mTestingPlane_ != null){
+            local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+            local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+            local point = ray.intersects(mTestingPlane_);
+            print(point);
+            if(point != false){
+                local worldPoint = ray.getPoint(point);
+                local oldPos = mParentNode_.getPositionVec3();
+                print(mHighlightAxis_);
+                if(mHighlightAxis_ == 0){
+                    worldPoint = Vec3(worldPoint.x, oldPos.y, oldPos.z);
+                }
+                else if(mHighlightAxis_ == 1){
+                    worldPoint = Vec3(oldPos.x, worldPoint.y, oldPos.z);
+                }
+                else if(mHighlightAxis_ == 2){
+                    worldPoint = Vec3(oldPos.x, oldPos.y, worldPoint.z);
+                }
+                setPositionForSelectedObject_(worldPoint);
+            }
+        }
+    }
+
+    function setPositionForSelectedObject_(newPos){
+        print("Setting to " + newPos);
+        mParentNode_.setPosition(newPos);
+
+        mBus_.transmitEvent(SceneEditorBusEvents.SELECTED_POSITION_CHANGE, newPos);
+    }
+
+    function beginActionState(starting){
+        if(mPerformingAction_ != starting){
+            if(starting){
+                if(mHighlightAxis_ != null){
+                    if(mHighlightAxis_ == 1){
+                        mTestingPlane_ = Plane(Vec3(0, 0, 1), mParentNode_.getPositionVec3().z);
+                    }else{
+                        mTestingPlane_ = Plane(Vec3(0, 1, 0), mParentNode_.getPositionVec3().y);
+                    }
+                }
+            }else{
+                mTestingPlane_ = null;
+            }
+            mPerformingAction_ = starting;
+        }
     }
 
     function updateCameraDist(cameraPos){
@@ -46,6 +99,7 @@
     }
 
     function notifyNewQueryResults(results){
+        if(mPerformingAction_) return;
         local axis = getAxisForSceneNodeArray(results);
         if(axis != null){
             if(mOperationInPlace_){

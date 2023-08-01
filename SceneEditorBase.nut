@@ -18,7 +18,8 @@ enum SceneEditorGUIPanelId{
 
 enum SceneEditorBusEvents{
     NONE,
-    SCENE_TREE_SELECTION_CHANGED
+    SCENE_TREE_SELECTION_CHANGED,
+    SELECTED_POSITION_CHANGE
 };
 
 

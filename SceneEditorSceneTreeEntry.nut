@@ -23,4 +23,9 @@
         orientation = Quat();
     }
 
+    function setPosition(pos){
+        position = pos.copy();
+        node.setDerivedPosition(position);
+    }
+
 }
