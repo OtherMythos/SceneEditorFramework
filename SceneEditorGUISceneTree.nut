@@ -14,6 +14,12 @@
         local label = mParent_.createLabel();
         label.setText("Scene Tree");
 
+        local saveButton = mParent_.createButton();
+        saveButton.setText("Save");
+        saveButton.attachListenerForEvent(function(widget, action){
+            mBus_.transmitEvent(SceneEditorBusEvents.REQUEST_SAVE, null);
+        }, _GUI_ACTION_PRESSED, this);
+
         local containerWin = mParent_.createWindow();
         local startY = label.getPosition().y + label.getSize().y;
         containerWin.setPosition(0, startY);

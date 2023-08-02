@@ -19,7 +19,9 @@ enum SceneEditorGUIPanelId{
 enum SceneEditorBusEvents{
     NONE,
     SCENE_TREE_SELECTION_CHANGED,
-    SELECTED_POSITION_CHANGE
+    SELECTED_POSITION_CHANGE,
+
+    REQUEST_SAVE
 };
 
 
@@ -40,10 +42,14 @@ enum SceneEditorBusEvents{
     mActiveGUI_ = null;
     mBus_ = null;
 
+    mCurrentFilePath_ = null;
+
     constructor(){
         mActiveGUI_ = {};
         mBus_ = ::SceneEditorFramework.SceneEditorBus();
         setupDatablocks();
+
+        mBus_.subscribeObject(this);
     }
 
     function loadSceneTree(parentNode, filePath){
@@ -52,7 +58,21 @@ enum SceneEditorBusEvents{
         local parser = ::SceneEditorFramework.FileParser();
         parser.parseForSceneTree(filePath, tree);
 
+        mCurrentFilePath_ = filePath;
+
         return tree;
+    }
+
+    function writeSceneFile(filePath){
+        if(mActiveTree_ == null) throw "No active scene tree";
+        local writer = ::SceneEditorFramework.FileWriter();
+        writer.writeToFile(filePath, mActiveTree_);
+    }
+
+    function notifyBusEvent(event, data){
+        if(event == SceneEditorBusEvents.REQUEST_SAVE){
+            writeSceneFile(mCurrentFilePath_);
+        }
     }
 
     function update(){
@@ -123,6 +143,7 @@ enum SceneEditorBusEvents{
 _doFile("res://sceneEditorFramework/SceneEditorSceneTreeEntry.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneTree.nut");
 _doFile("res://sceneEditorFramework/SceneEditorSceneFileParser.nut");
+_doFile("res://sceneEditorFramework/SceneEditorSceneFileWriter.nut");
 _doFile("res://sceneEditorFramework/SceneEditorBus.nut");
 
 _doFile("res://sceneEditorFramework/SceneEditorGizmo.nut");

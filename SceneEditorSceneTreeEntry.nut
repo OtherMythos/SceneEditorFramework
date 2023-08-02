@@ -9,6 +9,7 @@
     scale = null;
     orientation = null;
     nodeType = SceneTreeEntryType.NONE;
+    animIdx = -1;
 
     node = null;
     data = null;

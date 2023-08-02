@@ -37,6 +37,11 @@
 
         nodeEntry.data = parseDataForNode_(name, node);
 
+        local animIdx = node.getAttribute("animIdx");
+        if(animIdx != null){
+            nodeEntry.animIdx = animIdx;
+        }
+
         if(!node.hasChildren()){
             return;
         }
