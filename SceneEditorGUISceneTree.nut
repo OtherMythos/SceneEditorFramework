@@ -6,8 +6,6 @@
         base.constructor(parent, baseObj, bus);
 
         mSceneTree_ = tree;
-
-        setup();
     }
 
     function setup(){

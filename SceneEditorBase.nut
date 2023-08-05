@@ -14,6 +14,10 @@ enum SceneEditorGUIPanelId{
     SCENE_TREE,
     OBJECT_PROPERTIES,
 
+    USER_CUSTOM_1 = 1000,
+    USER_CUSTOM_2 = 1001,
+    USER_CUSTOM_3 = 1002,
+
 };
 
 enum SceneEditorBusEvents{
@@ -102,8 +106,19 @@ enum SceneEditorBusEvents{
             }
         }
 
-        //local guiInstance = targetClass(window, this);
-        mActiveGUI_.rawset(winType, guiInstance);
+        setupGUIWindowForInstance(winType, guiInstance);
+    }
+
+    function setupGUIWindowForClass(winType, window, guiClass){
+        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
+        local guiInstance = guiClass(window, this, mBus_);
+
+        setupGUIWindowForInstance(winType, guiInstance);
+    }
+
+    function setupGUIWindowForInstance(winType, instance){
+        mActiveGUI_.rawset(winType, instance);
+        instance.setup();
     }
 
     function setupDatablocks(){

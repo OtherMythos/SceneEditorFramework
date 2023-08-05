@@ -14,8 +14,6 @@ enum SceneEditorGUIObjectPropertiesWidgets{
         mWidgets_ = {};
 
         bus.subscribeObject(this);
-
-        setup();
     }
 
     function setup(){
