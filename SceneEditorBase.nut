@@ -146,10 +146,26 @@ enum SceneEditorBusEvents{
         }
     }
 
+    function checkIntersect_(x, y, widget){
+        local start = widget.getPosition();
+        local end = widget.getSize();
+        return (x >= start.x && y >= start.y && x < end.x+start.x && y < end.y+start.y);
+    }
+    function checkMousePositionValid(mousePos){
+        foreach(i in mActiveGUI_){
+            if(checkIntersect_(mousePos.x, mousePos.y, i)) return false;
+        }
+        return true;
+    }
+
     function sceneSafeUpdate(){
         if(!mActiveTree_) return;
 
-        mActiveTree_.sceneSafeUpdate();
+        //Determine the mouse position and whether to pass that over.
+        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY());
+        local mousePositionValid = checkMousePositionValid(mousePos);
+
+        mActiveTree_.updateSceneSafeMousePosition(mousePositionValid ? (mousePos / _window.getSize()) : null);
     }
 
 

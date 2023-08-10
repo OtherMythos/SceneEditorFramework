@@ -10,4 +10,11 @@
         mBus_ = bus;
     }
 
+    function getPosition(){
+        return mParent_.getPosition();
+    }
+    function getSize(){
+        return mParent_.getSize();
+    }
+
 };

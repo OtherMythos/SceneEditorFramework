@@ -165,8 +165,15 @@
         setCurrentSelection(buttonId);
     }
 
-    function sceneSafeUpdate(){
-        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+    /**
+     *
+     * @param mousePos Position of the mouse in screen space. Can be null if the current position is invalid and the editor can respond in some way as a result of that.
+     */
+    function updateSceneSafeMousePosition(mousePos){
+        if(mousePos == null){
+            mMoveHandles_.notifyNewQueryResults(null);
+            return;
+        }
         local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, 1 << 10);
         mMoveHandles_.notifyNewQueryResults(result);
