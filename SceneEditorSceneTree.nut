@@ -102,26 +102,10 @@
         mCurrentSelection = entryId;
 
         mMoveHandles_.setVisible(true);
-        //mMoveHandles_.setPosition(e.position);
-        //local targetPos = getAbsolutePositionForEntry_(entryId);
         local targetPos = mEntries_[entryId].node.getDerivedPositionVec3();
         mMoveHandles_.setPosition(targetPos);
 
         mBus_.transmitEvent(SceneEditorBusEvents.SCENE_TREE_SELECTION_CHANGED, e);
-    }
-
-    function getAbsolutePositionForEntry_(entryIdx){
-        local totalPos = mEntries_[entryIdx].position.copy();
-
-        local current = entryIdx;
-        while(current != 0){
-            current = getIndexOfParentForEntry_(current);
-            if(current == null) break
-            local entry = mEntries_[current];
-            totalPos += entry.position;
-        }
-
-        return totalPos;
     }
 
     function getIndexOfParentForEntry_(index){

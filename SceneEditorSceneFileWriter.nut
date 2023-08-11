@@ -45,9 +45,10 @@
 
         if(entry.position <=> BASIC_POSITION){
             local position = inserted.insertNewChildElement("position");
-            position.setAttribute("x", entry.position.x.tostring());
-            position.setAttribute("y", entry.position.y.tostring());
-            position.setAttribute("z", entry.position.z.tostring());
+            local target = entry.node.getPositionVec3();
+            position.setAttribute("x", target.x.tostring());
+            position.setAttribute("y", target.y.tostring());
+            position.setAttribute("z", target.z.tostring());
         }
         if(entry.scale <=> BASIC_SCALE){
             local scale = inserted.insertNewChildElement("scale");
