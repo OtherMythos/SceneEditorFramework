@@ -48,11 +48,9 @@
             local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
             local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
             local point = ray.intersects(mTestingPlane_);
-            print(point);
             if(point != false){
                 local worldPoint = ray.getPoint(point);
                 local oldPos = mParentNode_.getPositionVec3();
-                print(mHighlightAxis_);
                 if(mHighlightAxis_ == 0){
                     worldPoint = Vec3(worldPoint.x, oldPos.y, oldPos.z);
                 }
@@ -68,7 +66,6 @@
     }
 
     function setPositionForSelectedObject_(newPos){
-        print("Setting to " + newPos);
         mParentNode_.setPosition(newPos);
 
         mBus_.transmitEvent(SceneEditorBusEvents.SELECTED_POSITION_CHANGE, newPos);

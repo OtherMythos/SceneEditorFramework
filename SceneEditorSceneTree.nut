@@ -70,7 +70,6 @@
             else if(c.nodeType == SceneTreeEntryType.TERM){
                 assert(currentNode.len() > 0);
                 currentNode.pop();
-                print("removing");
                 continue;
             }
 
