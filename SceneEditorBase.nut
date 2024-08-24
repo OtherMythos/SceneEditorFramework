@@ -171,15 +171,15 @@ enum SceneEditorBusEvents{
 
 };
 
-_doFile("res://sceneEditorFramework/SceneEditorSceneTreeEntry.nut");
-_doFile("res://sceneEditorFramework/SceneEditorSceneTree.nut");
-_doFile("res://sceneEditorFramework/SceneEditorSceneFileParser.nut");
-_doFile("res://sceneEditorFramework/SceneEditorSceneFileWriter.nut");
-_doFile("res://sceneEditorFramework/SceneEditorBus.nut");
+_doFile("script://SceneEditorSceneTreeEntry.nut");
+_doFile("script://SceneEditorSceneTree.nut");
+_doFile("script://SceneEditorSceneFileParser.nut");
+_doFile("script://SceneEditorSceneFileWriter.nut");
+_doFile("script://SceneEditorBus.nut");
 
-_doFile("res://sceneEditorFramework/SceneEditorGizmo.nut");
-_doFile("res://sceneEditorFramework/SceneEditorGizmoObjectHandles.nut");
+_doFile("script://SceneEditorGizmo.nut");
+_doFile("script://SceneEditorGizmoObjectHandles.nut");
 
-_doFile("res://sceneEditorFramework/SceneEditorGUIPanel.nut");
-_doFile("res://sceneEditorFramework/SceneEditorGUISceneTree.nut");
-_doFile("res://sceneEditorFramework/SceneEditorGUIObjectProperties.nut");
+_doFile("script://SceneEditorGUIPanel.nut");
+_doFile("script://SceneEditorGUISceneTree.nut");
+_doFile("script://SceneEditorGUIObjectProperties.nut");
