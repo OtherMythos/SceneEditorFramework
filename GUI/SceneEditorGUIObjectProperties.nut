@@ -1,8 +1,3 @@
-enum SceneEditorGUIObjectPropertiesWidgets{
-    POSITION,
-    SCALE,
-    ORIENTATION
-};
 
 ::SceneEditorFramework.GUIObjectProperties <- class extends ::SceneEditorFramework.GUIPanel{
 
@@ -26,17 +21,17 @@ enum SceneEditorGUIObjectPropertiesWidgets{
         local position = mParent_.createLabel();
         position.setText("Position");
         layoutLine.addCell(position);
-        mWidgets_.rawset(SceneEditorGUIObjectPropertiesWidgets.POSITION, position);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, position);
 
         local scale = mParent_.createLabel();
         scale.setText("scale");
         layoutLine.addCell(scale);
-        mWidgets_.rawset(SceneEditorGUIObjectPropertiesWidgets.SCALE, scale);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scale);
 
         local orientation = mParent_.createLabel();
         orientation.setText("orientation");
         layoutLine.addCell(orientation);
-        mWidgets_.rawset(SceneEditorGUIObjectPropertiesWidgets.ORIENTATION, orientation);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientation);
 
         mLayoutLine_ = layoutLine;
 
@@ -44,7 +39,7 @@ enum SceneEditorGUIObjectPropertiesWidgets{
     }
 
     function notifyBusEvent(event, data){
-        //local test = SceneEditorBusEvents.SCENE_TREE_SELECTION_CHANGED;
+        //local test = SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED;
         if(event == 1){
             setDataForEntry(data);
         }
@@ -52,11 +47,11 @@ enum SceneEditorGUIObjectPropertiesWidgets{
     }
 
     function setDataForEntry(entry){
-        mWidgets_.rawget(SceneEditorGUIObjectPropertiesWidgets.POSITION)
+        mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION)
             .setText("position: " + (entry == null ? "" : entry.position.tostring()));
-        mWidgets_.rawget(SceneEditorGUIObjectPropertiesWidgets.SCALE)
+        mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE)
             .setText("scale: " + (entry == null ? "" : entry.scale.tostring()));
-        mWidgets_.rawget(SceneEditorGUIObjectPropertiesWidgets.ORIENTATION)
+        mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION)
             .setText("orientation: " + (entry == null ? "" : entry.orientation.tostring()));
 
         mLayoutLine_.layout();

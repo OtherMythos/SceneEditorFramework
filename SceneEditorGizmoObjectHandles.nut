@@ -68,7 +68,7 @@
     function setPositionForSelectedObject_(newPos){
         mParentNode_.setPosition(newPos);
 
-        mBus_.transmitEvent(SceneEditorBusEvents.SELECTED_POSITION_CHANGE, newPos);
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE, newPos);
     }
 
     function beginActionState(starting){

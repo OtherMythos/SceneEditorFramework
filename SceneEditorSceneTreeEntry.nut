@@ -8,7 +8,7 @@
     position = null;
     scale = null;
     orientation = null;
-    nodeType = SceneTreeEntryType.NONE;
+    nodeType = SceneEditorFramework_SceneTreeEntryType.NONE;
     animIdx = -1;
 
     node = null;

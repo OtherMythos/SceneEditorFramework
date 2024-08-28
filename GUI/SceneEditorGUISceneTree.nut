@@ -22,11 +22,11 @@
         local height = 0;
         foreach(c,entry in activeTree.mEntries_){
             local nodeType = entry.nodeType;
-            if(nodeType == SceneTreeEntryType.CHILD){
+            if(nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 indent++;
                 continue;
             }
-            else if(nodeType == SceneTreeEntryType.TERM){
+            else if(nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
                 indent--;
                 continue;
             }

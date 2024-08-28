@@ -68,7 +68,7 @@
                 nodeEntry.scale.z = currentChild.getAttribute("z").tofloat();
             }
             else{
-                if(getNodeTypeForName(name) != SceneTreeEntryType.NONE){
+                if(getNodeTypeForName(name) != SceneEditorFramework_SceneTreeEntryType.NONE){
                     if(!startedWrap){
                         entries.append(CHILD_ENTRY);
                     }
@@ -97,14 +97,14 @@
     }
 
     function getNodeTypeForName(name){
-        if(name == "empty") return SceneTreeEntryType.EMPTY;
-        else if(name == "mesh") return SceneTreeEntryType.MESH;
+        if(name == "empty") return SceneEditorFramework_SceneTreeEntryType.EMPTY;
+        else if(name == "mesh") return SceneEditorFramework_SceneTreeEntryType.MESH;
 
-        return SceneTreeEntryType.NONE;
+        return SceneEditorFramework_SceneTreeEntryType.NONE;
     }
 
 };
 ::SceneEditorFramework.FileParser.CHILD_ENTRY <- ::SceneEditorFramework.SceneTreeEntry();
-::SceneEditorFramework.FileParser.CHILD_ENTRY.nodeType = SceneTreeEntryType.CHILD;
+::SceneEditorFramework.FileParser.CHILD_ENTRY.nodeType = SceneEditorFramework_SceneTreeEntryType.CHILD;
 ::SceneEditorFramework.FileParser.TERM_ENTRY <- ::SceneEditorFramework.SceneTreeEntry();
-::SceneEditorFramework.FileParser.TERM_ENTRY.nodeType = SceneTreeEntryType.TERM;
+::SceneEditorFramework.FileParser.TERM_ENTRY.nodeType = SceneEditorFramework_SceneTreeEntryType.TERM;

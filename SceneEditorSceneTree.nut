@@ -34,11 +34,11 @@
         local indent = 0;
         local indentString = "";
         foreach(c,i in mEntries_){
-            if(i.nodeType == SceneTreeEntryType.CHILD){
+            if(i.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 indent++;
                 indentString = debugPrintGetPadding_(indent);
             }
-            if(i.nodeType == SceneTreeEntryType.TERM){
+            if(i.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
                 indent--;
                 assert(indent >= 0);
                 indentString = debugPrintGetPadding_(indent);
@@ -58,7 +58,7 @@
         local lastNode = null;
         for(local i = 0; i < mEntries_.len(); i++){
             local c = mEntries_[i];
-            if(c.nodeType == SceneTreeEntryType.CHILD){
+            if(c.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 if(lastNode == null){
                     assert(i == 0);
                     lastNode = mParentNode_.createChildSceneNode();
@@ -67,7 +67,7 @@
                 //currentNode = lastNode;
                 continue;
             }
-            else if(c.nodeType == SceneTreeEntryType.TERM){
+            else if(c.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
                 assert(currentNode.len() > 0);
                 currentNode.pop();
                 continue;
@@ -80,7 +80,7 @@
     }
     function constructObjectForEntry(entry, parent){
         local newNode = parent.createChildSceneNode();
-        if(entry.nodeType == SceneTreeEntryType.MESH){
+        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             local item = _scene.createItem(entry.data.meshName);
 
             newNode.setPosition(entry.position);
@@ -97,14 +97,14 @@
     function setCurrentSelection(entryId){
         if(mEntries_ == null) return;
         local e = mEntries_[entryId];
-        assert(e.nodeType != SceneTreeEntryType.CHILD && e.nodeType != SceneTreeEntryType.TERM);
+        assert(e.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD && e.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM);
         mCurrentSelection = entryId;
 
         mMoveHandles_.setVisible(true);
         local targetPos = mEntries_[entryId].node.getDerivedPositionVec3();
         mMoveHandles_.setPosition(targetPos);
 
-        mBus_.transmitEvent(SceneEditorBusEvents.SCENE_TREE_SELECTION_CHANGED, e);
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, e);
     }
 
     function getIndexOfParentForEntry_(index){
@@ -117,8 +117,8 @@
         local childCount = 0;
         do{
             local entry = mEntries_[itIndex];
-            if(entry.nodeType == SceneTreeEntryType.TERM) childCount++;
-            if(entry.nodeType == SceneTreeEntryType.CHILD){
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM) childCount++;
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 if(childCount == 0){
                     return itIndex;
                 }
@@ -138,7 +138,7 @@
     }
 
     function notifyBusEvent(event, data){
-        if(event == SceneEditorBusEvents.SELECTED_POSITION_CHANGE){
+        if(event == SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE){
             local e = mEntries_[mCurrentSelection];
             e.setPosition(data);
         }

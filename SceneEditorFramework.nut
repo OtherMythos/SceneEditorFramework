@@ -1,5 +1,7 @@
 ::SceneEditorFramework <- {};
 
+_doFile("script://SceneEditorConstants.nut");
+
 _doFile("script://SceneEditorBase.nut");
 _doFile("script://SceneEditorSceneTreeEntry.nut");
 _doFile("script://SceneEditorSceneTree.nut");

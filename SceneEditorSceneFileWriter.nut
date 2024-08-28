@@ -20,12 +20,12 @@
         local current = root;
         foreach(i in tree.mEntries_){
             local nodeType = i.nodeType;
-            if(nodeType == SceneTreeEntryType.CHILD){
+            if(nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 indent++;
                 parents.append(current);
                 continue;
             }
-            else if(nodeType == SceneTreeEntryType.TERM){
+            else if(nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
                 indent--;
                 parents.pop();
                 continue;
@@ -68,7 +68,7 @@
             inserted.setAttribute("animIdx", entry.animIdx);
         }
 
-        if(entry.nodeType == SceneTreeEntryType.MESH){
+        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             inserted.setAttribute("mesh", entry.data.meshName);
         }
 

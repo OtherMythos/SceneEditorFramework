@@ -1,40 +1,12 @@
 
-enum SceneTreeEntryType{
-    NONE,
-
-    CHILD,
-    TERM,
-
-    EMPTY,
-    MESH
-};
-
-enum SceneEditorGUIPanelId{
-    SCENE_TREE,
-    OBJECT_PROPERTIES,
-
-    USER_CUSTOM_1 = 1000,
-    USER_CUSTOM_2 = 1001,
-    USER_CUSTOM_3 = 1002,
-
-};
-
-enum SceneEditorBusEvents{
-    NONE,
-    SCENE_TREE_SELECTION_CHANGED,
-    SELECTED_POSITION_CHANGE,
-
-    REQUEST_SAVE
-};
-
 
 ::SceneEditorFramework.getNameForSceneEntryType <- function(t){
     switch(t){
-        case SceneTreeEntryType.NONE: return "none";
-        case SceneTreeEntryType.CHILD: return "child";
-        case SceneTreeEntryType.TERM: return "term";
-        case SceneTreeEntryType.EMPTY: return "empty";
-        case SceneTreeEntryType.MESH: return "mesh";
+        case SceneEditorFramework_SceneTreeEntryType.NONE: return "none";
+        case SceneEditorFramework_SceneTreeEntryType.CHILD: return "child";
+        case SceneEditorFramework_SceneTreeEntryType.TERM: return "term";
+        case SceneEditorFramework_SceneTreeEntryType.EMPTY: return "empty";
+        case SceneEditorFramework_SceneTreeEntryType.MESH: return "mesh";
         default: return "unknown";
     }
 };
@@ -73,7 +45,7 @@ enum SceneEditorBusEvents{
     }
 
     function notifyBusEvent(event, data){
-        if(event == SceneEditorBusEvents.REQUEST_SAVE){
+        if(event == SceneEditorFramework_BusEvents.REQUEST_SAVE){
             writeSceneFile(mCurrentFilePath_);
         }
     }
@@ -94,12 +66,12 @@ enum SceneEditorBusEvents{
         //local newInstance = ::SceneEditorFramework.GUIPanel;
         local guiInstance = null;
         switch(winType){
-            case SceneEditorGUIPanelId.SCENE_TREE:{
+            case SceneEditorFramework_GUIPanelId.SCENE_TREE:{
                 assert(mActiveTree_);
                 guiInstance = ::SceneEditorFramework.GUISceneTree(window, mActiveTree_, this, mBus_);
                 break;
             }
-            case SceneEditorGUIPanelId.OBJECT_PROPERTIES:{
+            case SceneEditorFramework_GUIPanelId.OBJECT_PROPERTIES:{
                 guiInstance = ::SceneEditorFramework.GUIObjectProperties(window, this, mBus_);
                 break;
             }
