@@ -11,11 +11,22 @@
     }
 };
 
+//Helper functions for the user to re-implement
+//This approach helps keep the framework flexible.
+::SceneEditorFramework.HelperFunctions <- {
+    //Called to check if the scene is interactable, for instance the cursor is not interacting with any gui elements.
+    function sceneEditorInteractable(){
+        //Stub to be implemented by the user.
+        return true;
+    }
+}
+
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
     mActiveGUI_ = null;
     mBus_ = null;
+    mEditorHelperFunctions_ = null;
 
     mCurrentFilePath_ = null;
 
@@ -117,26 +128,19 @@
         }
     }
 
-    function checkIntersect_(x, y, widget){
-        local start = widget.getPosition();
-        local end = widget.getSize();
-        return (x >= start.x && y >= start.y && x < end.x+start.x && y < end.y+start.y);
-    }
-    function checkMousePositionValid(mousePos){
-        foreach(i in mActiveGUI_){
-            if(checkIntersect_(mousePos.x, mousePos.y, i)) return false;
-        }
-        return true;
-    }
-
     function sceneSafeUpdate(){
         if(!mActiveTree_) return;
 
         //Determine the mouse position and whether to pass that over.
-        local mousePos = Vec2(_input.getMouseX(), _input.getMouseY());
-        local mousePositionValid = checkMousePositionValid(mousePos);
+        local mousePositionValid = !::guiFrameworkBase.mouseInteracting();
+        local interact = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
+        local mouseTarget = null;
+        if(mousePositionValid){
+            local mousePos = Vec2(_input.getMouseX(), _input.getMouseY());
+            mouseTarget = mousePos / _window.getSize();
+        }
 
-        mActiveTree_.updateSceneSafeMousePosition(mousePositionValid ? (mousePos / _window.getSize()) : null);
+        mActiveTree_.updateSceneSafeMousePosition(mouseTarget);
     }
 
 
