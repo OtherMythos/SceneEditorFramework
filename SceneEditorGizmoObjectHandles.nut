@@ -5,6 +5,7 @@
     mPositionNodes_ = null;
     mOperationInPlace_ = false;
     mHighlightAxis_ = null;
+    mMovementOffset_ = null;
 
     mPerformingAction_ = null;
     mTestingPlane_ = null;
@@ -60,8 +61,15 @@
                 else if(mHighlightAxis_ == 2){
                     worldPoint = Vec3(oldPos.x, oldPos.y, worldPoint.z);
                 }
+
+                if(mMovementOffset_ == null){
+                    mMovementOffset_ = oldPos - worldPoint;
+                }
+                worldPoint += mMovementOffset_;
                 setPositionForSelectedObject_(worldPoint);
             }
+        }else{
+            mMovementOffset_ = null;
         }
     }
 
