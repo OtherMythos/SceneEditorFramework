@@ -74,10 +74,10 @@
                     mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN, mHandleType_);
                 }
                 worldPoint += mMovementOffset_;
-                if(mHandleType_ == SceneEditorFramework_ObjectHandlesType.POSITION){
+                if(mHandleType_ == SceneEditorFramework_BasicCoordinateType.POSITION){
                     setPositionForSelectedObject_(worldPoint);
                 }
-                else if(mHandleType_ == SceneEditorFramework_ObjectHandlesType.SCALE){
+                else if(mHandleType_ == SceneEditorFramework_BasicCoordinateType.SCALE){
                     local diff = mStartPosition_ - worldPoint;
                     setScaleForSelectedObject_(diff);
                 }
@@ -174,11 +174,11 @@
 
     function getObjectForHandle_(){
         switch(mHandleType_){
-            case SceneEditorFramework_ObjectHandlesType.SCALE:{
+            case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 return "scaleHandle.mesh";
             }
-            case SceneEditorFramework_ObjectHandlesType.POSITION:
-            case SceneEditorFramework_ObjectHandlesType.ORIENTATION:
+            case SceneEditorFramework_BasicCoordinateType.POSITION:
+            case SceneEditorFramework_BasicCoordinateType.ORIENTATION:
             default: {
                 return "arrow.mesh";
             }
@@ -187,7 +187,7 @@
 
     function getScaleObjectForHandle_(){
         switch(mHandleType_){
-            case SceneEditorFramework_ObjectHandlesType.SCALE:{
+            case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 return 0.3;
             }
             default: {

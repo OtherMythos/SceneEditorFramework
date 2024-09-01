@@ -27,19 +27,21 @@
     mActiveGUI_ = null;
     mBus_ = null;
     mEditorHelperFunctions_ = null;
+    mActionStack_ = null;
 
     mCurrentFilePath_ = null;
 
     constructor(){
         mActiveGUI_ = {};
         mBus_ = ::SceneEditorFramework.SceneEditorBus();
+        mActionStack_ = ::SceneEditorFramework.ActionStack();
         setupDatablocks();
 
         mBus_.subscribeObject(this);
     }
 
     function loadSceneTree(parentNode, filePath){
-        local tree = ::SceneEditorFramework.SceneTree(parentNode, mBus_);
+        local tree = ::SceneEditorFramework.SceneTree(parentNode, mActionStack_, mBus_);
 
         local parser = ::SceneEditorFramework.FileParser();
         parser.parseForSceneTree(filePath, tree);

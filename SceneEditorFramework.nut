@@ -3,6 +3,7 @@
 _doFile("script://SceneEditorConstants.nut");
 
 _doFile("script://SceneEditorBase.nut");
+_doFile("script://SceneEditorActionStack.nut");
 _doFile("script://SceneEditorSceneTreeEntry.nut");
 _doFile("script://SceneEditorSceneTree.nut");
 _doFile("script://SceneEditorSceneFileParser.nut");
@@ -15,3 +16,5 @@ _doFile("script://SceneEditorGizmoObjectHandles.nut");
 _doFile("script://GUI/SceneEditorGUIPanel.nut");
 _doFile("script://GUI/SceneEditorGUISceneTree.nut");
 _doFile("script://GUI/SceneEditorGUIObjectProperties.nut");
+
+_doFile("script://actions/BasicCoordinatesChangeAction.nut");

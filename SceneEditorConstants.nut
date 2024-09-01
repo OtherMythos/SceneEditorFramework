@@ -36,8 +36,14 @@ enum SceneEditorFramework_BusEvents{
     REQUEST_SAVE
 };
 
-enum SceneEditorFramework_ObjectHandlesType{
+enum SceneEditorFramework_Action{
+    BASIC_COORDINATES_CHANGE,
+
+    MAX
+};
+
+enum SceneEditorFramework_BasicCoordinateType{
     POSITION,
     SCALE,
     ORIENTATION
-};
+}

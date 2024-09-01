@@ -3,18 +3,21 @@
     mEntries_ = null;
     mParentNode_ = null;
     mBus_ = null;
+    mActionStack_ = null;
     mMoveHandles_ = null;
+    mCurrentPopulateAction_ = null;
 
     mCurrentSelection = -1;
 
-    constructor(parentNode, bus){
+    constructor(parentNode, actionStack, bus){
         mEntries_ = [];
         mParentNode_ = parentNode;
+        mActionStack_ = actionStack;
         mBus_ = bus;
 
         bus.subscribeObject(this);
 
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_ObjectHandlesType.POSITION, mBus_);
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_BasicCoordinateType.POSITION, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
@@ -137,8 +140,6 @@
         return -1;
     }
 
-    //TODO this will be moved into an action.
-    mStartScale_ = null;
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE){
             local e = mEntries_[mCurrentSelection];
@@ -147,24 +148,39 @@
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
             local e = mEntries_[mCurrentSelection];
-            assert(mStartScale_ != null);
-            e.setScale(mStartScale_ - data*0.2);
+            assert(mCurrentPopulateAction_ != null);
+            e.setScale(mCurrentPopulateAction_.mOld_ - data*0.2);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
-            if(data == SceneEditorFramework_ObjectHandlesType.SCALE){
-                local e = mEntries_[mCurrentSelection];
-                mStartScale_ = e.scale.copy();
-            }
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            mCurrentPopulateAction_ = A(this, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
+            mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
 
-
-            mStartScale_ = null;
+            mActionStack_.pushAction_(mCurrentPopulateAction_);
         }
+    }
+    function getValueForObjectCoordsChange_(coordsType){
+        local endValue = null;
+        local e = mEntries_[mCurrentSelection];
+        if(coordsType == SceneEditorFramework_BasicCoordinateType.POSITION){
+            endValue = e.position.copy();
+        }
+        else if(coordsType == SceneEditorFramework_BasicCoordinateType.SCALE){
+            endValue = e.scale.copy();
+        }else{
+            assert(false);
+        }
+        return endValue;
     }
 
     function notifySelectionChanged(buttonId){
         setCurrentSelection(buttonId);
+    }
+
+    function getEntryForId(id){
+        return mEntries_[id];
     }
 
     /**
