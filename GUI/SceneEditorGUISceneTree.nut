@@ -47,4 +47,9 @@
         mSceneTree_.notifySelectionChanged(buttonId);
     }
 
+    function resize(newSize){
+        mContainerWin_.setSize(mParent_.getSizeAfterClipping());
+        mContainerWin_.sizeScrollToFit();
+    }
+
 };

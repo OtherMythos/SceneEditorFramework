@@ -17,4 +17,12 @@
         return mParent_.getSize();
     }
 
+    function shutdown(){
+
+    }
+
+    function resize(newSize){
+
+    }
+
 };

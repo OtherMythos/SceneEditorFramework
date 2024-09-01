@@ -105,6 +105,17 @@
         instance.setup();
     }
 
+    function closeGUIWindow(winType){
+        if(!mActiveGUI_.rawin(winType)) return;
+        mActiveGUI_[winType].shutdown();
+        mActiveGUI_.rawdelete(winType);
+    }
+
+    function resizeGUIWindow(winType, newSize){
+        if(!mActiveGUI_.rawin(winType)) return;
+        mActiveGUI_[winType].resize(newSize);
+    }
+
     function setupDatablocks(){
         local handleColours = [
             //Regular
