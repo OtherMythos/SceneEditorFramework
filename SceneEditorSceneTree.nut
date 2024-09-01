@@ -14,7 +14,7 @@
 
         bus.subscribeObject(this);
 
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, mBus_);
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_ObjectHandlesType.POSITION, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
@@ -137,10 +137,29 @@
         return -1;
     }
 
+    //TODO this will be moved into an action.
+    mStartScale_ = null;
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE){
             local e = mEntries_[mCurrentSelection];
             e.setPosition(data);
+            mMoveHandles_.positionGizmo(data);
+        }
+        else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
+            local e = mEntries_[mCurrentSelection];
+            assert(mStartScale_ != null);
+            e.setScale(mStartScale_ - data*0.2);
+        }
+        else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
+            if(data == SceneEditorFramework_ObjectHandlesType.SCALE){
+                local e = mEntries_[mCurrentSelection];
+                mStartScale_ = e.scale.copy();
+            }
+        }
+        else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
+
+
+            mStartScale_ = null;
         }
     }
 

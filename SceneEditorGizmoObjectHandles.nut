@@ -6,14 +6,18 @@
     mOperationInPlace_ = false;
     mHighlightAxis_ = null;
     mMovementOffset_ = null;
+    mStartPosition_ = null;
+    mStartScale_ = null;
 
     mPerformingAction_ = null;
     mTestingPlane_ = null;
+    mHandleType_ = null;
 
-    constructor(parent, bus){
+    constructor(parent, handleType, bus){
         base.constructor(parent);
 
         mBus_ = bus;
+        mHandleType_ = handleType;
 
         setup(mParentNode_);
     }
@@ -28,10 +32,12 @@
         mPositionNodes_ = array(3);
         for(local i = 0; i < 3; i++){
             local newNode = parent.createChildSceneNode();
-            local item = _scene.createItem("arrow.mesh");
+            local item = _scene.createItem(getObjectForHandle_());
             item.setRenderQueueGroup(30);
             item.setQueryFlags(1 << 10);
             newNode.attachObject(item);
+            local scaleSize = getScaleObjectForHandle_()
+            newNode.setScale(scaleSize, scaleSize, scaleSize);
 
             local targetDatablock = _hlms.getDatablock("SceneEditorFramework/handle"+i);
             item.setDatablock(targetDatablock);
@@ -64,19 +70,42 @@
 
                 if(mMovementOffset_ == null){
                     mMovementOffset_ = oldPos - worldPoint;
+                    mStartPosition_ = oldPos;
+                    mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN, mHandleType_);
                 }
                 worldPoint += mMovementOffset_;
-                setPositionForSelectedObject_(worldPoint);
+                if(mHandleType_ == SceneEditorFramework_ObjectHandlesType.POSITION){
+                    setPositionForSelectedObject_(worldPoint);
+                }
+                else if(mHandleType_ == SceneEditorFramework_ObjectHandlesType.SCALE){
+                    local diff = mStartPosition_ - worldPoint;
+                    setScaleForSelectedObject_(diff);
+                }
             }
         }else{
+            if(mMovementOffset_ != null){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED, mHandleType_);
+            }
             mMovementOffset_ = null;
+            mStartPosition_ = null;
         }
     }
 
+    function setScaleForSelectedObject_(newScale){
+        print(newScale);
+        //mParentNode_.setScale(newScale);
+
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE, newScale);
+    }
+
     function setPositionForSelectedObject_(newPos){
-        mParentNode_.setPosition(newPos);
+        //mParentNode_.setPosition(newPos);
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE, newPos);
+    }
+
+    function positionGizmo(pos){
+        mParentNode_.setPosition(pos);
     }
 
     function beginActionState(starting){
@@ -141,6 +170,30 @@
             }
         }
         return null;
+    }
+
+    function getObjectForHandle_(){
+        switch(mHandleType_){
+            case SceneEditorFramework_ObjectHandlesType.SCALE:{
+                return "scaleHandle.mesh";
+            }
+            case SceneEditorFramework_ObjectHandlesType.POSITION:
+            case SceneEditorFramework_ObjectHandlesType.ORIENTATION:
+            default: {
+                return "arrow.mesh";
+            }
+        }
+    }
+
+    function getScaleObjectForHandle_(){
+        switch(mHandleType_){
+            case SceneEditorFramework_ObjectHandlesType.SCALE:{
+                return 0.3;
+            }
+            default: {
+                return 1.0;
+            }
+        }
     }
 
 };

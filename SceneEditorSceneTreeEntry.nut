@@ -29,4 +29,9 @@
         node.setDerivedPosition(position);
     }
 
+    function setScale(newScale){
+        scale = newScale.copy();
+        node.setScale(newScale);
+    }
+
 }
