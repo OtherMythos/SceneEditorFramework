@@ -17,7 +17,7 @@
 
         bus.subscribeObject(this);
 
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_BasicCoordinateType.POSITION, mBus_);
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_BasicCoordinateType.SCALE, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
@@ -153,12 +153,17 @@
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            mCurrentPopulateAction_ = A(this, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data);
+            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
             mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
 
             mActionStack_.pushAction_(mCurrentPopulateAction_);
+        }
+        else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
+            if(data.id == mCurrentSelection){
+                mMoveHandles_.positionGizmo(data.pos);
+            }
         }
     }
     function getValueForObjectCoordsChange_(coordsType){
