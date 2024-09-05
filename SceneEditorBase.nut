@@ -7,6 +7,15 @@
         case SceneEditorFramework_SceneTreeEntryType.TERM: return "term";
         case SceneEditorFramework_SceneTreeEntryType.EMPTY: return "empty";
         case SceneEditorFramework_SceneTreeEntryType.MESH: return "mesh";
+        case SceneEditorFramework_SceneTreeEntryType.USER0:{
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(0);
+        }
+        case SceneEditorFramework_SceneTreeEntryType.USER1:{
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(1);
+        }
+        case SceneEditorFramework_SceneTreeEntryType.USER2:{
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(2);
+        }
         default: return "unknown";
     }
 };
@@ -18,6 +27,14 @@
     function sceneEditorInteractable(){
         //Stub to be implemented by the user.
         return true;
+    }
+
+    function sceneTreeConstructObjectForUserEntry(userId, parentNode, entryData){
+
+    }
+
+    function getNameForUserEntry(userId){
+        return "User" + userId;
     }
 }
 

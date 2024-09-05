@@ -83,16 +83,27 @@
     }
     function constructObjectForEntry(entry, parent){
         local newNode = parent.createChildSceneNode();
-        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
-            local item = _scene.createItem(entry.data.meshName);
-
-            newNode.setPosition(entry.position);
-            newNode.setScale(entry.scale);
-            newNode.setOrientation(entry.orientation);
+        local nodeType = entry.nodeType;
+        local entryData = entry.data;
+        if(nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
+            local item = _scene.createItem(entryData.meshName);
 
             item.setRenderQueueGroup(30);
             newNode.attachObject(item);
         }
+        else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER0){
+            ::SceneEditorFramework.HelperFunctions.sceneTreeConstructObjectForUserEntry(0, newNode, entryData);
+        }
+        else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER1){
+            ::SceneEditorFramework.HelperFunctions.sceneTreeConstructObjectForUserEntry(1, newNode, entryData);
+        }
+        else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER2){
+            ::SceneEditorFramework.HelperFunctions.sceneTreeConstructObjectForUserEntry(2, newNode, entryData);
+        }
+
+        newNode.setPosition(entry.position);
+        newNode.setScale(entry.scale);
+        newNode.setOrientation(entry.orientation);
 
         return newNode;
     }

@@ -1,6 +1,9 @@
 ::SceneEditorFramework.SceneTreeMeshData <- class{
     meshName = null;
 };
+::SceneEditorFramework.SceneTreeUserEntryData <- class{
+    value = null;
+};
 
 ::SceneEditorFramework.SceneTreeEntry <- class{
 

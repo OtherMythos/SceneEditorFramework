@@ -92,6 +92,13 @@
             meshData.meshName = mesh;
             return meshData;
         }
+        else if(name.find("user") != null){
+            local value = node.getAttribute("value");
+
+            local userEntry = ::SceneEditorFramework.SceneTreeUserEntryData();
+            userEntry.value = value;
+            return userEntry;
+        }
 
         return null;
     }
@@ -99,6 +106,9 @@
     function getNodeTypeForName(name){
         if(name == "empty") return SceneEditorFramework_SceneTreeEntryType.EMPTY;
         else if(name == "mesh") return SceneEditorFramework_SceneTreeEntryType.MESH;
+        else if(name == "user0") return SceneEditorFramework_SceneTreeEntryType.USER0;
+        else if(name == "user1") return SceneEditorFramework_SceneTreeEntryType.USER1;
+        else if(name == "user2") return SceneEditorFramework_SceneTreeEntryType.USER2;
 
         return SceneEditorFramework_SceneTreeEntryType.NONE;
     }

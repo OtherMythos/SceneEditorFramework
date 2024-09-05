@@ -12,7 +12,10 @@ enum SceneEditorFramework_SceneTreeEntryType{
     TERM,
 
     EMPTY,
-    MESH
+    MESH,
+    USER0,
+    USER1,
+    USER2,
 };
 
 enum SceneEditorFramework_GUIPanelId{
