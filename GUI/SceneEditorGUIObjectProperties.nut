@@ -57,6 +57,9 @@
         if(event == SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED){
             setDataForEntry(data);
         }
+        else if(event == SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE){
+            setDataForEntry(data);
+        }
 
     }
 

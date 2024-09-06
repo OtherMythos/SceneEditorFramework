@@ -156,11 +156,15 @@
             local e = mEntries_[mCurrentSelection];
             e.setPosition(data);
             mMoveHandles_.positionGizmo(data);
+
+            mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
             local e = mEntries_[mCurrentSelection];
             assert(mCurrentPopulateAction_ != null);
             e.setScale(mCurrentPopulateAction_.mOld_ - data*0.2);
+
+            mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
