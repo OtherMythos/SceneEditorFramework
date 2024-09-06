@@ -6,6 +6,7 @@
     mActionStack_ = null;
     mMoveHandles_ = null;
     mCurrentPopulateAction_ = null;
+    mCurrentObjectTransformCoordinateType_ = null;
 
     mCurrentSelection = -1;
 
@@ -17,7 +18,7 @@
 
         bus.subscribeObject(this);
 
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, SceneEditorFramework_BasicCoordinateType.SCALE, mBus_);
+        setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
         mMoveHandles_.setVisible(false);
     }
 
@@ -26,6 +27,19 @@
         mMoveHandles_.update();
 
         mMoveHandles_.updateCameraDist(_camera.getPosition());
+    }
+
+    function setObjectTransformCoordinateType(coordType){
+        if(mCurrentObjectTransformCoordinateType_ == coordType){
+            return;
+        }
+
+        if(mMoveHandles_ != null) mMoveHandles_.shutdown();
+        mCurrentObjectTransformCoordinateType_ = coordType;
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, mCurrentObjectTransformCoordinateType_, mBus_);
+        if(mCurrentSelection != -1){
+            positionTransformGizmo_();
+        }
     }
 
     function debugPrintGetPadding_(indent){
@@ -114,11 +128,15 @@
         assert(e.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD && e.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM);
         mCurrentSelection = entryId;
 
-        mMoveHandles_.setVisible(true);
-        local targetPos = mEntries_[entryId].node.getDerivedPositionVec3();
-        mMoveHandles_.setPosition(targetPos);
+        positionTransformGizmo_();
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, e);
+    }
+
+    function positionTransformGizmo_(){
+        mMoveHandles_.setVisible(true);
+        local targetPos = mEntries_[mCurrentSelection].node.getDerivedPositionVec3();
+        mMoveHandles_.setPosition(targetPos);
     }
 
     function getIndexOfParentForEntry_(index){

@@ -86,6 +86,10 @@
         }
     }
 
+    function getActiveSceneTree(){
+        return mActiveTree_;
+    }
+
     function setActiveSceneTree(sceneTree){
         mActiveTree_ = sceneTree;
     }

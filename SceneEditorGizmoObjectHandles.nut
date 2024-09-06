@@ -48,6 +48,10 @@
         }
     }
 
+    function shutdown(){
+        mParentNode_.destroyNodeAndChildren();
+    }
+
     function update(){
         beginActionState(_input.getMouseButton(0));
 
