@@ -169,20 +169,37 @@
         return -1;
     }
 
+    function setSelectedNodeScale(scale){
+        if(mCurrentSelection == -1){
+            return;
+        }
+
+        local e = mEntries_[mCurrentSelection];
+        e.setScale(scale);
+
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+    }
+
+    function setSelectedNodePosition(position){
+        if(mCurrentSelection == -1){
+            return;
+        }
+
+        local e = mEntries_[mCurrentSelection];
+        e.setPosition(position);
+        mMoveHandles_.positionGizmo(position);
+
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+    }
+
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE){
-            local e = mEntries_[mCurrentSelection];
-            e.setPosition(data);
-            mMoveHandles_.positionGizmo(data);
-
-            mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+            assert(mCurrentPopulateAction_ != null);
+            setSelectedNodePosition(data);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
-            local e = mEntries_[mCurrentSelection];
             assert(mCurrentPopulateAction_ != null);
-            e.setScale(mCurrentPopulateAction_.mOld_ - data*0.2);
-
-            mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+            setSelectedNodeScale(mCurrentPopulateAction_.mOld_ - data*0.2);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
@@ -196,6 +213,12 @@
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
             if(data.id == mCurrentSelection){
                 mMoveHandles_.positionGizmo(data.pos);
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
+            }
+        }
+        else if(event == SceneEditorFramework_BusEvents.OBJECT_SCALE_CHANGE){
+            if(data.id == mCurrentSelection){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
             }
         }
     }

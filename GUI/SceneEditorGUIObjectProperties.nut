@@ -26,16 +26,24 @@
         positionVec.addToLayout(layoutLine);
         positionVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
             local val = widget.getValue();
-            print(val);
-        }));
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            local sceneTree = mBaseObj_.getActiveSceneTree();
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.POSITION), val, SceneEditorFramework_BasicCoordinateType.POSITION);
+            mBaseObj_.pushAction(action);
+            action.performAction();
+        }, this));
         mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, positionVec);
 
         local scaleVec = ::EditorGUIFramework.Widget.Vector3Input(mContainerWindow_, "scale");
         scaleVec.addToLayout(layoutLine);
         scaleVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
             local val = widget.getValue();
-            print(val);
-        }));
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            local sceneTree = mBaseObj_.getActiveSceneTree();
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.SCALE), val, SceneEditorFramework_BasicCoordinateType.SCALE);
+            mBaseObj_.pushAction(action);
+            action.performAction();
+        }, this));
         mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scaleVec);
 
         local orientation = mContainerWindow_.createLabel();

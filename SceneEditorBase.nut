@@ -94,6 +94,10 @@
         mActiveTree_ = sceneTree;
     }
 
+    function pushAction(action){
+        mActionStack_.pushAction_(action);
+    }
+
     function setupGUIWindow(winType, window){
         if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
 
