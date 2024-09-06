@@ -3,6 +3,8 @@
 
     mLayoutLine_ = null;
     mWidgets_ = null;
+    mContainerWindow_ = null;
+    mNoSelectedObjectLabel_ = null;
 
     constructor(parent, baseObj, bus){
         base.constructor(parent, baseObj, bus);
@@ -12,30 +14,43 @@
     }
 
     function setup(){
+        mNoSelectedObjectLabel_ = mParent_.createLabel();
+        mNoSelectedObjectLabel_.setText("No object selected");
+
+        mContainerWindow_ = mParent_.createWindow();
+        mContainerWindow_.setSkinPack("internal/WindowNoBorder");
         local layoutLine = _gui.createLayoutLine();
 
-        local label = mParent_.createLabel();
-        label.setText("Object Properties");
-        layoutLine.addCell(label);
+        //TODO consider separating the widgets specifically off into their own repo so the SceneEditor can depend on that.
+        local positionVec = ::EditorGUIFramework.Widget.Vector3Input(mContainerWindow_, "position");
+        positionVec.addToLayout(layoutLine);
+        positionVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
+            local val = widget.getValue();
+            print(val);
+        }));
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, positionVec);
 
-        local position = mParent_.createLabel();
-        position.setText("Position");
-        layoutLine.addCell(position);
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, position);
+        local scaleVec = ::EditorGUIFramework.Widget.Vector3Input(mContainerWindow_, "scale");
+        scaleVec.addToLayout(layoutLine);
+        scaleVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
+            local val = widget.getValue();
+            print(val);
+        }));
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scaleVec);
 
-        local scale = mParent_.createLabel();
-        scale.setText("scale");
-        layoutLine.addCell(scale);
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scale);
-
-        local orientation = mParent_.createLabel();
+        local orientation = mContainerWindow_.createLabel();
         orientation.setText("orientation");
         layoutLine.addCell(orientation);
         mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientation);
 
         mLayoutLine_ = layoutLine;
 
+        mContainerWindow_.setPosition(0, 0);
+        mContainerWindow_.setSize(mParent_.getSizeAfterClipping());
+        mContainerWindow_.setVisualsEnabled(false);
+
         setDataForEntry(null);
+
     }
 
     function notifyBusEvent(event, data){
@@ -46,10 +61,16 @@
     }
 
     function setDataForEntry(entry){
+        mContainerWindow_.setVisible(entry != null);
+        mNoSelectedObjectLabel_.setVisible(entry == null);
+        if(entry == null){
+            return;
+        }
+
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION)
-            .setText("position: " + (entry == null ? "" : entry.position.tostring()));
+            .setValue(entry == null ? Vec3() : entry.position);
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE)
-            .setText("scale: " + (entry == null ? "" : entry.scale.tostring()));
+            .setValue(entry == null ? Vec3() : entry.scale);
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION)
             .setText("orientation: " + (entry == null ? "" : entry.orientation.tostring()));
 
