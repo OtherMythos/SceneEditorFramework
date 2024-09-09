@@ -39,7 +39,7 @@
     }
 
     function _writeElementForEntry(entry, parent){
-        local nameType = ::SceneEditorFramework.getNameForSceneEntryType(entry.nodeType);
+        local nameType = ::SceneEditorFramework.getStringValueForSceneEntryType(entry.nodeType);
 
         local inserted = parent.insertNewChildElement(nameType);
 
@@ -70,6 +70,10 @@
 
         if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             inserted.setAttribute("mesh", entry.data.meshName);
+        }
+
+        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER0){
+            inserted.setAttribute("value", entry.data.value);
         }
 
         return inserted;

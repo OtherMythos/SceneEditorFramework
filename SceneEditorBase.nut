@@ -19,6 +19,19 @@
         default: return "unknown";
     }
 };
+::SceneEditorFramework.getStringValueForSceneEntryType <- function(t){
+    switch(t){
+        case SceneEditorFramework_SceneTreeEntryType.NONE: return "none";
+        case SceneEditorFramework_SceneTreeEntryType.CHILD: return "child";
+        case SceneEditorFramework_SceneTreeEntryType.TERM: return "term";
+        case SceneEditorFramework_SceneTreeEntryType.EMPTY: return "empty";
+        case SceneEditorFramework_SceneTreeEntryType.MESH: return "mesh";
+        case SceneEditorFramework_SceneTreeEntryType.USER0: return "user0";
+        case SceneEditorFramework_SceneTreeEntryType.USER1: return "user1";
+        case SceneEditorFramework_SceneTreeEntryType.USER2: return "user2";
+        default: return "unknown";
+    }
+};
 
 //Helper functions for the user to re-implement
 //This approach helps keep the framework flexible.
