@@ -47,6 +47,10 @@ enum SceneEditorFramework_BusEvents{
 enum SceneEditorFramework_Action{
     BASIC_COORDINATES_CHANGE,
 
+    USER_0,
+    USER_1,
+    USER_2,
+
     MAX
 };
 
