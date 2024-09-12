@@ -49,6 +49,10 @@
     function getNameForUserEntry(userId){
         return "User" + userId;
     }
+
+    function raycastForMovementGizmo(){
+        return Vec3();
+    }
 }
 
 ::SceneEditorFramework.Base <- class{

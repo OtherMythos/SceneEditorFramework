@@ -28,9 +28,10 @@
             Quat(),
             Quat(PI/2, Vec3(1, 0, 0))
         ];
-        mPositionHandles_ = array(3);
-        mPositionNodes_ = array(3);
-        for(local i = 0; i < 3; i++){
+        local NUM_HANDLES = getNumHandles_();
+        mPositionHandles_ = array(NUM_HANDLES);
+        mPositionNodes_ = array(NUM_HANDLES);
+        for(local i = 0; i < NUM_HANDLES; i++){
             local newNode = parent.createChildSceneNode();
             local item = _scene.createItem(getObjectForHandle_());
             item.setRenderQueueGroup(30);
@@ -75,7 +76,7 @@
                 if(mMovementOffset_ == null){
                     mMovementOffset_ = oldPos - worldPoint;
                     mStartPosition_ = oldPos;
-                    mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN, mHandleType_);
+                    mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN, getHandleType_());
                 }
                 worldPoint += mMovementOffset_;
                 if(mHandleType_ == SceneEditorFramework_BasicCoordinateType.POSITION){
@@ -85,10 +86,16 @@
                     local diff = mStartPosition_ - worldPoint;
                     setScaleForSelectedObject_(diff);
                 }
+                else if(mHandleType_ == SceneEditorFramework_BasicCoordinateType.RAYCAST){
+                    local foundPos = ::SceneEditorFramework.HelperFunctions.raycastForMovementGizmo();
+                    if(foundPos != null){
+                        setPositionForSelectedObject_(foundPos);
+                    }
+                }
             }
         }else{
             if(mMovementOffset_ != null){
-                mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED, mHandleType_);
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED, getHandleType_());
             }
             mMovementOffset_ = null;
             mStartPosition_ = null;
@@ -178,10 +185,28 @@
         return null;
     }
 
+    function getHandleType_(){
+        return mHandleType_ == SceneEditorFramework_BasicCoordinateType.RAYCAST ? SceneEditorFramework_BasicCoordinateType.POSITION : mHandleType_
+    }
+
+    function getNumHandles_(){
+        switch(mHandleType_){
+            case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
+                return 1;
+            }
+            default: {
+                return 3;
+            }
+        }
+    }
+
     function getObjectForHandle_(){
         switch(mHandleType_){
             case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 return "scaleHandle.mesh";
+            }
+            case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
+                return "cube";
             }
             case SceneEditorFramework_BasicCoordinateType.POSITION:
             case SceneEditorFramework_BasicCoordinateType.ORIENTATION:
@@ -195,6 +220,9 @@
         switch(mHandleType_){
             case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 return 0.3;
+            }
+            case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
+                return 0.7;
             }
             default: {
                 return 1.0;

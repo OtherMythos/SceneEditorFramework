@@ -57,5 +57,6 @@ enum SceneEditorFramework_Action{
 enum SceneEditorFramework_BasicCoordinateType{
     POSITION,
     SCALE,
-    ORIENTATION
+    ORIENTATION,
+    RAYCAST
 }
