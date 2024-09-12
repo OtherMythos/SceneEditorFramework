@@ -29,10 +29,12 @@
         //TODO move out.
         mMoveHandles_.update();
 
-        if(mCurrentSelectionDeferred != null){
+        if(mCurrentSelectionDeferred == -1){
+            setCurrentSelection(null);
+        }else if(mCurrentSelectionDeferred != null){
             setCurrentSelection(mCurrentSelectionDeferred);
-            mCurrentSelectionDeferred = null;
         }
+        mCurrentSelectionDeferred = null;
 
         mMoveHandles_.updateCameraDist(_camera.getPosition());
     }
@@ -135,13 +137,19 @@
 
     function setCurrentSelection(entryId){
         if(mEntries_ == null) return;
-        local e = mEntries_[entryId];
-        assert(e.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD && e.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM);
-        mCurrentSelection = entryId;
+        local newSelection = null;
+        if(entryId != null){
+            local e = mEntries_[entryId];
+            assert(e.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD && e.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM);
+            mCurrentSelection = entryId;
+            newSelection = e;
 
-        positionTransformGizmo_();
+            positionTransformGizmo_();
+        }else{
+            mMoveHandles_.setVisible(false);
+        }
 
-        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, e);
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, newSelection);
     }
 
     function positionTransformGizmo_(){
@@ -279,6 +287,8 @@
 
                     mCurrentSelectionDeferred = entryId;
                 }
+            }else{
+                mCurrentSelectionDeferred = -1;
             }
         }
     }
