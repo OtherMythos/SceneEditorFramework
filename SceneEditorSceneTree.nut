@@ -7,14 +7,17 @@
     mMoveHandles_ = null;
     mCurrentPopulateAction_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
+    mNodesForEntry_ = null;
 
     mCurrentSelection = -1;
+    mCurrentSelectionDeferred = null;
 
     constructor(parentNode, actionStack, bus){
         mEntries_ = [];
         mParentNode_ = parentNode;
         mActionStack_ = actionStack;
         mBus_ = bus;
+        mNodesForEntry_ = {};
 
         bus.subscribeObject(this);
 
@@ -25,6 +28,11 @@
     function update(){
         //TODO move out.
         mMoveHandles_.update();
+
+        if(mCurrentSelectionDeferred != null){
+            setCurrentSelection(mCurrentSelectionDeferred);
+            mCurrentSelectionDeferred = null;
+        }
 
         mMoveHandles_.updateCameraDist(_camera.getPosition());
     }
@@ -91,6 +99,8 @@
             }
 
             lastNode = constructObjectForEntry(c, currentNode.top());
+            assert(!mNodesForEntry_.rawin(lastNode.getId()));
+            mNodesForEntry_.rawset(lastNode.getId(), i);
             c.node = lastNode;
         }
         assert(currentNode.len() == 1);
@@ -103,6 +113,7 @@
             local item = _scene.createItem(entryData.meshName);
 
             item.setRenderQueueGroup(30);
+            item.setQueryFlags(1 << 20);
             newNode.attachObject(item);
         }
         else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER0){
@@ -255,7 +266,21 @@
         }
         local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, 1 << 10);
-        mMoveHandles_.notifyNewQueryResults(result);
+        local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);
+
+        if(interactedWithGizmo && _input.getMouseButton(_MB_LEFT)){
+            local result = _scene.testRayForObjectArray(ray, 1 << 20);
+            if(result != null){
+                if(result.len() > 0){
+                    //Otherwise take the first item and highlight it.
+                    local targetId = result[0].getParentNode().getId();
+                    print("highlighting " + targetId);
+                    local entryId = mNodesForEntry_.rawget(targetId);
+
+                    mCurrentSelectionDeferred = entryId;
+                }
+            }
+        }
     }
 
 }

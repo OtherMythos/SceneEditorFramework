@@ -53,7 +53,7 @@
     }
 
     function update(){
-        beginActionState(_input.getMouseButton(0));
+        beginActionState(_input.getMouseButton(_MB_LEFT));
 
         if(mPerformingAction_ && mTestingPlane_ != null){
             local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
@@ -113,7 +113,7 @@
     }
 
     function beginActionState(starting){
-        if(mPerformingAction_ != starting){
+        if(mPerformingAction_ != starting && mHighlightAxis_ != null){
             if(starting){
                 if(mHighlightAxis_ != null){
                     if(mHighlightAxis_ == 1){
@@ -137,7 +137,7 @@
     }
 
     function notifyNewQueryResults(results){
-        if(mPerformingAction_) return;
+        if(mPerformingAction_) return false;
         local axis = getAxisForSceneNodeArray(results);
         if(axis != null){
             if(mOperationInPlace_){
@@ -157,7 +157,9 @@
                 //mHighlightAxis_ = null;
                 resetHighlightForAxis_(axis);
             }
+            return true;
         }
+        return false;
     }
     function resetHighlightForAxis_(axis){
         mPositionHandles_[mHighlightAxis_].setDatablock("SceneEditorFramework/handle"+mHighlightAxis_);
