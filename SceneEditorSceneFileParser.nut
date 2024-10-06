@@ -92,7 +92,14 @@
             meshData.meshName = mesh;
             return meshData;
         }
-        else if(name.find("user") != null){
+        else if(name == "user0"){
+            local value = node.getAttribute("value");
+
+            local userEntry = ::SceneEditorFramework.SceneTreeUserEntryData();
+            userEntry.value = value;
+            return userEntry;
+        }
+        else if(name == "user1"){
             local value = node.getAttribute("value");
 
             local userEntry = ::SceneEditorFramework.SceneTreeUserEntryData();

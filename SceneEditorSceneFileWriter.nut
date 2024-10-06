@@ -76,6 +76,10 @@
             inserted.setAttribute("value", entry.data.value);
         }
 
+        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER1){
+            inserted.setAttribute("value", entry.data.value);
+        }
+
         return inserted;
     }
 
