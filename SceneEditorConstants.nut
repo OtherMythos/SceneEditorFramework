@@ -40,6 +40,7 @@ enum SceneEditorFramework_BusEvents{
 
     OBJECT_POSITION_CHANGE,
     OBJECT_SCALE_CHANGE,
+    OBJECT_ORIENTATION_CHANGE,
 
     REQUEST_SAVE
 };

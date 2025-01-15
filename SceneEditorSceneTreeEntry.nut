@@ -37,4 +37,9 @@
         node.setScale(newScale);
     }
 
+    function setOrientation(newOrientation){
+        orientation = newOrientation.copy();
+        node.setOrientation(newOrientation);
+    }
+
 }

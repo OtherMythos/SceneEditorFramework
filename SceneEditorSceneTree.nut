@@ -240,6 +240,11 @@
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
             }
         }
+        else if(event == SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE){
+            if(data.id == mCurrentSelection){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
+            }
+        }
     }
     function getValueForObjectCoordsChange_(coordsType){
         local endValue = null;
@@ -249,6 +254,9 @@
         }
         else if(coordsType == SceneEditorFramework_BasicCoordinateType.SCALE){
             endValue = e.scale.copy();
+        }
+        else if(coordsType == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
+            endValue = e.orientation.copy();
         }else{
             assert(false);
         }

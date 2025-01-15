@@ -46,6 +46,15 @@
             }
             mBus_.transmitEvent(SceneEditorFramework_BusEvents.OBJECT_SCALE_CHANGE, data);
         }
+        else if(mCoordType_ == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
+            mSceneTree_.getEntryForId(mId_).setOrientation(targetData);
+
+            local data = {
+                "id": mId_,
+                "orientation": targetData
+            }
+            mBus_.transmitEvent(SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE, data);
+        }
     }
 };
 

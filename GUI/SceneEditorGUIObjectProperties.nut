@@ -46,10 +46,17 @@
         }, this));
         mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scaleVec);
 
-        local orientation = mContainerWindow_.createLabel();
-        orientation.setText("orientation");
-        layoutLine.addCell(orientation);
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientation);
+        local orientationVec = ::EditorGUIFramework.Widget.QuatInput(mContainerWindow_, "orientation");
+        orientationVec.addToLayout(layoutLine);
+        orientationVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
+            local val = widget.getValue();
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            local sceneTree = mBaseObj_.getActiveSceneTree();
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.ORIENTATION), val, SceneEditorFramework_BasicCoordinateType.ORIENTATION);
+            mBaseObj_.pushAction(action);
+            action.performAction();
+        }, this));
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientationVec);
 
         mLayoutLine_ = layoutLine;
 
@@ -82,8 +89,9 @@
             .setValue(entry == null ? Vec3() : entry.position);
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE)
             .setValue(entry == null ? Vec3() : entry.scale);
+        print(mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION));
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION)
-            .setText("orientation: " + (entry == null ? "" : entry.orientation.tostring()));
+            .setValue(entry == null ? Quat() : entry.orientation);
 
         mLayoutLine_.layout();
     }
