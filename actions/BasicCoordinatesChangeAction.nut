@@ -6,14 +6,16 @@
     mOld_ = null;
     mNew_ = null;
     mCoordType_ = null;
+    mAbsolute_ = false;
 
-    constructor(sceneTree, bus, id, oldVal, newVal, coordType){
+    constructor(sceneTree, bus, id, oldVal, newVal, coordType, absolute){
         mSceneTree_ = sceneTree;
         mBus_ = bus;
         mId_ = id;
         mOld_ = oldVal;
         mNew_ = newVal;
         mCoordType_ = coordType;
+        mAbsolute_ = absolute;
     }
 
     #Override
@@ -29,7 +31,7 @@
     function perform_(targetData){
 
         if(mCoordType_ == SceneEditorFramework_BasicCoordinateType.POSITION){
-            mSceneTree_.getEntryForId(mId_).setPosition(targetData);
+            mSceneTree_.getEntryForId(mId_).setPosition(targetData, mAbsolute_);
 
             local data = {
                 "id": mId_,

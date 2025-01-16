@@ -28,7 +28,7 @@
             local val = widget.getValue();
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
             local sceneTree = mBaseObj_.getActiveSceneTree();
-            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.POSITION), val, SceneEditorFramework_BasicCoordinateType.POSITION);
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.POSITION), val, SceneEditorFramework_BasicCoordinateType.POSITION, false);
             mBaseObj_.pushAction(action);
             action.performAction();
         }, this));

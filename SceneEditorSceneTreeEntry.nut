@@ -27,9 +27,14 @@
         orientation = Quat();
     }
 
-    function setPosition(pos){
-        position = pos.copy();
-        node.setDerivedPosition(position);
+    function setPosition(pos, absolute=false){
+        if(absolute){
+            node.setDerivedPosition(pos);
+        }else{
+            node.setPosition(pos);
+        }
+        position = node.getPositionVec3();
+        //position = pos.copy();
     }
 
     function setScale(newScale){
