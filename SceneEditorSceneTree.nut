@@ -280,6 +280,11 @@
             mMoveHandles_.notifyNewQueryResults(null);
             return;
         }
+
+        if(!::SceneEditorFramework.HelperFunctions.basicMouseInteractionEnabled()){
+            return;
+        }
+
         local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, 1 << 10);
         local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);

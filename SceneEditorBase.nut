@@ -53,6 +53,10 @@
     function raycastForMovementGizmo(){
         return Vec3();
     }
+
+    function basicMouseInteractionEnabled(){
+        return true;
+    }
 }
 
 ::SceneEditorFramework.Base <- class{
@@ -140,6 +144,8 @@
         local guiInstance = guiClass(window, this, mBus_);
 
         setupGUIWindowForInstance(winType, guiInstance);
+
+        return guiInstance;
     }
 
     function setupGUIWindowForInstance(winType, instance){
