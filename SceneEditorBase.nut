@@ -89,6 +89,16 @@
         return tree;
     }
 
+    function createBaseSceneTreeFile(filePath){
+        _system.createBlankFile(filePath);
+
+        local doc = XMLDocument();
+
+        local root = doc.newElement("scene");
+
+        doc.writeFile(filePath);
+    }
+
     function writeSceneFile(filePath){
         if(mActiveTree_ == null) throw "No active scene tree";
         local writer = ::SceneEditorFramework.FileWriter();

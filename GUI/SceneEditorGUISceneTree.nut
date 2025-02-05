@@ -18,6 +18,13 @@
 
         //TODO find a better way to get this.
         local activeTree = mBaseObj_.mActiveTree_;
+
+        if(!activeTree.sceneTreePopulated()){
+            local label = mContainerWin_.createLabel();
+            label.setText("Scene tree empty");
+            return;
+        }
+
         local indent = -1;
         local height = 0;
         foreach(c,entry in activeTree.mEntries_){

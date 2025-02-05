@@ -39,6 +39,10 @@
         mMoveHandles_.updateCameraDist(_camera.getPosition());
     }
 
+    function sceneTreePopulated(){
+        return mEntries_.len() > 2;
+    }
+
     function setObjectTransformCoordinateType(coordType){
         if(mCurrentObjectTransformCoordinateType_ == coordType){
             return;
