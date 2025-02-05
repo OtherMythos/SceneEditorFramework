@@ -6,6 +6,79 @@
     mContainerWindow_ = null;
     mNoSelectedObjectLabel_ = null;
 
+    PropertyEntry = class{
+        mHorizLayout_ = null;
+        mWidget_ = null;
+        mResetButton_ = null;
+        constructor(parent, window, widget, layout){
+            mWidget_ = widget;
+
+            local horizontalLine = _gui.createLayoutLine(_LAYOUT_HORIZONTAL);
+            widget.addToLayout(horizontalLine);
+            mHorizLayout_ = horizontalLine;
+
+            widget.attachListener(::EditorGUIFramework.Listener(valueInputListener, parent));
+
+            local button = window.createButton();
+            button.setText("reset");
+            button.setUserId(widget.getUserId());
+            button.attachListenerForEvent(resetButtonListener, _GUI_ACTION_PRESSED, parent);
+            horizontalLine.addCell(button);
+            mResetButton_ = button;
+
+            layout.addCell(horizontalLine);
+        }
+
+        function setValue(value){
+            mWidget_.setValue(value);
+
+            local coordType = mWidget_.getUserId();
+            local same = false;
+            if(coordType == SceneEditorFramework_BasicCoordinateType.POSITION){
+                same = (mWidget_.getValue() <=> Vec3(0, 0, 0)) > 0;
+            }
+            else if(coordType == SceneEditorFramework_BasicCoordinateType.SCALE){
+                same = (mWidget_.getValue() <=> Vec3(1, 1, 1)) > 0;
+            }
+            else if(coordType == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
+                same = (mWidget_.getValue() <=> Quat()) > 0;
+            }
+
+            mResetButton_.setVisible(same);
+        }
+
+        function resetButtonListener(widget, action){
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            local sceneTree = mBaseObj_.getActiveSceneTree();
+            local coordType = widget.getUserId();
+
+            local val = null;
+            if(coordType == SceneEditorFramework_BasicCoordinateType.POSITION){
+                val = Vec3(0, 0, 0);
+            }
+            else if(coordType == SceneEditorFramework_BasicCoordinateType.SCALE){
+                val = Vec3(1, 1, 1);
+            }
+            else if(coordType == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
+                val = Quat();
+            }
+
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(coordType), val, coordType, false);
+            mBaseObj_.pushAction(action);
+            action.performAction();
+        }
+
+        function valueInputListener(widget, action){
+            local val = widget.getValue();
+            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
+            local sceneTree = mBaseObj_.getActiveSceneTree();
+            local coordType = widget.getUserId();
+            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(coordType), val, coordType, false);
+            mBaseObj_.pushAction(action);
+            action.performAction();
+        }
+    }
+
     constructor(parent, baseObj, bus){
         base.constructor(parent, baseObj, bus);
         mWidgets_ = {};
@@ -21,42 +94,20 @@
         mContainerWindow_.setSkinPack("internal/WindowNoBorder");
         local layoutLine = _gui.createLayoutLine();
 
-        //TODO consider separating the widgets specifically off into their own repo so the SceneEditor can depend on that.
         local positionVec = ::EditorGUIFramework.Widget.Vector3Input(mContainerWindow_, "position");
-        positionVec.addToLayout(layoutLine);
-        positionVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
-            local val = widget.getValue();
-            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            local sceneTree = mBaseObj_.getActiveSceneTree();
-            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.POSITION), val, SceneEditorFramework_BasicCoordinateType.POSITION, false);
-            mBaseObj_.pushAction(action);
-            action.performAction();
-        }, this));
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, positionVec);
+        positionVec.setUserId(SceneEditorFramework_BasicCoordinateType.POSITION);
+        local position = PropertyEntry(this, mContainerWindow_, positionVec, layoutLine);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.POSITION, position);
 
         local scaleVec = ::EditorGUIFramework.Widget.Vector3Input(mContainerWindow_, "scale");
-        scaleVec.addToLayout(layoutLine);
-        scaleVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
-            local val = widget.getValue();
-            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            local sceneTree = mBaseObj_.getActiveSceneTree();
-            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.SCALE), val, SceneEditorFramework_BasicCoordinateType.SCALE);
-            mBaseObj_.pushAction(action);
-            action.performAction();
-        }, this));
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scaleVec);
+        scaleVec.setUserId(SceneEditorFramework_BasicCoordinateType.SCALE);
+        local scale = PropertyEntry(this, mContainerWindow_, scaleVec, layoutLine);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.SCALE, scale);
 
         local orientationVec = ::EditorGUIFramework.Widget.QuatInput(mContainerWindow_, "orientation");
-        orientationVec.addToLayout(layoutLine);
-        orientationVec.attachListener(::EditorGUIFramework.Listener(function(widget, action){
-            local val = widget.getValue();
-            local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            local sceneTree = mBaseObj_.getActiveSceneTree();
-            local action = A(sceneTree, mBus_, sceneTree.mCurrentSelection, sceneTree.getValueForObjectCoordsChange_(SceneEditorFramework_BasicCoordinateType.ORIENTATION), val, SceneEditorFramework_BasicCoordinateType.ORIENTATION);
-            mBaseObj_.pushAction(action);
-            action.performAction();
-        }, this));
-        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientationVec);
+        orientationVec.setUserId(SceneEditorFramework_BasicCoordinateType.ORIENTATION);
+        local orientation = PropertyEntry(this, mContainerWindow_, orientationVec, layoutLine);
+        mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientation);
 
         mLayoutLine_ = layoutLine;
 
