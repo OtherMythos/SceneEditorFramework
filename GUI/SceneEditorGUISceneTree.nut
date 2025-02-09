@@ -3,6 +3,46 @@
     mSceneTree_ = null;
     mContainerWin_ = null;
 
+    GUISceneTreeEntry = class{
+
+        mBackgroundButton_ = null;
+        mNodeType_ = null;
+        mParent_ = null;
+
+        constructor(parent, win){
+            mParent_ = parent;
+            local entry = win.createButton();
+            //entry.setPosition(indent * 30, height);
+            //entry.setUserId(c);
+            entry.attachListenerForEvent(buttonSelected, _GUI_ACTION_PRESSED, this);
+
+            mBackgroundButton_ = entry;
+        }
+
+        function populateData(id, nodeType){
+            mNodeType_ = nodeType;
+
+            local testText = ::SceneEditorFramework.getNameForSceneEntryType(nodeType);
+            mBackgroundButton_.setText(testText);
+            mBackgroundButton_.setUserId(id);
+        }
+
+        function buttonSelected(widget, action){
+            if(mNodeType_ == null) return;
+            local buttonId = widget.getUserId();
+            mParent_.mSceneTree_.notifySelectionChanged(buttonId);
+        }
+
+        function getSize(){
+            return mBackgroundButton_.getSize();
+        }
+
+        function setPosition(x, y){
+            mBackgroundButton_.setPosition(x, y);
+        }
+
+    }
+
     constructor(parent, tree, baseObj, bus){
         base.constructor(parent, baseObj, bus);
 
@@ -37,21 +77,13 @@
                 indent--;
                 continue;
             }
-            local entry = mContainerWin_.createButton();
-            local testText = ::SceneEditorFramework.getNameForSceneEntryType(nodeType);
-            entry.setText(testText);
+            local entry = GUISceneTreeEntry(this, mContainerWin_);
+            entry.populateData(c, nodeType);
             entry.setPosition(indent * 30, height);
-            entry.setUserId(c);
-            entry.attachListenerForEvent(buttonSelected, _GUI_ACTION_PRESSED, this);
             height += entry.getSize().y;
         }
 
         mContainerWin_.sizeScrollToFit();
-    }
-
-    function buttonSelected(widget, action){
-        local buttonId = widget.getUserId();
-        mSceneTree_.notifySelectionChanged(buttonId);
     }
 
     function resize(newSize){
