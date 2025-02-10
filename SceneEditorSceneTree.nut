@@ -74,7 +74,7 @@
                 assert(indent >= 0);
                 indentString = debugPrintGetPadding_(indent);
             }
-            printf("%s %s", indentString, ::SceneEditorFramework.getNameForSceneEntryType(i.nodeType));
+            printf("%s %s", indentString, ::SceneEditorFramework.getStringValueForSceneEntryType(i.nodeType));
         }
     }
 

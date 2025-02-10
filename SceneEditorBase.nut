@@ -1,6 +1,6 @@
 
 
-::SceneEditorFramework.getNameForSceneEntryType <- function(t){
+::SceneEditorFramework.getNameForSceneEntryType <- function(t, e){
     switch(t){
         case SceneEditorFramework_SceneTreeEntryType.NONE: return "none";
         case SceneEditorFramework_SceneTreeEntryType.CHILD: return "child";
@@ -8,13 +8,13 @@
         case SceneEditorFramework_SceneTreeEntryType.EMPTY: return "empty";
         case SceneEditorFramework_SceneTreeEntryType.MESH: return "mesh";
         case SceneEditorFramework_SceneTreeEntryType.USER0:{
-            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(0);
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(0, e);
         }
         case SceneEditorFramework_SceneTreeEntryType.USER1:{
-            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(1);
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(1, e);
         }
         case SceneEditorFramework_SceneTreeEntryType.USER2:{
-            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(2);
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(2, e);
         }
         default: return "unknown";
     }

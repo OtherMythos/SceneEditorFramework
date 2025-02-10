@@ -11,18 +11,18 @@
 
         constructor(parent, win){
             mParent_ = parent;
-            local entry = win.createButton();
-            //entry.setPosition(indent * 30, height);
-            //entry.setUserId(c);
-            entry.attachListenerForEvent(buttonSelected, _GUI_ACTION_PRESSED, this);
+            local button = win.createButton();
+            //button.setPosition(indent * 30, height);
+            //button.setUserId(c);
+            button.attachListenerForEvent(buttonSelected, _GUI_ACTION_PRESSED, this);
 
-            mBackgroundButton_ = entry;
+            mBackgroundButton_ = button;
         }
 
-        function populateData(id, nodeType){
-            mNodeType_ = nodeType;
+        function populateData(id, entry){
+            mNodeType_ = entry.nodeType;
 
-            local testText = ::SceneEditorFramework.getNameForSceneEntryType(nodeType);
+            local testText = ::SceneEditorFramework.getNameForSceneEntryType(mNodeType_, entry);
             mBackgroundButton_.setText(testText);
             mBackgroundButton_.setUserId(id);
         }
@@ -77,10 +77,10 @@
                 indent--;
                 continue;
             }
-            local entry = GUISceneTreeEntry(this, mContainerWin_);
-            entry.populateData(c, nodeType);
-            entry.setPosition(indent * 30, height);
-            height += entry.getSize().y;
+            local guiEntry = GUISceneTreeEntry(this, mContainerWin_);
+            guiEntry.populateData(c, entry);
+            guiEntry.setPosition(indent * 30, height);
+            height += guiEntry.getSize().y;
         }
 
         mContainerWin_.sizeScrollToFit();
