@@ -86,6 +86,10 @@
         bus.subscribeObject(this);
     }
 
+    function shutdown(){
+        mBus_.unsubscribeObject(this);
+    }
+
     function setup(){
         mNoSelectedObjectLabel_ = mParent_.createLabel();
         mNoSelectedObjectLabel_.setText("No object selected");

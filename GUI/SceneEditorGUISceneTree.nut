@@ -92,6 +92,10 @@
         bus.subscribeObject(this);
     }
 
+    function shutdown(){
+        mBus_.unsubscribeObject(this);
+    }
+
     function notifyBusEvent(event, data){
 
         if(event == SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED){
