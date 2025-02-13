@@ -72,11 +72,11 @@
             inserted.setAttribute("mesh", entry.data.meshName);
         }
 
-        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER0){
-            inserted.setAttribute("value", entry.data.value);
-        }
-
-        if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER1){
+        if(
+            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER0 ||
+            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER1 ||
+            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER2
+        ){
             inserted.setAttribute("value", entry.data.value);
         }
 
