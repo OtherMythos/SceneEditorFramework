@@ -139,6 +139,25 @@
         return newNode;
     }
 
+    function determineAABB(){
+        local aabb = AABB(Vec3(), Vec3());
+        foreach(c,i in mEntries_){
+            if(
+                i.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD ||
+                i.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM
+            ){
+                continue;
+            }
+
+            print(i.node.getPositionVec3())
+            local box = i.node.getAttachedObject(0).getWorldAabb();
+            print(box);
+            aabb.merge(box);
+        }
+
+        return aabb;
+    }
+
     function setCurrentSelection(entryId){
         if(mEntries_ == null) return;
         local newSelection = null;
