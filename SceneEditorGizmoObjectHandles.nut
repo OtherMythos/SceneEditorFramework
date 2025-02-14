@@ -102,10 +102,26 @@
         }
     }
 
+    function applyMaxForVec3(vec){
+        local biggest = 0.0;
+        if(vec.x != 0.0) biggest = vec.x;
+        if(vec.y != 0.0) biggest = vec.y;
+        if(vec.z != 0.0) biggest = vec.z;
+
+        vec.x = biggest;
+        vec.y = biggest;
+        vec.z = biggest;
+
+        return vec;
+    }
+
     function setScaleForSelectedObject_(newScale){
         print(newScale);
         //mParentNode_.setScale(newScale);
 
+        if(_input.getRawKeyScancodeInput(KeyScancode.LSHIFT)){
+            newScale = applyMaxForVec3(newScale);
+        }
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE, newScale);
     }
 
