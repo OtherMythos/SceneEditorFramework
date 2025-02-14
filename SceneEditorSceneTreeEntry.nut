@@ -37,6 +37,10 @@
         //position = pos.copy();
     }
 
+    function getPositionDerived(){
+        return node.getDerivedPositionVec3();
+    }
+
     function setScale(newScale){
         scale = newScale.copy();
         node.setScale(newScale);

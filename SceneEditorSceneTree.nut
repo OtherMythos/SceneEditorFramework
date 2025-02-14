@@ -228,10 +228,17 @@
         }
 
         local e = mEntries_[mCurrentSelection];
-        e.setPosition(position);
+        e.setPosition(position, true);
         mMoveHandles_.positionGizmo(position);
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+    }
+
+    function positionMoveHandles(){
+        local e = mEntries_[mCurrentSelection];
+        local derived = e.getPositionDerived();
+
+        mMoveHandles_.positionGizmo(derived);
     }
 
     function notifyBusEvent(event, data){
@@ -245,7 +252,7 @@
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, true);
+            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
             mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
@@ -253,8 +260,8 @@
             mActionStack_.pushAction_(mCurrentPopulateAction_);
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
+            positionMoveHandles();
             if(data.id == mCurrentSelection){
-                mMoveHandles_.positionGizmo(data.pos);
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
             }
         }

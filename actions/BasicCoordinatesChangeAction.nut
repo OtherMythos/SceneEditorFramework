@@ -31,7 +31,8 @@
     function perform_(targetData){
 
         if(mCoordType_ == SceneEditorFramework_BasicCoordinateType.POSITION){
-            mSceneTree_.getEntryForId(mId_).setPosition(targetData, mAbsolute_);
+            local entry = mSceneTree_.getEntryForId(mId_)
+            entry.setPosition(targetData, mAbsolute_);
 
             local data = {
                 "id": mId_,
