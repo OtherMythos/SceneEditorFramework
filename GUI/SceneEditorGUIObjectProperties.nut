@@ -151,4 +151,9 @@
         mLayoutLine_.layout();
     }
 
+    function resize(newSize){
+        mContainerWindow_.setSize(newSize);
+        mLayoutLine_.layout();
+    }
+
 };
