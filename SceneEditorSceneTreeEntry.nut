@@ -7,7 +7,7 @@
 
 ::SceneEditorFramework.SceneTreeEntry <- class{
 
-    entryId = 0;
+    entryId = null;
     position = null;
     scale = null;
     orientation = null;

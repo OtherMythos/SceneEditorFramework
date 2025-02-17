@@ -111,6 +111,14 @@
         }
         assert(currentNode.len() == 1);
     }
+    function regenerateSceneEntry(entryId){
+        local e = mEntries_[entryId];
+        if(e.node != null){
+            local parent = e.node.getParent();
+            e.node.destroyNodeAndChildren();
+            e.node = constructObjectForEntry(e, parent);
+        }
+    }
     function constructObjectForEntry(entry, parent){
         local newNode = parent.createChildSceneNode();
         local nodeType = entry.nodeType;

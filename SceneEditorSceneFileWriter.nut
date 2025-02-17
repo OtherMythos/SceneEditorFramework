@@ -77,7 +77,7 @@
             entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER1 ||
             entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER2
         ){
-            inserted.setAttribute("value", entry.data.value);
+            inserted.setAttribute("value", entry.data.value.tostring());
         }
 
         return inserted;

@@ -33,6 +33,7 @@
 
         local name = node.getName();
         nodeEntry.nodeType = getNodeTypeForName(name);
+        nodeEntry.entryId = entries.len();
         entries.append(nodeEntry);
 
         nodeEntry.data = parseDataForNode_(name, node);

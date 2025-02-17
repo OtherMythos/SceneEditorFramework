@@ -5,6 +5,41 @@
     mWidgets_ = null;
     mContainerWindow_ = null;
     mNoSelectedObjectLabel_ = null;
+    mEntryDataPanel_ = null;
+    mPositonPanel_ = null;
+
+    EntryDataPanel = class{
+        mWindow_ = null;
+
+        constructor(parent){
+            mWindow_ = parent.createWindow();
+            //mWindow_.setSize(100, 100);
+            mWindow_.setVisualsEnabled(false);
+
+            setup();
+        }
+
+        function setup(){
+
+        }
+
+        function shutdown(){
+            _gui.destroy(mWindow_);
+        }
+
+        function resize(parentSize){
+            local childrenSize = mWindow_.calculateChildrenSize();
+            mWindow_.setSize(parentSize.x, childrenSize.y);
+        }
+
+        function addToLayout(layout){
+            layout.addCell(mWindow_);
+        }
+
+        function setEntry(entry){
+
+        }
+    }
 
     PropertyEntry = class{
         mHorizLayout_ = null;
@@ -113,11 +148,18 @@
         local orientation = PropertyEntry(this, mContainerWindow_, orientationVec, layoutLine);
         mWidgets_.rawset(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION, orientation);
 
+        mPositonPanel_ = mParent_.createPanel();
+        mPositonPanel_.setVisible(false);
+        layoutLine.addCell(mPositonPanel_);
+
         mLayoutLine_ = layoutLine;
 
         mContainerWindow_.setPosition(0, 0);
-        mContainerWindow_.setSize(mParent_.getSizeAfterClipping());
+        local containerSize = mParent_.getSizeAfterClipping()
+        mContainerWindow_.setSize(containerSize);
         mContainerWindow_.setVisualsEnabled(false);
+
+        //mEntryDataPanel_.resize(containerSize);
 
         setDataForEntry(null);
 
@@ -148,12 +190,54 @@
         mWidgets_.rawget(SceneEditorFramework_GUIObjectPropertiesWidgets.ORIENTATION)
             .setValue(entry == null ? Quat() : entry.orientation);
 
+        //mEntryDataPanel_ = EntryDataPanel(mContainerWindow_);
+        local dataPanelClass = getObjectPropertyEntryPanel(entry.nodeType);
+        if(mEntryDataPanel_ != null){
+            mEntryDataPanel_.shutdown();
+            mEntryDataPanel_ = null;
+        }
+        if(dataPanelClass != null){
+            mEntryDataPanel_ = dataPanelClass(mContainerWindow_);
+            //mEntryDataPanel_.addToLayout(mLayoutLine_);
+        }
+        mEntryDataPanel_.setEntry(entry);
+        positionDataPanel_();
+
         mLayoutLine_.layout();
     }
 
     function resize(newSize){
         mContainerWindow_.setSize(newSize);
+        positionDataPanel_();
         mLayoutLine_.layout();
     }
 
+    function positionDataPanel_(){
+        if(mEntryDataPanel_ == null) return;
+        mEntryDataPanel_.resize(mContainerWindow_.getSize());
+        mEntryDataPanel_.mWindow_.setPosition(0, mPositonPanel_.getPosition().y);
+    }
+
+    function getObjectPropertyEntryPanel(sceneEntryType){
+        switch(sceneEntryType){
+            case SceneEditorFramework_SceneTreeEntryType.MESH:{
+                return ::SceneEditorFramework.SceneEditorGUIObjectPropertyEntryMesh;
+            }
+            case SceneEditorFramework_SceneTreeEntryType.USER0:{
+                return ::SceneEditorFramework.HelperFunctions.getObjectPropertiesEntryPanelForUserEntry(0);
+            }
+            case SceneEditorFramework_SceneTreeEntryType.USER1:{
+                return ::SceneEditorFramework.HelperFunctions.getObjectPropertiesEntryPanelForUserEntry(1);
+            }
+            case SceneEditorFramework_SceneTreeEntryType.USER2:{
+                return ::SceneEditorFramework.HelperFunctions.getObjectPropertiesEntryPanelForUserEntry(2);
+            }
+            default: {
+                return null;
+            }
+        }
+    }
+
 };
+
+_doFile("script://SceneEditorGUIObjectPropertyEntryMesh.nut");
