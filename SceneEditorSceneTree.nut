@@ -10,7 +10,35 @@
     mNodesForEntry_ = null;
 
     mCurrentSelection = -1;
+    mCurrentSelectionIdx = -1;
     mCurrentSelectionDeferred = null;
+
+    mIdPool_ = null;
+
+    IdPool = class{
+
+        mIdPool_ = null;
+        mCount_ = 0;
+
+        constructor(){
+            mIdPool_ = [];
+        }
+
+        function getId(){
+            if(mIdPool_.len() > 0){
+                local id = mIdPool_.top();
+                mIdPool_.pop();
+                return id;
+            }
+
+            return mCount_++;
+        }
+
+        function recycleId(id){
+            mIdPool_.append(id);
+        }
+
+    };
 
     constructor(parentNode, actionStack, bus){
         mEntries_ = [];
@@ -18,6 +46,7 @@
         mActionStack_ = actionStack;
         mBus_ = bus;
         mNodesForEntry_ = {};
+        mIdPool_ = IdPool();
 
         bus.subscribeObject(this);
 
@@ -32,11 +61,19 @@
         if(mCurrentSelectionDeferred == -1){
             setCurrentSelection(null);
         }else if(mCurrentSelectionDeferred != null){
+            local idx = findEntryIdIndexInTree_(mCurrentSelectionDeferred);
             setCurrentSelection(mCurrentSelectionDeferred);
         }
         mCurrentSelectionDeferred = null;
 
         mMoveHandles_.updateCameraDist(_camera.getPosition());
+    }
+
+    function getId(){
+        return mIdPool_.getId();
+    }
+    function recycleId(id){
+        return mIdPool_.recycleId(id);
     }
 
     function sceneTreePopulated(){
@@ -106,7 +143,7 @@
 
             lastNode = constructObjectForEntry(c, currentNode.top());
             assert(!mNodesForEntry_.rawin(lastNode.getId()));
-            mNodesForEntry_.rawset(lastNode.getId(), i);
+            mNodesForEntry_.rawset(lastNode.getId(), c.entryId);
             c.node = lastNode;
         }
         assert(currentNode.len() == 1);
@@ -117,6 +154,8 @@
             local parent = e.node.getParent();
             e.node.destroyNodeAndChildren();
             e.node = constructObjectForEntry(e, parent);
+
+            mNodesForEntry_.rawset(e.node.getId(), e.entryId);
         }
     }
     function constructObjectForEntry(entry, parent){
@@ -169,23 +208,34 @@
     function setCurrentSelection(entryId){
         if(mEntries_ == null) return;
         local newSelection = null;
+        local newIdx = null;
         if(entryId != null){
-            local e = mEntries_[entryId];
+            local idx = findEntryIdIndexInTree_(entryId);
+            local e = mEntries_[idx];
             assert(e.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD && e.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM);
+            mCurrentSelectionIdx = idx;
             mCurrentSelection = entryId;
             newSelection = e;
+            newIdx = idx;
 
             positionTransformGizmo_();
         }else{
             mMoveHandles_.setVisible(false);
         }
 
-        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, newSelection);
+        local data = null;
+        if(newSelection != null){
+            data = {
+                "idx": newIdx,
+                "entry": newSelection
+            };
+        }
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, data);
     }
 
     function positionTransformGizmo_(){
         mMoveHandles_.setVisible(true);
-        local targetPos = mEntries_[mCurrentSelection].node.getDerivedPositionVec3();
+        local targetPos = mEntries_[mCurrentSelectionIdx].node.getDerivedPositionVec3();
         mMoveHandles_.setPosition(targetPos);
     }
 
@@ -220,22 +270,22 @@
     }
 
     function setSelectedNodeScale(scale){
-        if(mCurrentSelection == -1){
+        if(mCurrentSelectionIdx == -1){
             return;
         }
 
-        local e = mEntries_[mCurrentSelection];
+        local e = mEntries_[mCurrentSelectionIdx];
         e.setScale(scale);
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
 
     function setSelectedNodePosition(position){
-        if(mCurrentSelection == -1){
+        if(mCurrentSelectionIdx == -1){
             return;
         }
 
-        local e = mEntries_[mCurrentSelection];
+        local e = mEntries_[mCurrentSelectionIdx];
         e.setPosition(position, true);
         mMoveHandles_.positionGizmo(position);
 
@@ -243,7 +293,7 @@
     }
 
     function positionMoveHandles(){
-        local e = mEntries_[mCurrentSelection];
+        local e = mEntries_[mCurrentSelectionIdx];
         local derived = e.getPositionDerived();
 
         mMoveHandles_.positionGizmo(derived);
@@ -260,7 +310,7 @@
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
+            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelectionIdx, getValueForObjectCoordsChange_(data), null, data, false);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
             mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
@@ -269,24 +319,24 @@
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
             positionMoveHandles();
-            if(data.id == mCurrentSelection){
-                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
+            if(data.id == mCurrentSelectionIdx){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_SCALE_CHANGE){
-            if(data.id == mCurrentSelection){
-                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
+            if(data.id == mCurrentSelectionIdx){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE){
-            if(data.id == mCurrentSelection){
-                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelection]);
+            if(data.id == mCurrentSelectionIdx){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
     }
     function getValueForObjectCoordsChange_(coordsType){
         local endValue = null;
-        local e = mEntries_[mCurrentSelection];
+        local e = mEntries_[mCurrentSelectionIdx];
         if(coordsType == SceneEditorFramework_BasicCoordinateType.POSITION){
             endValue = e.position.copy();
         }
@@ -299,6 +349,127 @@
             assert(false);
         }
         return endValue;
+    }
+
+    function deleteCurrentSelection(){
+        assert(mCurrentSelectionIdx != -1);
+
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_DELETION](this, mBus_, [mCurrentSelection]);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+    }
+
+    function deleteObjectFromTree_(id){
+        debugPrint();
+
+        local idx = findEntryIdIndexInTree_(id);
+        print(id);
+        assert(idx != null);
+        //mEntries_[idx].destroy();
+        //mEntries_.remove(idx);
+
+        recursiveDeleteInTree_(idx);
+
+        debugPrint();
+    }
+
+    function recursiveDeleteInTree_(idx){
+        local isTerminator = (mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD);
+        local hasChildren = itemHasChildren_(idx);
+
+        local entriesDeleted = 0;
+
+        local itemIndex = idx;
+        if(!isTerminator){
+            //If the item does have children switch the index to check to that.
+            if(hasChildren) itemIndex++;
+        }
+
+        local targetIdx = getTerminatorForChild(itemIndex) - 1;
+        if(targetIdx < 0){ //This will be true if the item has no children, as the terminator was not found.
+            targetIdx = idx;
+            assert(!hasChildren);
+        }
+        if(hasChildren) assert(mEntries_[targetIdx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM);
+
+        //Go through and recycle all the entry ids between the terminators.
+        local selectedItemDeleted = false;
+        for(local i = idx; i <= targetIdx; i++){
+            if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM || mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                continue;
+            }
+            /*
+            //Check if that item is part of the selected list. If it is it should be removed.
+            local it = mSelectedIds.find(mSceneTree[i].id);
+            if(it != mSelectedIds.end()){
+                mSelectedIds.erase(it);
+                selectedItemDeleted = true;
+            }
+            */
+
+            entriesDeleted++;
+            recycleId(mEntries_[i].entryId);
+        }
+
+        local indentCount = 0;
+        for(local i = idx; i < targetIdx + 1; i++){
+            //NOTE index the list by idx because .remove will shift the list while it removes.
+            //Unfortunately in Squirrel I can't remove a range from the array.
+            if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
+                indentCount--;
+            }
+            else if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                indentCount++;
+            }
+
+            if(indentCount == 0){
+                mEntries_[idx].destroy();
+            }
+            mEntries_.remove(idx);
+        }
+
+        return entriesDeleted;
+    }
+
+    function getTerminatorForChild(idx){
+        if(mEntries_[idx].nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD) return -1;
+
+        //A counter of how many child values have been encountered.
+        local childIndex = 0;
+
+        local countIndex = idx + 1; //+1 should be child, so we start from +1 of that.
+        while(countIndex < mEntries_.len()){
+            local current = mEntries_[countIndex];
+
+            if(current.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD) childIndex++;
+            if(current.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
+                if(childIndex == 0){
+                    //This is the terminator for the provided entry.
+                    return countIndex + 1;
+                }
+
+                childIndex--;
+            }
+
+            countIndex++;
+        }
+
+        return -1;
+    }
+
+    function itemHasChildren_(idx){
+        local targetIdx = idx + 1;
+        if(targetIdx >= mEntries_.len()) return false;
+
+        return (mEntries_[targetIdx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD);
+    }
+
+    function findEntryIdIndexInTree_(id){
+        foreach(c,i in mEntries_){
+            if(i.entryId == id) return c;
+        }
+
+        return null;
     }
 
     function notifySelectionChanged(buttonId){

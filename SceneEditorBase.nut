@@ -115,6 +115,10 @@
         if(mActiveTree_ != null){
             mActiveTree_.update();
         }
+
+        foreach(i in mActiveGUI_){
+            i.update();
+        }
     }
 
     function getActiveSceneTree(){

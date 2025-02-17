@@ -167,7 +167,11 @@
 
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED){
-            setDataForEntry(data);
+            local target = null;
+            if(data != null){
+                target = data.entry;
+            }
+            setDataForEntry(target);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE){
             setDataForEntry(data);

@@ -31,6 +31,8 @@ enum SceneEditorFramework_GUIPanelId{
 enum SceneEditorFramework_BusEvents{
     NONE,
     SCENE_TREE_SELECTION_CHANGED,
+    SCENE_TREE_OPTIONS_MENU_REQUEST,
+    SCENE_TREE_CONTENTS_CHANGED,
     HANDLES_GIZMO_INTERACTION_BEGAN,
     HANDLES_GIZMO_INTERACTION_ENDED,
 
@@ -42,11 +44,12 @@ enum SceneEditorFramework_BusEvents{
     OBJECT_SCALE_CHANGE,
     OBJECT_ORIENTATION_CHANGE,
 
-    REQUEST_SAVE
+    REQUEST_SAVE,
 };
 
 enum SceneEditorFramework_Action{
     BASIC_COORDINATES_CHANGE,
+    OBJECT_DELETION,
 
     USER_0,
     USER_1,

@@ -7,6 +7,8 @@
     mHighlightPanel_ = null;
     mSelectionResetButton_ = null;
 
+    mHighlightId_ = null;
+
     GUISceneTreeEntry = class{
 
         mBackgroundButton_ = null;
@@ -34,14 +36,24 @@
             mBackgroundButton_ = button;
         }
 
-        function populateData(id, entry){
-            mId_ = id;
+        function populateData(entry){
+            if(entry == null){
+                mId_ = null;
+                mNodeType_ = SceneEditorFramework_SceneTreeEntryType.NONE;
+                mLabel_.setText(" ");
+                mBackgroundButton_.setDisabled(true);
+
+                return;
+            }
+
+            mId_ = entry.entryId;
             mNodeType_ = entry.nodeType;
 
             local testText = ::SceneEditorFramework.getNameForSceneEntryType(mNodeType_, entry);
             mLabel_.setText(testText);
-            mBackgroundButton_.setUserId(id);
+            mBackgroundButton_.setUserId(mId_);
             mBackgroundButton_.setSize(mParent_.mContainerWin_.getSizeAfterClipping().x, mLabel_.getSize().y);
+            mBackgroundButton_.setDisabled(false);
         }
 
         function buttonSelected(widget, action){
@@ -60,12 +72,14 @@
             }
         }
 
-        function notifyButtonHoverChange_(idx, hovered){
+        function notifyButtonHoverChange_(id, hovered){
             if(hovered){
                 mHoverPanel_.setPosition(mBackgroundButton_.getPosition());
                 mHoverPanel_.setSize(mBackgroundButton_.getSize());
             }
             mHoverPanel_.setVisible(hovered);
+
+            mParent_.setHoveredEntry(id, hovered);
         }
 
         function getSize(){
@@ -102,14 +116,20 @@
             if(data == null){
                 mHighlightPanel_.setVisible(false);
             }else{
+                local e = data.entry.entryId;
                 foreach(c,i in mGuiEntries_){
-                    if(i.mId_ == mSceneTree_.mCurrentSelection){
+                    if(i.mId_ == e){
                         mHighlightPanel_.setVisible(true);
                         mHighlightPanel_.setPosition(i.getPosition());
                         mHighlightPanel_.setSize(i.getSize());
                     }
                 }
             }
+        }
+        else if(event == SceneEditorFramework_BusEvents.SCENE_TREE_CONTENTS_CHANGED){
+            local activeTree = mBaseObj_.mActiveTree_;
+
+            populateForData(activeTree.mEntries_);
         }
     }
 
@@ -143,7 +163,12 @@
             return;
         }
 
-        foreach(c,entry in activeTree.mEntries_){
+        populateForData(activeTree.mEntries_);
+    }
+
+    function populateForData(entries){
+        local cc = 0;
+        foreach(c,entry in entries){
             local nodeType = entry.nodeType;
             if(
                 nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD ||
@@ -151,12 +176,35 @@
             ){
                 continue;
             }
-            local guiEntry = GUISceneTreeEntry(this, mContainerWin_, mHoverPanel_, mHighlightPanel_);
-            guiEntry.populateData(c, entry);
-            mGuiEntries_.append(guiEntry);
+
+
+            local guiEntry = null;
+            if(cc >= mGuiEntries_.len()){
+                guiEntry = GUISceneTreeEntry(this, mContainerWin_, mHoverPanel_, mHighlightPanel_);
+                mGuiEntries_.append(guiEntry);
+            }else{
+                guiEntry = mGuiEntries_[cc];
+            }
+
+            guiEntry.populateData(entry);
+
+            cc++;
+
+        }
+
+        for(local i = cc; i < mGuiEntries_.len(); i++){
+            mGuiEntries_[i].populateData(null);
         }
 
         positionEntries();
+    }
+
+    function setHoveredEntry(id, hovered){
+        if(!hovered){
+            mHighlightId_ = null;
+            return;
+        }
+        mHighlightId_ = id;
     }
 
     function positionEntries(){
@@ -165,7 +213,7 @@
         local indent = -1;
         local height = 0;
         local c = 0;
-        foreach(cc,entry in activeTree.mEntries_){
+        foreach(entry in activeTree.mEntries_){
             local nodeType = entry.nodeType;
             if(nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
                 indent++;
@@ -176,7 +224,7 @@
                 continue;
             }
             local guiEntry = mGuiEntries_[c];
-            guiEntry.populateData(cc, entry);
+            guiEntry.populateData(entry);
             guiEntry.setPosition(indent * 30, height);
             height += guiEntry.getSize().y;
             c++;
@@ -191,6 +239,14 @@
         mSelectionResetButton_.setSize(parentSize);
 
         positionEntries();
+    }
+
+    function update(){
+        if(mHighlightId_ != null){
+            if(_input.getMousePressed(_MB_RIGHT)){
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_OPTIONS_MENU_REQUEST, mHighlightId_);
+            }
+        }
     }
 
 };

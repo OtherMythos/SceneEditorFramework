@@ -21,6 +21,13 @@
 
     }
 
+    function destroy(){
+        if(node != null){
+            node.destroyNodeAndChildren();
+            node = null;
+        }
+    }
+
     function reset(){
         position = Vec3();
         scale = Vec3(1, 1, 1);

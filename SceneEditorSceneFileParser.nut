@@ -18,7 +18,7 @@
         local entries = [CHILD_ENTRY];
         local currentChild = root.getFirstChildElement();
         while(currentChild != null){
-            parseNodeForSceneTree_(currentChild, entries);
+            parseNodeForSceneTree_(currentChild, entries, tree);
 
             currentChild = currentChild.nextSiblingElement();
         }
@@ -27,13 +27,14 @@
         tree.setEntries(entries);
     }
 
-    function parseNodeForSceneTree_(node, entries){
+    function parseNodeForSceneTree_(node, entries, sceneTree){
         local nodeEntry = ::SceneEditorFramework.SceneTreeEntry();
         nodeEntry.reset();
 
         local name = node.getName();
         nodeEntry.nodeType = getNodeTypeForName(name);
-        nodeEntry.entryId = entries.len();
+        //nodeEntry.entryId = entries.len();
+        nodeEntry.entryId = sceneTree.getId();
         entries.append(nodeEntry);
 
         nodeEntry.data = parseDataForNode_(name, node);
@@ -73,7 +74,7 @@
                     if(!startedWrap){
                         entries.append(CHILD_ENTRY);
                     }
-                    parseNodeForSceneTree_(currentChild, entries);
+                    parseNodeForSceneTree_(currentChild, entries, sceneTree);
                     startedWrap = true;
                 }
             }
