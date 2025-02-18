@@ -149,7 +149,8 @@
         assert(currentNode.len() == 1);
     }
     function regenerateSceneEntry(entryId){
-        local e = mEntries_[entryId];
+        local idx = findEntryIdIndexInTree_(entryId);
+        local e = mEntries_[idx];
         if(e.node != null){
             local parent = e.node.getParent();
             e.node.destroyNodeAndChildren();
@@ -477,7 +478,7 @@
     }
 
     function getEntryForId(id){
-        return mEntries_[id];
+        return mEntries_[findEntryIdIndexInTree_(id)];
     }
 
     /**
