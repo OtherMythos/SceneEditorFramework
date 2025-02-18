@@ -197,9 +197,7 @@
                 continue;
             }
 
-            print(i.node.getPositionVec3())
             local box = i.node.getAttachedObject(0).getWorldAabb();
-            print(box);
             aabb.merge(box);
         }
 
@@ -311,7 +309,7 @@
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
-            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelectionIdx, getValueForObjectCoordsChange_(data), null, data, false);
+            mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
             mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
@@ -320,17 +318,17 @@
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
             positionMoveHandles();
-            if(data.id == mCurrentSelectionIdx){
+            if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_SCALE_CHANGE){
-            if(data.id == mCurrentSelectionIdx){
+            if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE){
-            if(data.id == mCurrentSelectionIdx){
+            if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
         }
