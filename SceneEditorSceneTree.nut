@@ -197,6 +197,9 @@
                 continue;
             }
 
+            if(i.node.getNumAttachedObjects() <= 0){
+                continue;
+            }
             local box = i.node.getAttachedObject(0).getWorldAabb();
             aabb.merge(box);
         }

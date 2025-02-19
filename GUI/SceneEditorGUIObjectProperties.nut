@@ -204,7 +204,9 @@
             mEntryDataPanel_ = dataPanelClass(mContainerWindow_);
             //mEntryDataPanel_.addToLayout(mLayoutLine_);
         }
-        mEntryDataPanel_.setEntry(entry);
+        if(mEntryDataPanel_ != null){
+            mEntryDataPanel_.setEntry(entry);
+        }
         positionDataPanel_();
 
         mLayoutLine_.layout();
