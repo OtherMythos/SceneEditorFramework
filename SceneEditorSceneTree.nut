@@ -8,6 +8,7 @@
     mCurrentPopulateAction_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
+    mMagneticEdit_ = false;
 
     mCurrentSelection = -1;
     mCurrentSelectionIdx = -1;
@@ -78,6 +79,10 @@
 
     function sceneTreePopulated(){
         return mEntries_.len() > 2;
+    }
+
+    function setMagneticEdit(magnetic){
+        mMagneticEdit_ = magnetic;
     }
 
     function setObjectTransformCoordinateType(coordType){
@@ -282,14 +287,29 @@
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
 
+    function getPositionWithMagnet(position){
+
+        if(mMagneticEdit_){
+            local p = position.copy();
+            p.x = ceil(p.x);
+            p.y = ceil(p.y);
+            p.z = ceil(p.z);
+
+            return p;
+        }
+
+        return position;
+    }
+
     function setSelectedNodePosition(position){
         if(mCurrentSelectionIdx == -1){
             return;
         }
 
+        local p = getPositionWithMagnet(position);
         local e = mEntries_[mCurrentSelectionIdx];
-        e.setPosition(position, true);
-        mMoveHandles_.positionGizmo(position);
+        e.setPosition(p, true);
+        mMoveHandles_.positionGizmo(p);
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
