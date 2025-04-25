@@ -5,6 +5,7 @@
     mBus_ = null;
     mActionStack_ = null;
     mMoveHandles_ = null;
+    mOutlineBox_ = null;
     mCurrentPopulateAction_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
@@ -52,6 +53,7 @@
         bus.subscribeObject(this);
 
         setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
+        mOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(mParentNode_, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
@@ -226,6 +228,7 @@
             newIdx = idx;
 
             positionTransformGizmo_();
+            setOutlineBox();
         }else{
             mMoveHandles_.setVisible(false);
         }
@@ -238,6 +241,15 @@
             };
         }
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, data);
+    }
+
+    function setOutlineBox(){
+        local node = mEntries_[mCurrentSelectionIdx].node;
+        local aabb = node.getAttachedObject(0).getWorldAabb();
+        local centre = aabb.getCentre();
+        local halfSize = aabb.getHalfSize();
+        mOutlineBox_.setPosition(centre);
+        mOutlineBox_.setScale(halfSize);
     }
 
     function positionTransformGizmo_(){
