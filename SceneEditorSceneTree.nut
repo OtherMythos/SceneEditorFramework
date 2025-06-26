@@ -245,11 +245,18 @@
 
     function setOutlineBox(){
         local node = mEntries_[mCurrentSelectionIdx].node;
+        local num = node.getNumAttachedObjects();
+        if(num == 0){
+            mOutlineBox_.setVisible(false);
+            return;
+        }
+
         local aabb = node.getAttachedObject(0).getWorldAabb();
         local centre = aabb.getCentre();
         local halfSize = aabb.getHalfSize();
         mOutlineBox_.setPosition(centre);
         mOutlineBox_.setScale(halfSize);
+        mOutlineBox_.setVisible(true);
     }
 
     function positionTransformGizmo_(){
