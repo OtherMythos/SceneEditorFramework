@@ -78,6 +78,10 @@
         mBus_.subscribeObject(this);
     }
 
+    function shutdown(){
+        mActiveTree_.shutdown();
+    }
+
     function loadSceneTree(parentNode, filePath){
         local tree = ::SceneEditorFramework.SceneTree(parentNode, mActionStack_, mBus_);
 

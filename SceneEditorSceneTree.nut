@@ -57,6 +57,12 @@
         mMoveHandles_.setVisible(false);
     }
 
+    function shutdown(){
+        mParentNode_.destroyNodeAndChildren();
+        mParentNode_ = null;
+        mEntries_.clear();
+    }
+
     function update(){
         //TODO move out.
         mMoveHandles_.update();
