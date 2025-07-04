@@ -20,6 +20,8 @@
 
         mItem_ = item;
         mNode_ = newNode;
+
+        setVisible(false);
     }
 
     function setPosition(pos){
