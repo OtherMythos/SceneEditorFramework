@@ -55,7 +55,18 @@
 
     function setOrientation(newOrientation){
         orientation = newOrientation.copy();
-        node.setOrientation(newOrientation);
+
+        //Ensure the quaternion is never NaN
+        if(
+            orientation.x == 0.0 &&
+            orientation.y == 0.0 &&
+            orientation.z == 0.0 &&
+            orientation.w == 0.0
+        ){
+            orientation = Quat();
+        }
+
+        node.setOrientation(orientation);
     }
 
 }
