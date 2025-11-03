@@ -95,6 +95,9 @@
             mLabel_.setPosition(x, y);
         }
 
+        function setName(name){
+            mLabel_.setText(name);
+        }
     }
 
     constructor(parent, tree, baseObj, bus){
@@ -130,6 +133,14 @@
             local activeTree = mBaseObj_.mActiveTree_;
 
             populateForData(activeTree.mEntries_);
+        }
+        else if(event == SceneEditorFramework_BusEvents.OBJECT_NAME_CHANGE){
+            local e = data.id;
+            foreach(c,i in mGuiEntries_){
+                if(i.mId_ == e){
+                    i.setName(data.name);
+                }
+            }
         }
     }
 

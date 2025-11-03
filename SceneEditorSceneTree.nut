@@ -415,6 +415,20 @@
         action.performAction();
     }
 
+    function renameCurrentSelection(newName){
+        assert(mCurrentSelectionIdx != -1);
+
+        local entry = mEntries_[mCurrentSelectionIdx];
+        local oldVal = entry.name;
+        if(oldVal == null){
+            oldVal = ::SceneEditorFramework.getNameForSceneEntry(entry);
+        }
+
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.RENAME_SCENE_NODE](this, mBus_, mCurrentSelection, oldVal, newName);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+    }
+
     function deleteObjectFromTree_(id){
         debugPrint();
 

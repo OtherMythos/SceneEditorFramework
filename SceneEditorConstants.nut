@@ -43,6 +43,7 @@ enum SceneEditorFramework_BusEvents{
     OBJECT_POSITION_CHANGE,
     OBJECT_SCALE_CHANGE,
     OBJECT_ORIENTATION_CHANGE,
+    OBJECT_NAME_CHANGE,
 
     REQUEST_SAVE,
 };
@@ -50,6 +51,7 @@ enum SceneEditorFramework_BusEvents{
 enum SceneEditorFramework_Action{
     BASIC_COORDINATES_CHANGE,
     OBJECT_DELETION,
+    RENAME_SCENE_NODE,
 
     USER_0,
     USER_1,

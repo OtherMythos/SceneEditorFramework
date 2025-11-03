@@ -19,4 +19,5 @@ _doFile("script://GUI/SceneEditorGUISceneTree.nut");
 _doFile("script://GUI/SceneEditorGUIObjectProperties.nut");
 
 _doFile("script://actions/BasicCoordinatesChangeAction.nut");
+_doFile("script://actions/RenameSceneNodeAction.nut");
 _doFile("script://actions/ObjectDeleteAction.nut");

@@ -70,4 +70,8 @@
         node.setOrientation(orientation);
     }
 
+    function setName(newName){
+        name = newName;
+    }
+
 }
