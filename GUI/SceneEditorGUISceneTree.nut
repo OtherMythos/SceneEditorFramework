@@ -49,7 +49,7 @@
             mId_ = entry.entryId;
             mNodeType_ = entry.nodeType;
 
-            local testText = ::SceneEditorFramework.getNameForSceneEntryType(mNodeType_, entry);
+            local testText = ::SceneEditorFramework.getNameForSceneEntry(entry);
             mLabel_.setText(testText);
             mBackgroundButton_.setUserId(mId_);
             mBackgroundButton_.setSize(mParent_.mContainerWin_.getSizeAfterClipping().x, mLabel_.getSize().y);

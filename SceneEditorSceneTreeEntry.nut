@@ -13,6 +13,7 @@
     orientation = null;
     nodeType = SceneEditorFramework_SceneTreeEntryType.NONE;
     animIdx = -1;
+    name = null;
 
     node = null;
     data = null;

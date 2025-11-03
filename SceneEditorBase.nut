@@ -1,6 +1,11 @@
 
 
-::SceneEditorFramework.getNameForSceneEntryType <- function(t, e){
+::SceneEditorFramework.getNameForSceneEntry <- function(e){
+    if(e.name != null){
+        return e.name;
+    }
+
+    local t = e.nodeType;
     switch(t){
         case SceneEditorFramework_SceneTreeEntryType.NONE: return "none";
         case SceneEditorFramework_SceneTreeEntryType.CHILD: return "child";

@@ -43,6 +43,10 @@
         if(animIdx != null){
             nodeEntry.animIdx = animIdx;
         }
+        local entryName = node.getAttribute("name");
+        if(entryName != null){
+            nodeEntry.name = entryName;
+        }
 
         if(!node.hasChildren()){
             return;

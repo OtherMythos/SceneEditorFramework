@@ -67,6 +67,9 @@
         if(entry.animIdx != -1){
             inserted.setAttribute("animIdx", entry.animIdx);
         }
+        if(entry.name != null){
+            inserted.setAttribute("name", entry.name);
+        }
 
         if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             inserted.setAttribute("mesh", entry.data.meshName);
