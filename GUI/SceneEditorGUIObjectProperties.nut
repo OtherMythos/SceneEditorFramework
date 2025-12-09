@@ -238,6 +238,9 @@
             case SceneEditorFramework_SceneTreeEntryType.USER2:{
                 return ::SceneEditorFramework.HelperFunctions.getObjectPropertiesEntryPanelForUserEntry(2);
             }
+            case SceneEditorFramework_SceneTreeEntryType.USER3:{
+                return ::SceneEditorFramework.HelperFunctions.getObjectPropertiesEntryPanelForUserEntry(3);
+            }
             default: {
                 return null;
             }

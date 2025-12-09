@@ -16,6 +16,7 @@ enum SceneEditorFramework_SceneTreeEntryType{
     USER0,
     USER1,
     USER2,
+    USER3,
 };
 
 enum SceneEditorFramework_GUIPanelId{

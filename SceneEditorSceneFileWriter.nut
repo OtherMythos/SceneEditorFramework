@@ -78,7 +78,8 @@
         if(
             entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER0 ||
             entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER1 ||
-            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER2
+            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER2 ||
+            entry.nodeType == SceneEditorFramework_SceneTreeEntryType.USER3
         ){
             inserted.setAttribute("value", entry.data.value.tostring());
         }

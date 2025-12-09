@@ -21,6 +21,9 @@
         case SceneEditorFramework_SceneTreeEntryType.USER2:{
             return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(2, e);
         }
+        case SceneEditorFramework_SceneTreeEntryType.USER3:{
+            return ::SceneEditorFramework.HelperFunctions.getNameForUserEntry(3, e);
+        }
         default: return "unknown";
     }
 };
@@ -34,6 +37,7 @@
         case SceneEditorFramework_SceneTreeEntryType.USER0: return "user0";
         case SceneEditorFramework_SceneTreeEntryType.USER1: return "user1";
         case SceneEditorFramework_SceneTreeEntryType.USER2: return "user2";
+        case SceneEditorFramework_SceneTreeEntryType.USER3: return "user3";
         default: return "unknown";
     }
 };

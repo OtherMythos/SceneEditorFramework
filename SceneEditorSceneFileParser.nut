@@ -101,7 +101,8 @@
         else if(
             name == "user0" ||
             name == "user1" ||
-            name == "user2"
+            name == "user2" ||
+            name == "user3"
         ){
             local value = node.getAttribute("value");
 
@@ -119,6 +120,7 @@
         else if(name == "user0") return SceneEditorFramework_SceneTreeEntryType.USER0;
         else if(name == "user1") return SceneEditorFramework_SceneTreeEntryType.USER1;
         else if(name == "user2") return SceneEditorFramework_SceneTreeEntryType.USER2;
+        else if(name == "user3") return SceneEditorFramework_SceneTreeEntryType.USER3;
 
         return SceneEditorFramework_SceneTreeEntryType.NONE;
     }

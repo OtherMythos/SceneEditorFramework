@@ -192,6 +192,9 @@
         else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER2){
             ::SceneEditorFramework.HelperFunctions.sceneTreeConstructObjectForUserEntry(2, newNode, entryData);
         }
+        else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER3){
+            ::SceneEditorFramework.HelperFunctions.sceneTreeConstructObjectForUserEntry(3, newNode, entryData);
+        }
 
         newNode.setPosition(entry.position);
         newNode.setScale(entry.scale);
