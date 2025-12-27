@@ -388,6 +388,7 @@
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE){
+            setOutlineBox(mCurrentSelectionIdx);
             if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
