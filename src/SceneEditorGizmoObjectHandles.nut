@@ -234,9 +234,6 @@
 
     function getScaleObjectForHandle_(){
         switch(mHandleType_){
-            case SceneEditorFramework_BasicCoordinateType.SCALE:{
-                return 0.3;
-            }
             case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
                 return 0.7;
             }
