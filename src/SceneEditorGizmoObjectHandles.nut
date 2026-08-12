@@ -219,7 +219,7 @@
     function getObjectForHandle_(){
         switch(mHandleType_){
             case SceneEditorFramework_BasicCoordinateType.SCALE:{
-                return "scaleHandle.mesh";
+                return "scaleHandle.obj";
             }
             case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
                 return "cube";
@@ -227,7 +227,7 @@
             case SceneEditorFramework_BasicCoordinateType.POSITION:
             case SceneEditorFramework_BasicCoordinateType.ORIENTATION:
             default: {
-                return "arrow.mesh";
+                return "arrow.obj";
             }
         }
     }
