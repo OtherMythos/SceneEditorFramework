@@ -7,11 +7,24 @@ Features include:
  * Flexible GUI dialogs for interaction
  * Scene gizmos for editing
 
-## Useage
-Execute the ```SceneEditorFramework.nut``` file as part of an avEngine project execution.
+## Loading
 
-```js
-_doFile("res://sceneEditorFramework/SceneEditorFramework.nut");
+Add the plugin directory to the project's `Plugins` array in `avSetup.cfg`:
+
+```json
+"Plugins": [ "res://sceneEditorFramework" ]
 ```
 
-All objects are defined within the ```::SceneEditorFramework``` namespace.
+The engine reads `avPlugin.cfg` and loads `SceneEditorFramework.nut`, which defines all framework
+objects in the `::SceneEditorFramework` namespace. Projects must not load that file themselves.
+
+The gizmos use `arrow.mesh` and `scaleHandle.mesh` from this repository's `res` directory, so add
+that directory to the project's `OgreResources` configuration as well:
+
+```json
+"OgreResources": {
+    "general": [
+        ["FileSystem", "sceneEditorFramework/res"]
+    ]
+}
+```
