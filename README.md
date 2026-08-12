@@ -15,6 +15,6 @@ Add the plugin directory to the project's `Plugins` array in `avSetup.cfg`:
 "Plugins": [ "res://sceneEditorFramework" ]
 ```
 
-The engine reads `avPlugin.cfg` and loads `SceneEditorFramework.nut`, which defines all framework
+The engine reads `avPlugin.cfg` and loads `src/SceneEditorFramework.nut`, which defines all framework
 objects in the `::SceneEditorFramework` namespace. Projects must not load that file themselves.
 The plugin automatically registers its `res` directory, which contains the gizmo meshes.
