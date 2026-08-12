@@ -56,8 +56,11 @@
     function update(){
         beginActionState(_input.getMouseButton(_MB_LEFT));
 
-        if(mPerformingAction_ && mTestingPlane_ != null){
-            local mousePos = Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+        //A drag which leaves the scene viewport is still a drag, so the position
+        //is used whether or not it falls inside it. Null means there is no
+        //scene viewport at all, which there is nothing sensible to drag against.
+        local mousePos = ::SceneEditorFramework.getNormalisedSceneMousePosition();
+        if(mPerformingAction_ && mTestingPlane_ != null && mousePos != null){
             local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
             local point = ray.intersects(mTestingPlane_);
             if(point != false){

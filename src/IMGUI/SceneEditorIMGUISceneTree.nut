@@ -12,8 +12,6 @@
     function draw(){
         if(!mVisible_) return;
 
-        _imgui.setNextWindowPos(20, 60, _imgui.Cond_Once);
-        _imgui.setNextWindowSize(280, 360, _imgui.Cond_Once);
         local shown = _imgui.begin(mWindowTitle_);
         if(shown){
             mItemClicked_ = false;

@@ -11,8 +11,6 @@
     function draw(){
         if(!mVisible_) return;
 
-        _imgui.setNextWindowPos(320, 60, _imgui.Cond_Once);
-        _imgui.setNextWindowSize(320, 360, _imgui.Cond_Once);
         local shown = _imgui.begin(mWindowTitle_);
         if(shown){
             drawContents_();

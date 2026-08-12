@@ -73,6 +73,23 @@
     }
 }
 
+/**
+Get the mouse position within the scene viewport, in the 0-1 range, or null when
+it is outside it.
+
+Everything which turns the cursor into a ray through the scene goes through
+here, so a project only has to describe its viewport once.
+*/
+::SceneEditorFramework.getNormalisedSceneMousePosition <- function(){
+    //Optional, so a project written against an earlier version of the framework
+    //keeps working: without it the scene fills the window.
+    if("normalisedSceneMousePosition" in ::SceneEditorFramework.HelperFunctions){
+        return ::SceneEditorFramework.HelperFunctions.normalisedSceneMousePosition();
+    }
+
+    return Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+}
+
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
@@ -259,8 +276,7 @@
         local mousePositionValid = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
         local mouseTarget = null;
         if(mousePositionValid){
-            local mousePos = Vec2(_input.getMouseX(), _input.getMouseY());
-            mouseTarget = mousePos / _window.getSize();
+            mouseTarget = ::SceneEditorFramework.getNormalisedSceneMousePosition();
         }
 
         mActiveTree_.updateSceneSafeMousePosition(mouseTarget);

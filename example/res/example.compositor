@@ -1,0 +1,50 @@
+//The example renders the scene into a texture rather than straight to the
+//window, so that it can be drawn inside a docked imgui window like any other
+//panel. avSetup.cfg turns off the engine's default compositor and the editor
+//builds these two workspaces itself during start().
+
+//The scene, rendered into a texture supplied as an external channel. The
+//texture is created from script and re-created when the scene window is
+//resized, so this node has no say in its resolution.
+compositor_node SceneEditorExample/SceneToTextureNode
+{
+    in 0 sceneTexture
+
+    target sceneTexture
+    {
+        pass clear
+        {
+            colour_value 0.156 0.184 0.215 1
+        }
+        pass render_scene
+        {
+        }
+    }
+}
+
+//Nothing draws the window itself any more: the scene goes to a texture and the
+//imgui plugin's overlay workspace only adds the gui on top of what is already
+//there. Without this the window would be left holding whatever the last frame
+//left in it, which shows up as flickering behind the docking area.
+compositor_node SceneEditorExample/ClearWindowNode
+{
+    in 0 renderWindow
+
+    target renderWindow
+    {
+        pass clear
+        {
+            colour_value 0.06 0.07 0.09 1
+        }
+    }
+}
+
+workspace SceneEditorExample/SceneToTextureWorkspace
+{
+    connect_output SceneEditorExample/SceneToTextureNode 0
+}
+
+workspace SceneEditorExample/ClearWindowWorkspace
+{
+    connect_output SceneEditorExample/ClearWindowNode 0
+}
