@@ -21,6 +21,16 @@ _doFile("script://GUI/SceneEditorGUIPanel.nut");
 _doFile("script://GUI/SceneEditorGUISceneTree.nut");
 _doFile("script://GUI/SceneEditorGUIObjectProperties.nut");
 
+//The immediate-mode implementation deliberately lives alongside the legacy
+//engine GUI panels above. Projects can opt into it without changing an
+//existing EditorGUIFramework integration.
+::SceneEditorFramework.IMGUI <- {};
+_doFile("script://IMGUI/SceneEditorIMGUIPanel.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIWidgets.nut");
+_doFile("script://IMGUI/SceneEditorIMGUISceneTree.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIObjectPropertyEntryMesh.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIObjectProperties.nut");
+
 _doFile("script://actions/BasicCoordinatesChangeAction.nut");
 _doFile("script://actions/RenameSceneNodeAction.nut");
 _doFile("script://actions/ObjectDeleteAction.nut");

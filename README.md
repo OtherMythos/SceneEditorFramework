@@ -21,13 +21,18 @@ The plugin automatically registers its `res` directory, which contains the gizmo
 
 ## Example editor
 
-`example/` is a small runnable editor that loads and saves `res/example.avScene`. It demonstrates loading a scene tree, displaying the framework's scene tree and object-property panels, and using the position/scale gizmos. Initialise its GUI dependency before running it:
+`example/` is a small runnable editor that loads and saves `res/example.avScene`. It demonstrates loading a scene tree, displaying the framework's ImGui scene-tree and object-property panels, and using the position/scale gizmos. Its `avImguiPlugin` distribution is bundled at `example/plugins/avImguiPlugin/`.
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init --recursive # only needed to explore the legacy GUI example
 ```
 
 Then run the avEngine with `example/avSetup.cfg`.
+
+The retained-mode implementation remains under `src/GUI/` for existing
+EditorGUIFramework users. The ImGui implementation is parallel under `src/IMGUI/`;
+use `Base.setupIMGUIWindow()` and call `Base.drawIMGUI()` once per rendered frame
+after `_imgui.isFirstUpdateOfFrame()`.
 
 ## Tests
 

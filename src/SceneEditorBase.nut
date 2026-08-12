@@ -66,6 +66,11 @@
     function basicMouseInteractionEnabled(){
         return true;
     }
+
+    //Optional extension point for the immediate-mode object-properties panel.
+    function drawIMGUIObjectPropertiesForUserEntry(userId, entry){
+
+    }
 }
 
 ::SceneEditorFramework.Base <- class{
@@ -176,6 +181,20 @@
         return guiInstance;
     }
 
+    /**
+     * Register an immediate-mode panel. Unlike setupGUIWindow(), it does not
+     * receive a retained engine GUI window; the panel creates its ImGui window
+     * while drawIMGUI() is called each frame.
+     */
+    function setupIMGUIWindow(winType, guiClass){
+        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
+
+        local guiInstance = guiClass(this, mBus_);
+        setupGUIWindowForInstance(winType, guiInstance);
+
+        return guiInstance;
+    }
+
     function setupGUIWindowForInstance(winType, instance){
         mActiveGUI_.rawset(winType, instance);
         instance.setup();
@@ -190,6 +209,19 @@
     function resizeGUIWindow(winType, newSize){
         if(!mActiveGUI_.rawin(winType)) return;
         mActiveGUI_[winType].resize(newSize);
+    }
+
+    /**
+     * Draw every registered immediate-mode panel. Call this once after the
+     * application has checked _imgui.isFirstUpdateOfFrame(). Retained GUI
+     * panels continue to be updated by update().
+     */
+    function drawIMGUI(){
+        foreach(i in mActiveGUI_){
+            if("draw" in i){
+                i.draw();
+            }
+        }
     }
 
     function setupDatablocks(){
@@ -221,8 +253,10 @@
         if(!mActiveTree_) return;
 
         //Determine the mouse position and whether to pass that over.
-        local mousePositionValid = !::guiFrameworkBase.mouseInteracting();
-        local interact = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
+        //The active UI implementation owns this decision. This used to reach
+        //into the legacy guiFrameworkBase directly, which prevented a project
+        //from using the framework with any other UI backend.
+        local mousePositionValid = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
         local mouseTarget = null;
         if(mousePositionValid){
             local mousePos = Vec2(_input.getMouseX(), _input.getMouseY());
