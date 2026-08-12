@@ -1,5 +1,8 @@
 ::SceneEditorFramework <- {};
 
+//Gizmo meshes live with the plugin, so projects do not need to register this location themselves.
+_resources.addResourceLocation("script://res", "FileSystem", "general");
+
 _doFile("script://SceneEditorConstants.nut");
 
 _doFile("script://SceneEditorBase.nut");
