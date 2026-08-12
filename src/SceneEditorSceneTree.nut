@@ -238,6 +238,8 @@
 
             positionTransformGizmo_();
         }else{
+            mCurrentSelection = -1;
+            mCurrentSelectionIdx = -1;
             mMoveHandles_.setVisible(false);
         }
 
@@ -417,6 +419,10 @@
         local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_DELETION](this, mBus_, [mCurrentSelection]);
         mActionStack_.pushAction_(action);
         action.performAction();
+
+        //The entry the selection named has just been removed from the tree, so
+        //the selection cannot keep naming it.
+        setCurrentSelection(null);
     }
 
     function renameCurrentSelection(newName){
@@ -552,6 +558,36 @@
 
     function getEntryForId(id){
         return mEntries_[findEntryIdIndexInTree_(id)];
+    }
+
+    /**
+     * Which entry, if any, sits under a position in the scene viewport.
+     *
+     * The framework picks objects itself for the left mouse button. This exists
+     * for everything else a project might want to do with the object under the
+     * cursor - a context menu, say - without it having to know how entries are
+     * mapped to scene nodes.
+     *
+     * Ray queries need a clean scene, so call this from sceneSafeUpdate().
+     *
+     * @param mousePos Position within the scene viewport in the 0-1 range, as
+     * ::SceneEditorFramework.getNormalisedSceneMousePosition() returns. Null when
+     * there is no viewport, in which case there is nothing under the cursor.
+     * @returns The entry id under the position, or null when it is over nothing.
+     */
+    function findEntryIdAtScenePosition(mousePos){
+        if(mousePos == null) return null;
+
+        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        local result = _scene.testRayForObjectArray(ray, 1 << 20);
+        if(result == null || result.len() <= 0) return null;
+
+        //Objects the framework did not construct can share the query mask, so
+        //a node without an entry is a miss rather than an error.
+        local nodeId = result[0].getParentNode().getId();
+        if(!mNodesForEntry_.rawin(nodeId)) return null;
+
+        return mNodesForEntry_.rawget(nodeId);
     }
 
     /**

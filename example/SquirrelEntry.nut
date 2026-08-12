@@ -23,6 +23,17 @@
     //interactable never starts an ImGui frame too early.
     mSceneEditorInteractable_ = true
 
+    //The options offered for a right clicked object. @see ExampleRightClickMenu
+    mRightClickMenu_ = null
+    //An object right clicked in the scene, waiting for the gui to be built. The
+    //pick has to happen while the scene is clean and the menu has to be opened
+    //while the gui is built, which are different points in the frame.
+    mPendingSceneMenuEntry_ = null
+    //Whether the right mouse button was held last time the scene was picked.
+    //getMousePressed is cleared before sceneSafeUpdate runs again, so the press
+    //is found by watching the button rather than by asking for it.
+    mRightMouseDown_ = false
+
     //The texture the scene is rendered into, and the workspace which does it.
     mSceneTexture_ = null
     mSceneWorkspace_ = null
@@ -189,6 +200,8 @@
             throw "The example requires the AvImguiPlugin. See example/plugins/README.md.";
         }
 
+        _doFile("res://ExampleRightClickMenu.nut");
+
         ::SceneEditorFramework.HelperFunctions = {
             function sceneEditorInteractable(){
                 return ::ExampleEditor.mSceneEditorInteractable_;
@@ -228,6 +241,10 @@
 
         mSceneTreePanel_ = mBase_.setupIMGUIWindow(PANEL_SCENE_TREE, ::SceneEditorFramework.IMGUI.SceneTree);
         mObjectPropertiesPanel_ = mBase_.setupIMGUIWindow(PANEL_OBJECT_PROPERTIES, ::SceneEditorFramework.IMGUI.ObjectProperties);
+
+        //Subscribes itself to the bus, which is how a right click in the scene
+        //tree reaches it.
+        mRightClickMenu_ = ::ExampleRightClickMenu(mBase_);
     }
 
     function update(){
@@ -244,6 +261,24 @@
         drawMenuBar_();
         drawSceneWindow_();
         mBase_.drawIMGUI();
+
+        //Last, so a request made by the scene tree while it was drawn above is
+        //picked up in the same frame, and so the popup is drawn over everything.
+        applyPendingSceneMenuRequest_();
+        mRightClickMenu_.draw();
+    }
+
+    //An object right clicked in the scene becomes the selection, the same as one
+    //right clicked in the scene tree does, so that the menu's options - which
+    //the framework applies to the selection - act on it.
+    function applyPendingSceneMenuRequest_(){
+        if(mPendingSceneMenuEntry_ == null) return;
+
+        local entryId = mPendingSceneMenuEntry_;
+        mPendingSceneMenuEntry_ = null;
+
+        mBase_.getActiveSceneTree().notifySelectionChanged(entryId);
+        mRightClickMenu_.requestForEntry(entryId);
     }
 
     //The layout the editor opens with: the scene filling the middle, the tree
@@ -391,6 +426,32 @@
 
     function sceneSafeUpdate(){
         mBase_.sceneSafeUpdate();
+        updateSceneRightClick_();
+    }
+
+    //Right clicking an object in the scene offers the same options right
+    //clicking it in the scene tree does.
+    //
+    //Which object is under the cursor is a ray cast against the scene, which
+    //needs the scene to be clean - so it happens here rather than while the gui
+    //is built, and what it finds waits until then.
+    function updateSceneRightClick_(){
+        local down = _input.getMouseButton(_MB_RIGHT);
+        local pressed = down && !mRightMouseDown_;
+        mRightMouseDown_ = down;
+
+        //Only a click in the scene panel is a click on the scene. Anywhere else
+        //belongs to imgui, which draws its own context menus.
+        if(!pressed || !mSceneEditorInteractable_) return;
+
+        local sceneTree = mBase_.getActiveSceneTree();
+        if(sceneTree == null) return;
+
+        local entryId = sceneTree.findEntryIdAtScenePosition(::SceneEditorFramework.getNormalisedSceneMousePosition());
+        //Right clicking empty space is not a request for options on anything.
+        if(entryId == null) return;
+
+        mPendingSceneMenuEntry_ = entryId;
     }
 
     function end(){

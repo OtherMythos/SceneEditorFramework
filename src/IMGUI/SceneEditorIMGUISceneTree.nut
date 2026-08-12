@@ -65,6 +65,12 @@
                 mSceneTree_.notifySelectionChanged(entry.entryId);
             }
 
+            if(_imgui.isItemClicked(_imgui.MouseButton_Right)){
+                mItemClicked_ = true;
+                mSceneTree_.notifySelectionChanged(entry.entryId);
+                mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_OPTIONS_MENU_REQUEST, entry.entryId);
+            }
+
             if(hasChildren){
                 if(open){
                     index = drawEntries_(index + 2);
