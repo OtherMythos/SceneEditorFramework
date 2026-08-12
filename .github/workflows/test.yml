@@ -21,12 +21,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mesa-utils xvfb fuse libfuse2
-      - name: Download the avEngine AppImage
-        uses: dawidd6/action-download-artifact@v8
-        with:
-          name: av-x86_64-${{ matrix.buildType }}.AppImage
-          repo: OtherMythos/avEngine
-          workflow: buildLinux.yml
       - name: Check out the plugin
         uses: actions/checkout@v6
       - name: Check out avTools
@@ -34,6 +28,12 @@ jobs:
         with:
           path: avTools
           repository: OtherMythos/avTools
+      - name: Download the avEngine AppImage
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          name: av-x86_64-${{ matrix.buildType }}.AppImage
+          repo: OtherMythos/avEngine
+          workflow: buildLinux.yml
       - name: Run tests
         run: |
           chmod +x ./av-x86_64.AppImage
