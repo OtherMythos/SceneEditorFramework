@@ -88,7 +88,8 @@
     }
 
     function shutdown(){
-        mActiveTree_.shutdown();
+        //The editor can close before a scene has been selected and loaded.
+        if(mActiveTree_ != null) mActiveTree_.shutdown();
     }
 
     function loadSceneTree(parentNode, filePath){
