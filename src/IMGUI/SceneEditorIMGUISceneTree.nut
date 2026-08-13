@@ -10,6 +10,7 @@
     ICON_GAP = 6.0;
     SCROLLBAR_WIDTH = 14.0;
     DOUBLE_CLICK_TIME = 0.35;
+    DRAG_THRESHOLD = 5.0;
 
     mSceneTree_ = null;
     mWindowTitle_ = "Scene Tree##SceneEditorFrameworkSceneTree";
@@ -23,6 +24,15 @@
     mRenameFocusPending_ = false;
     mLastClickedEntryId_ = null;
     mLastClickTime_ = -100.0;
+
+    //The plugin binding does not expose ImGui payloads, so a tree drag is
+    //tracked from the selectable which captured the left mouse button.
+    mPotentialDragEntryId_ = null;
+    mDragStartMouse_ = null;
+    mDragging_ = false;
+    mDropTargetEntryId_ = null;
+    mDropInsertionType_ = SceneEditorFramework_ObjectInsertionType.NONE;
+    mDropTargetValid_ = false;
 
     //Shared hierarchy sprite sheets.
     mObjectIcons_ = null;
@@ -47,6 +57,7 @@
         local shown = _imgui.begin(mWindowTitle_);
         if(shown){
             mItemClicked_ = false;
+            resetDropTarget_();
             if(!mSceneTree_.sceneTreePopulated()){
                 _imgui.textDisabled("Scene tree empty");
             }else{
@@ -60,6 +71,8 @@
                 mSceneTree_.notifySelectionChanged(null);
                 cancelRename_();
             }
+
+            updateDrag_();
         }
         _imgui.end();
     }
@@ -116,8 +129,10 @@
     function drawEntry_(entry, depth, hasChildren){
         local startX = _imgui.getCursorPosX();
         local startY = _imgui.getCursorPosY();
+        local screenPos = _imgui.getCursorScreenPos();
         local rowWidth = _imgui.getContentRegionAvail()[0];
         local frameHeight = _imgui.getFrameHeight();
+        local dropTarget = updateDropTargetForRow_(entry, screenPos, rowWidth, frameHeight);
         //Retain the framework's HiDPI icon scaling. The surrounding hierarchy
         //coordinates follow the original icon design, which were fixed-size.
         local guiScale = _imgui.getGlobalScale();
@@ -170,7 +185,25 @@
         }else{
             local selected = mSceneTree_.isEntrySelected(entry.entryId);
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) + "##name";
+
+            if(dropTarget){
+                local colour = mDropTargetValid_ ? [0.85, 0.55, 0.10, 0.85] :
+                    [0.80, 0.20, 0.20, 0.85];
+                _imgui.pushStyleColor(_imgui.Col_Header, colour[0], colour[1], colour[2], colour[3]);
+                _imgui.pushStyleColor(_imgui.Col_HeaderHovered, colour[0], colour[1], colour[2], colour[3]);
+                _imgui.pushStyleColor(_imgui.Col_HeaderActive, colour[0], colour[1], colour[2], colour[3]);
+            }
             _imgui.selectable(label, selected, 0, nameWidth, frameHeight);
+            if(dropTarget) _imgui.popStyleColor(3);
+            if(dropTarget){
+                local targetName = ::SceneEditorFramework.getNameForSceneEntry(entry);
+                if(mDropTargetValid_){
+                    _imgui.setTooltip("Move " + insertionTypeName_(mDropInsertionType_) +
+                        " " + targetName);
+                }else{
+                    _imgui.setTooltip("Cannot move selection here");
+                }
+            }
 
             if(_imgui.isItemClicked()){
                 handleEntryClick_(entry);
@@ -197,6 +230,8 @@
 
         local modifiers = getSelectionModifiers_();
         mSceneTree_.notifySelectionChanged(entry.entryId, modifiers.control, modifiers.shift);
+        mPotentialDragEntryId_ = entry.entryId;
+        mDragStartMouse_ = getMousePosition_();
         if(doubleClick){
             mRenamingEntryId_ = entry.entryId;
             mRenameText_ = ::SceneEditorFramework.getNameForSceneEntry(entry);
@@ -257,6 +292,91 @@
     function cancelRename_(){
         mRenamingEntryId_ = null;
         mRenameFocusPending_ = false;
+    }
+
+    function updateDrag_(){
+        if(mPotentialDragEntryId_ == null) return;
+
+        local mouseDown = _input.getMouseButton(_MB_LEFT);
+        if(!mDragging_ && mouseDown){
+            local mouse = getMousePosition_();
+            local dx = mouse[0] - mDragStartMouse_[0];
+            local dy = mouse[1] - mDragStartMouse_[1];
+            if(dx * dx + dy * dy >= DRAG_THRESHOLD * DRAG_THRESHOLD){
+                mDragging_ = true;
+                cancelRename_();
+            }
+        }
+
+        if(mouseDown) return;
+
+        if(mDragging_ && mDropTargetValid_){
+            local insertionType = mDropInsertionType_;
+            local destinationId = mDropTargetEntryId_;
+            if(mSceneTree_.rearrangeCurrentSelection(destinationId, insertionType) &&
+                insertionType == SceneEditorFramework_ObjectInsertionType.INTO){
+                mExpandedEntries_.rawset(destinationId, true);
+            }
+        }
+
+        cancelDrag_();
+    }
+
+    function updateDropTargetForRow_(entry, screenPos, rowWidth, rowHeight){
+        if(!mDragging_) return false;
+
+        local mouse = getMousePosition_();
+        local mouseX = mouse[0];
+        local mouseY = mouse[1];
+        if(mouseX < screenPos[0] || mouseX > screenPos[0] + rowWidth ||
+            mouseY < screenPos[1] || mouseY > screenPos[1] + rowHeight){
+            return false;
+        }
+
+        local relativeY = (mouseY - screenPos[1]) / rowHeight;
+        local insertionType = SceneEditorFramework_ObjectInsertionType.INTO;
+        if(relativeY < 0.4){
+            insertionType = SceneEditorFramework_ObjectInsertionType.ABOVE;
+        }else if(relativeY > 0.8){
+            insertionType = SceneEditorFramework_ObjectInsertionType.BELOW;
+        }
+
+        mDropTargetEntryId_ = entry.entryId;
+        mDropInsertionType_ = insertionType;
+        mDropTargetValid_ = mSceneTree_.canRearrangeCurrentSelection(
+            entry.entryId, insertionType);
+        return true;
+    }
+
+    function resetDropTarget_(){
+        mDropTargetEntryId_ = null;
+        mDropInsertionType_ = SceneEditorFramework_ObjectInsertionType.NONE;
+        mDropTargetValid_ = false;
+    }
+
+    function insertionTypeName_(insertionType){
+        if(insertionType == SceneEditorFramework_ObjectInsertionType.ABOVE) return "above";
+        if(insertionType == SceneEditorFramework_ObjectInsertionType.BELOW) return "below";
+        return "into";
+    }
+
+    function cancelDrag_(){
+        mPotentialDragEntryId_ = null;
+        mDragStartMouse_ = null;
+        mDragging_ = false;
+        resetDropTarget_();
+    }
+
+    //The engine reports mouse coordinates in window units while ImGui uses the
+    //render target's pixel coordinates. They differ on HiDPI displays.
+    function getMousePosition_(){
+        local windowSize = _window.getSize();
+        local pixelSize = _window.getActualSize();
+        if(windowSize.x <= 0 || windowSize.y <= 0) return [0.0, 0.0];
+        return [
+            _input.getMouseX() * (pixelSize.x / windowSize.x),
+            _input.getMouseY() * (pixelSize.y / windowSize.y)
+        ];
     }
 
     function getSelectionModifiers_(){

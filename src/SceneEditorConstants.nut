@@ -64,8 +64,16 @@ enum SceneEditorFramework_Action{
     OBJECT_DELETION,
     RENAME_SCENE_NODE,
     CHANGE_SCENE_NODE_VISIBILITY,
+    TREE_REARRANGE,
 
     MAX
+};
+
+enum SceneEditorFramework_ObjectInsertionType{
+    NONE,
+    INTO,
+    ABOVE,
+    BELOW
 };
 
 enum SceneEditorFramework_BasicCoordinateType{

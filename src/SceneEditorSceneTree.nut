@@ -9,6 +9,7 @@
     mCurrentPopulateAction_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
+    mSceneRootNode_ = null;
     mMagneticEdit_ = false;
 
     //Entry ids are keys so selection membership remains independent of tree
@@ -156,6 +157,7 @@
                 if(lastNode == null){
                     assert(i == 0);
                     lastNode = mParentNode_.createChildSceneNode();
+                    mSceneRootNode_ = lastNode;
                 }
                 currentNode.append(lastNode);
                 //currentNode = lastNode;
@@ -173,6 +175,24 @@
             c.node = lastNode;
         }
         assert(currentNode.len() == 1);
+    }
+
+    //The engine's Squirrel scene-node API has no reparent operation. Rebuild
+    //the framework-owned root after a hierarchy change so every entry node is
+    //created under the parent described by the flattened tree. Gizmos are
+    //siblings of this root and are therefore left intact.
+    function rebuildSceneTree_(){
+        foreach(entry in mEntries_){
+            if(isObjectEntry_(entry)) entry.node = null;
+        }
+        mNodesForEntry_.clear();
+
+        if(mSceneRootNode_ != null){
+            mSceneRootNode_.destroyNodeAndChildren();
+            mSceneRootNode_ = null;
+        }
+
+        constructSceneTree_();
     }
     function regenerateSceneEntry(entryId){
         local idx = findEntryIdIndexInTree_(entryId);
@@ -361,6 +381,173 @@
     function isObjectEntry_(entry){
         return entry.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD &&
             entry.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM;
+    }
+
+    /**
+     * Move the reduced current selection relative to one destination entry.
+     * Returns false for a destination inside the moved subtree or a no-op.
+     */
+    function rearrangeCurrentSelection(destinationId, insertionType){
+        local selected = getReducedSelection();
+        if(selected.len() == 0) return false;
+
+        local rearranged = buildRearrangedEntries_(selected, destinationId, insertionType);
+        if(rearranged == null) return false;
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.TREE_REARRANGE];
+        local action = A(this, mEntries_, rearranged);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return true;
+    }
+
+    function canRearrangeCurrentSelection(destinationId, insertionType){
+        local selected = getReducedSelection();
+        return selected.len() > 0 &&
+            buildRearrangedEntries_(selected, destinationId, insertionType) != null;
+    }
+
+    //Build the result without changing the live tree. This makes validation
+    //side-effect free and gives TreeRearrangeAction stable before/after states.
+    function buildRearrangedEntries_(selectedIds, destinationId, insertionType){
+        if(
+            insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
+        ) return null;
+
+        local destinationIndex = findEntryIdIndexInTree_(destinationId);
+        if(destinationIndex == null || !isObjectEntry_(mEntries_[destinationIndex])) return null;
+
+        local rangesByStart = {};
+        foreach(entryId in selectedIds){
+            local startIndex = findEntryIdIndexInTree_(entryId);
+            if(startIndex == null) return null;
+            local endIndex = getEntrySectionEndInEntries_(mEntries_, startIndex);
+            if(destinationIndex >= startIndex && destinationIndex < endIndex) return null;
+
+            local range = { "start": startIndex, "end": endIndex };
+            rangesByStart.rawset(startIndex, range);
+        }
+
+        local moved = [];
+        local remaining = [];
+        local index = 0;
+        while(index < mEntries_.len()){
+            if(rangesByStart.rawin(index)){
+                local range = rangesByStart.rawget(index);
+                for(local i = range.start; i < range.end; i++) moved.append(mEntries_[i]);
+                index = range.end;
+            }else{
+                remaining.append(mEntries_[index]);
+                index++;
+            }
+        }
+
+        removeEmptyChildGroups_(remaining);
+        destinationIndex = findEntryIdIndexInEntries_(remaining, destinationId);
+        if(destinationIndex == null) return null;
+
+        local insertIndex = destinationIndex;
+        local inserted = moved;
+        if(insertionType == SceneEditorFramework_ObjectInsertionType.BELOW){
+            insertIndex = getEntrySectionEndInEntries_(remaining, destinationIndex);
+        }else if(insertionType == SceneEditorFramework_ObjectInsertionType.INTO){
+            if(entryHasChildrenInEntries_(remaining, destinationIndex)){
+                insertIndex = getTerminatorForChildInEntries_(remaining, destinationIndex + 1) - 1;
+            }else{
+                inserted = [::SceneEditorFramework.FileParser.CHILD_ENTRY];
+                foreach(entry in moved) inserted.append(entry);
+                inserted.append(::SceneEditorFramework.FileParser.TERM_ENTRY);
+                insertIndex = destinationIndex + 1;
+            }
+        }
+
+        local result = insertEntriesAt_(remaining, insertIndex, inserted);
+        return entryLayoutsEqual_(mEntries_, result) ? null : result;
+    }
+
+    function applyRearrangedEntries_(entries){
+        mEntries_ = clone entries;
+        rebuildSceneTree_();
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_CONTENTS_CHANGED, null);
+
+        if(mCurrentSelection != -1 && findEntryIdIndexInTree_(mCurrentSelection) != null){
+            setPrimarySelection_(mCurrentSelection);
+        }else{
+            clearAllSelection();
+        }
+    }
+
+    function getEntrySectionEndInEntries_(entries, startIndex){
+        if(entryHasChildrenInEntries_(entries, startIndex)){
+            return getTerminatorForChildInEntries_(entries, startIndex + 1);
+        }
+        return startIndex + 1;
+    }
+
+    function entryHasChildrenInEntries_(entries, index){
+        return index + 1 < entries.len() &&
+            entries[index + 1].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD;
+    }
+
+    function getTerminatorForChildInEntries_(entries, childIndex){
+        if(entries[childIndex].nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD) return -1;
+
+        local depth = 0;
+        for(local index = childIndex + 1; index < entries.len(); index++){
+            local type = entries[index].nodeType;
+            if(type == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                depth++;
+            }else if(type == SceneEditorFramework_SceneTreeEntryType.TERM){
+                if(depth == 0) return index + 1;
+                depth--;
+            }
+        }
+        return -1;
+    }
+
+    function removeEmptyChildGroups_(entries){
+        local index = 1; //Index zero is the root CHILD marker and must remain.
+        while(index < entries.len() - 1){
+            if(
+                entries[index].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD &&
+                entries[index + 1].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM
+            ){
+                entries.remove(index);
+                entries.remove(index);
+                if(index > 1) index--;
+            }else{
+                index++;
+            }
+        }
+    }
+
+    function findEntryIdIndexInEntries_(entries, entryId){
+        foreach(index, entry in entries){
+            if(entry.entryId == entryId) return index;
+        }
+        return null;
+    }
+
+    function insertEntriesAt_(entries, insertIndex, inserted){
+        local result = [];
+        for(local index = 0; index <= entries.len(); index++){
+            if(index == insertIndex){
+                foreach(entry in inserted) result.append(entry);
+            }
+            if(index < entries.len()) result.append(entries[index]);
+        }
+        return result;
+    }
+
+    function entryLayoutsEqual_(first, second){
+        if(first.len() != second.len()) return false;
+        for(local index = 0; index < first.len(); index++){
+            if(first[index].nodeType != second[index].nodeType) return false;
+            if(first[index].entryId != second[index].entryId) return false;
+        }
+        return true;
     }
 
     function setOutlineBox(entryId){
@@ -723,7 +910,7 @@
         assert(entryIndex != null);
         assert(isObjectEntry_(mEntries_[entryIndex]));
 
-        //As in Southsea, clicking an already-selected item keeps the rest of
+        //Clicking an already-selected item keeps the rest of
         //the selection intact so beginning a drag does not collapse the group.
         if(!controlModifier && !shiftModifier && !isEntrySelected(buttonId)){
             mSelectedIds_.clear();
