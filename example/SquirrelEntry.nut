@@ -13,6 +13,25 @@
 //    Whether the scene window itself is hovered decides that instead.
 //  * Mouse positions have to be expressed relative to the scene window rather
 //    than the whole window, which is what normalisedSceneMousePosition is for.
+
+//Raw SDL scancodes, which is what _input.getRawKeyScancodeInput() takes. In the
+//root table rather than an enum because the framework reads KeyScancode.LSHIFT
+//itself when a scale gizmo is dragged, and its scripts are compiled before this
+//file - so the name has to be one that resolves at runtime.
+::KeyScancode <- {
+    Y = 28,
+    Z = 29,
+
+    LCTRL = 224,
+    LSHIFT = 225,
+    LALT = 226,
+    //Command on macOS, Windows key elsewhere.
+    LGUI = 227,
+    RCTRL = 228,
+    RSHIFT = 229,
+    RGUI = 231
+};
+
 ::ExampleEditor <- {
     mBase_ = null
     mSceneParent_ = null
@@ -52,6 +71,11 @@
     //The display scale the gui was last set to. @see updateGuiScale_
     mGuiScale_ = 1.0
 
+    //Which key commands the keyboard was expressing last frame, so that holding
+    //a shortcut down performs it once rather than once a frame.
+    //@see updateKeyCommands_
+    mKeyCommandHeld_ = null
+
     //The dockspace, and the nodes of the default layout built inside it.
     mDockId_ = 0
     mSceneDockId_ = 0
@@ -64,6 +88,10 @@
     PANEL_OBJECT_PROPERTIES = 1
     TRANSFORM_POSITION = 0
     TRANSFORM_SCALE = 1
+
+    KEY_COMMAND_UNDO = 0
+    KEY_COMMAND_REDO = 1
+    KEY_COMMAND_MAX = 2
 
     //The dock builder places windows by title, so the scene window's has to be
     //the same string in both places.
@@ -224,6 +252,65 @@
         );
     }
 
+    //Perform whatever the keyboard is asking for. The engine reports the state
+    //of a key rather than delivering presses, so a press is a frame where the
+    //command has turned from not held to held - which is what the previous
+    //frame's states are kept for.
+    //
+    //Called before the gui is built so that the panels drawn this frame show the
+    //scene as the command left it, and once per rendered frame rather than once
+    //per fixed update so that a held shortcut repeats at a visible rate.
+    function updateKeyCommands_(){
+        local command = readKeyCommand_();
+
+        for(local i = 0; i < KEY_COMMAND_MAX; i++){
+            local held = command == i;
+            local pressed = held && !mKeyCommandHeld_[i];
+            mKeyCommandHeld_[i] = held;
+
+            if(!pressed) continue;
+            if(i == KEY_COMMAND_UNDO) mBase_.mActionStack_.undo();
+            else mBase_.mActionStack_.redo();
+        }
+    }
+
+    //The command the keyboard is currently expressing, or null for none. Only
+    //ever one: Shift turns Ctrl+Z into a redo rather than adding one to it.
+    function readKeyCommand_(){
+        //Ctrl+clicking a drag field in the object properties turns it into a
+        //text box. Typing in one is not a request for a shortcut.
+        if(_imgui.wantCaptureKeyboard()) return null;
+
+        //Command as well as Control, as that is the shortcut on macOS. Both
+        //sides of the keyboard, which is what a modifier scancode distinguishes.
+        if(!anyKeyHeld_([KeyScancode.LCTRL, KeyScancode.RCTRL,
+            KeyScancode.LGUI, KeyScancode.RGUI])) return null;
+
+        //Ctrl+Y is the other redo shortcut on Windows.
+        if(_input.getRawKeyScancodeInput(KeyScancode.Y)) return KEY_COMMAND_REDO;
+        if(!_input.getRawKeyScancodeInput(KeyScancode.Z)) return null;
+
+        return anyKeyHeld_([KeyScancode.LSHIFT, KeyScancode.RSHIFT]) ?
+            KEY_COMMAND_REDO : KEY_COMMAND_UNDO;
+    }
+
+    function anyKeyHeld_(scancodes){
+        foreach(scancode in scancodes){
+            if(_input.getRawKeyScancodeInput(scancode)) return true;
+        }
+        return false;
+    }
+
+    //What to print next to a menu entry. The modifier is named for the platform
+    //the editor is running on, so it matches the key the user has to press.
+    function keyCommandLabel_(command){
+        //local modifier = _settings.getPlatform() == _PLATFORM_MACOS ? "Cmd" : "Ctrl";
+        //At the moment I'm just using ctrl on macos as well.
+        local modifier = "Ctrl";
+        if(command == KEY_COMMAND_UNDO) return modifier + "+Z";
+        return modifier + "+Shift+Z";
+    }
+
     function start(){
         if(!("_imgui" in getroottable())){
             throw "The example requires the AvImguiPlugin. See example/plugins/README.md.";
@@ -259,6 +346,8 @@
             }
         };
 
+        mKeyCommandHeld_ = array(KEY_COMMAND_MAX, false);
+
         setupLights_();
         setupCompositor_();
         _camera.setPosition(12, 8, 15);
@@ -282,6 +371,7 @@
 
         updateGuiScale_();
         updateSceneTextureSize_();
+        updateKeyCommands_();
 
         //The dockspace comes first: a window submitted before the dockspace it
         //docks into is undocked again.
@@ -426,8 +516,8 @@
         }
 
         if(_imgui.beginMenu("Edit")){
-            if(_imgui.menuItem("Undo")) mBase_.mActionStack_.undo();
-            if(_imgui.menuItem("Redo")) mBase_.mActionStack_.redo();
+            if(_imgui.menuItem("Undo", keyCommandLabel_(KEY_COMMAND_UNDO))) mBase_.mActionStack_.undo();
+            if(_imgui.menuItem("Redo", keyCommandLabel_(KEY_COMMAND_REDO))) mBase_.mActionStack_.redo();
             _imgui.separator();
             if(_imgui.menuItem("Position")){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_POSITION);
