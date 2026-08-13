@@ -94,6 +94,21 @@
         _imgui.textDisabled(::SceneEditorFramework.getNameForSceneEntry(entry));
         _imgui.separator();
 
+        if(_imgui.beginMenu("Add")){
+            if(_imgui.menuItem("Empty")){
+                insertEmptyChild_();
+            }
+
+            _imgui.separator();
+
+            if(_imgui.menuItem("Cube")) insertPrimitiveMeshChild_("cube", "Cube");
+            if(_imgui.menuItem("Sphere")) insertPrimitiveMeshChild_("sphere", "Sphere");
+            if(_imgui.menuItem("Capsule")) insertPrimitiveMeshChild_("capsule", "Capsule");
+            if(_imgui.menuItem("Plane")) insertPrimitiveMeshChild_("plane", "Plane");
+            _imgui.endMenu();
+        }
+        _imgui.separator();
+
         if(_imgui.menuItem("Rename")){
             mRenameText_ = ::SceneEditorFramework.getNameForSceneEntry(entry);
             mRenameRequested_ = true;
@@ -138,6 +153,23 @@
         }
 
         _imgui.endPopup();
+    }
+
+    function insertEmptyChild_(){
+        local sceneTree = getSceneTree_();
+        if(sceneTree != null) sceneTree.insertEmptyChild(mEntryId_, "Empty");
+    }
+
+    function insertPrimitiveMeshChild_(meshName, entryName){
+        local sceneTree = getSceneTree_();
+        if(sceneTree != null){
+            sceneTree.insertPrimitiveMeshChild(mEntryId_, meshName, entryName);
+        }
+    }
+
+    function getSceneTree_(){
+        if(getEntry_() == null) return null;
+        return mBase_.getActiveSceneTree();
     }
 
     function deleteEntry_(){

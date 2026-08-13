@@ -40,3 +40,4 @@ _doFile("script://actions/RenameSceneNodeAction.nut");
 _doFile("script://actions/ChangeSceneNodeVisibilityAction.nut");
 _doFile("script://actions/ObjectDeleteAction.nut");
 _doFile("script://actions/TreeRearrangeAction.nut");
+_doFile("script://actions/ObjectInsertionAction.nut");

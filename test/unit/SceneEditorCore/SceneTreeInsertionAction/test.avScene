@@ -1,0 +1,7 @@
+<scene>
+    <empty name="Parent">
+        <empty name="Existing child"/>
+    </empty>
+    <empty name="Leaf"/>
+    <empty name="Tail"/>
+</scene>

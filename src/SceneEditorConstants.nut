@@ -65,6 +65,7 @@ enum SceneEditorFramework_Action{
     RENAME_SCENE_NODE,
     CHANGE_SCENE_NODE_VISIBILITY,
     TREE_REARRANGE,
+    OBJECT_INSERTION,
 
     MAX
 };

@@ -47,6 +47,15 @@
             mIdPool_.append(id);
         }
 
+        function reserveId(id){
+            foreach(index, pooledId in mIdPool_){
+                if(pooledId != id) continue;
+                mIdPool_.remove(index);
+                return;
+            }
+            assert(false);
+        }
+
     };
 
     constructor(parentNode, actionStack, bus){
@@ -95,6 +104,9 @@
     }
     function recycleId(id){
         return mIdPool_.recycleId(id);
+    }
+    function reserveId(id){
+        return mIdPool_.reserveId(id);
     }
 
     function sceneTreePopulated(){
@@ -381,6 +393,80 @@
     function isObjectEntry_(entry){
         return entry.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD &&
             entry.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM;
+    }
+
+    /** Add an empty scene node as a child of an existing entry. */
+    function insertEmptyChild(parentId, name="Empty"){
+        return insertEntry_(parentId, SceneEditorFramework_ObjectInsertionType.INTO,
+            SceneEditorFramework_SceneTreeEntryType.EMPTY, null, name);
+    }
+
+    /** Add one of the engine's built-in primitive meshes as a child. */
+    function insertPrimitiveMeshChild(parentId, meshName, name=null){
+        local data = ::SceneEditorFramework.SceneTreeMeshData();
+        data.meshName = meshName;
+        if(name == null) name = meshName;
+
+        return insertEntry_(parentId, SceneEditorFramework_ObjectInsertionType.INTO,
+            SceneEditorFramework_SceneTreeEntryType.MESH, data, name);
+    }
+
+    /**
+     * Insert a new object relative to a target through the action stack.
+     * This is kept generic so editor-specific USER entries can use the same
+     * hierarchy and undo behavior as the framework's built-in entries.
+     */
+    function insertEntry(targetId, insertionType, nodeType, data=null, name=null){
+        return insertEntry_(targetId, insertionType, nodeType, data, name);
+    }
+
+    function insertEntry_(targetId, insertionType, nodeType, data, name){
+        if(
+            nodeType == SceneEditorFramework_SceneTreeEntryType.NONE ||
+            nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD ||
+            nodeType == SceneEditorFramework_SceneTreeEntryType.TERM
+        ) return null;
+
+        local targetIndex = findEntryIdIndexInTree_(targetId);
+        if(targetIndex == null || !isObjectEntry_(mEntries_[targetIndex])) return null;
+        if(
+            insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
+        ) return null;
+
+        local entry = ::SceneEditorFramework.SceneTreeEntry();
+        entry.reset();
+        entry.entryId = getId();
+        entry.nodeType = nodeType;
+        entry.data = data;
+        entry.name = name;
+
+        local insertedEntries = buildEntriesWithInsertion_(targetIndex, insertionType, entry);
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_INSERTION];
+        local action = A(this, mEntries_, insertedEntries, entry.entryId);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return entry.entryId;
+    }
+
+    function buildEntriesWithInsertion_(targetIndex, insertionType, entry){
+        local insertIndex = targetIndex;
+        local inserted = [entry];
+
+        if(insertionType == SceneEditorFramework_ObjectInsertionType.BELOW){
+            insertIndex = getEntrySectionEndInEntries_(mEntries_, targetIndex);
+        }else if(insertionType == SceneEditorFramework_ObjectInsertionType.INTO){
+            if(entryHasChildrenInEntries_(mEntries_, targetIndex)){
+                insertIndex = getTerminatorForChildInEntries_(mEntries_, targetIndex + 1) - 1;
+            }else{
+                inserted = [::SceneEditorFramework.FileParser.CHILD_ENTRY, entry,
+                    ::SceneEditorFramework.FileParser.TERM_ENTRY];
+                insertIndex = targetIndex + 1;
+            }
+        }
+
+        return insertEntriesAt_(mEntries_, insertIndex, inserted);
     }
 
     /**
