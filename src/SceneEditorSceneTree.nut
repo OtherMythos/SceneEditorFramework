@@ -788,75 +788,43 @@
     }
 
     function deleteObjectFromTree_(id){
-        debugPrint();
-
         local idx = findEntryIdIndexInTree_(id);
-        print(id);
         assert(idx != null);
-        //mEntries_[idx].destroy();
-        //mEntries_.remove(idx);
-
         recursiveDeleteInTree_(idx);
-
-        debugPrint();
     }
 
     function recursiveDeleteInTree_(idx){
-        local isTerminator = (mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD);
-        local hasChildren = itemHasChildren_(idx);
+        assert(isObjectEntry_(mEntries_[idx]));
 
-        local entriesDeleted = 0;
+        local endIndex = getEntrySectionEndInEntries_(mEntries_, idx);
+        local removedEntries = [];
+        for(local i = idx; i < endIndex; i++){
+            local entry = mEntries_[i];
+            if(!isObjectEntry_(entry)) continue;
 
-        local itemIndex = idx;
-        if(!isTerminator){
-            //If the item does have children switch the index to check to that.
-            if(hasChildren) itemIndex++;
+            removedEntries.append({
+                "entry": entry,
+                "nodeId": entry.node == null ? null : entry.node.getId()
+            });
         }
 
-        local targetIdx = getTerminatorForChild(itemIndex) - 1;
-        if(targetIdx < 0){ //This will be true if the item has no children, as the terminator was not found.
-            targetIdx = idx;
-            assert(!hasChildren);
-        }
-        if(hasChildren) assert(mEntries_[targetIdx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM);
-
-        //Go through and recycle all the entry ids between the terminators.
-        local selectedItemDeleted = false;
-        for(local i = idx; i <= targetIdx; i++){
-            if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM || mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
-                continue;
+        //Destroying the subtree root also destroys all descendant nodes. Keep
+        //their entry data long enough to clean the lookup and ID pool safely.
+        mEntries_[idx].destroy();
+        foreach(removed in removedEntries){
+            if(removed.nodeId != null && mNodesForEntry_.rawin(removed.nodeId)){
+                mNodesForEntry_.rawdelete(removed.nodeId);
             }
-            /*
-            //Check if that item is part of the selected list. If it is it should be removed.
-            local it = mSelectedIds.find(mSceneTree[i].id);
-            if(it != mSelectedIds.end()){
-                mSelectedIds.erase(it);
-                selectedItemDeleted = true;
-            }
-            */
-
-            entriesDeleted++;
-            recycleId(mEntries_[i].entryId);
+            removed.entry.node = null;
+            recycleId(removed.entry.entryId);
         }
 
-        local indentCount = 0;
-        for(local i = idx; i < targetIdx + 1; i++){
-            //NOTE index the list by idx because .remove will shift the list while it removes.
-            //Unfortunately in Squirrel I can't remove a range from the array.
-            if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
-                indentCount--;
-            }
-            else if(mEntries_[idx].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
-                indentCount++;
-            }
+        //Squirrel arrays have no range erase, so repeatedly remove at the
+        //fixed start index while the remaining entries shift down.
+        for(local i = idx; i < endIndex; i++) mEntries_.remove(idx);
+        removeEmptyChildGroups_(mEntries_);
 
-            if(indentCount == 0){
-                mEntries_[idx].destroy();
-            }
-            mEntries_.remove(idx);
-        }
-
-        return entriesDeleted;
+        return removedEntries.len();
     }
 
     function getTerminatorForChild(idx){

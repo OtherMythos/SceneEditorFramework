@@ -1,0 +1,11 @@
+<scene>
+    <empty name="Parent">
+        <empty name="First child"/>
+        <empty name="Second child"/>
+    </empty>
+    <empty name="Middle"/>
+    <empty name="Other parent">
+        <empty name="Only child"/>
+    </empty>
+    <empty name="Tail"/>
+</scene>
