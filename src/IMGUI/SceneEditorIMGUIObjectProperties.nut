@@ -24,7 +24,9 @@
     function draw(){
         if(!mVisible_) return;
 
+        applyInitialWindowState_();
         local shown = _imgui.begin(mWindowTitle_);
+        captureWindowState_(shown);
         if(shown){
             drawContents_();
         }

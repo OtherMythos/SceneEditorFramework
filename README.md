@@ -29,6 +29,13 @@ git submodule update --init --recursive # only needed to explore the legacy GUI 
 
 Then run the avEngine with `example/avSetup.cfg`.
 
+On a clean shutdown the example writes `example/.editorState.json` beside that
+setup file. It restores the dock layout and active tabs, floating-window
+geometry, open viewports and their cameras, panel visibility, scene-tree
+expansion and selection, and the active transform tool on the next run. The
+file is local runtime state and is ignored by Git; removing it resets the
+editor to its default layout.
+
 The retained-mode implementation remains under `src/GUI/` for existing
 EditorGUIFramework users. The ImGui implementation is parallel under `src/IMGUI/`;
 use `Base.setupIMGUIWindow()` and call `Base.drawIMGUI()` once per rendered frame

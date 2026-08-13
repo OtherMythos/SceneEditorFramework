@@ -102,6 +102,10 @@
     mPropertiesDockId_ = 0
     mLayoutBuilt_ = false
 
+    //Loads and saves the runtime layout separately from the scene itself.
+    //@see ExampleEditorState.nut
+    mEditorState_ = null
+
     PANEL_SCENE_TREE = 0
     PANEL_OBJECT_PROPERTIES = 1
     TRANSFORM_POSITION = 0
@@ -127,10 +131,17 @@
     //added, and the imgui plugin appends its overlay to the end the first time a
     //frame uses imgui - after both of these.
     function setupCompositor_(){
-        //The first viewport, which the default layout is built around. Its
-        //workspace renders into a texture rather than into the window, so
-        //nothing it does is undone by the clear below.
-        addRenderWindow_();
+        //Restore exactly the viewports which were open. With no state file the
+        //example starts with one, as it always has; a saved empty list is kept
+        //empty because closing every viewport is a valid editor layout.
+        local savedRenderWindows = mEditorState_.getSavedRenderWindows();
+        if(savedRenderWindows != null){
+            foreach(savedWindow in savedRenderWindows){
+                addRenderWindow_(savedWindow);
+            }
+        }else{
+            addRenderWindow_();
+        }
 
         _compositor.addWorkspace([_window.getRenderTexture()], _camera.getCamera(),
             "SceneEditorExample/ClearWindowWorkspace", true);
@@ -155,15 +166,46 @@
      * @returns The new viewport, or null when every gizmo layer is taken and
      * there is no room for another. @see findFreeGizmoLayer_
      */
-    function addRenderWindow_(){
-        local layer = findFreeGizmoLayer_();
+    function addRenderWindow_(savedState=null){
+        local layer = null;
+        if(savedState != null && typeof savedState == "table" && savedState.rawin("layer")){
+            local savedLayer = savedState.rawget("layer");
+            if(typeof savedLayer == "integer" && savedLayer >= 0 &&
+                savedLayer < ::SceneEditorFramework.MAX_GIZMO_LAYERS &&
+                isGizmoLayerFree_(savedLayer)){
+                layer = savedLayer;
+            }
+        }
+        if(layer == null) layer = findFreeGizmoLayer_();
         if(layer == null) return null;
 
-        local window = ::ExampleSceneRenderWindow(mNextRenderWindowId_, layer, mRenderWindows_.len());
-        mNextRenderWindowId_++;
+        local id = mNextRenderWindowId_;
+        if(savedState != null && typeof savedState == "table" && savedState.rawin("id") &&
+            typeof savedState.rawget("id") == "integer" && savedState.rawget("id") > 0 &&
+            findRenderWindowById_(savedState.rawget("id")) == null){
+            id = savedState.rawget("id");
+        }
+        if(id >= mNextRenderWindowId_) mNextRenderWindowId_ = id + 1;
+        else mNextRenderWindowId_++;
+
+        local window = ::ExampleSceneRenderWindow(id, layer, mRenderWindows_.len(), savedState);
 
         mRenderWindows_.append(window);
         return window;
+    }
+
+    function findRenderWindowById_(id){
+        foreach(window in mRenderWindows_){
+            if(window.getId() == id) return window;
+        }
+        return null;
+    }
+
+    function isGizmoLayerFree_(layer){
+        foreach(window in mRenderWindows_){
+            if(window.getLayer() == layer) return false;
+        }
+        return true;
     }
 
     //A gizmo layer no open viewport is using, or null when there are none left.
@@ -206,6 +248,11 @@
             window.shutdown();
             mRenderWindows_.remove(i);
         }
+
+        //ImGui collapses an empty dock leaf. Until another viewport exists,
+        //put a newly opened one beside the properties instead of retaining the
+        //now-invalid id of the vanished scene leaf.
+        if(mRenderWindows_.len() == 0) mSceneDockId_ = mPropertiesDockId_;
     }
 
     //Which viewport the cursor is working in. Everything the framework asks
@@ -437,6 +484,10 @@
 
         _doFile("res://ExampleRightClickMenu.nut");
         _doFile("res://SceneRenderWindow.nut");
+        _doFile("res://ExampleEditorState.nut");
+
+        mEditorState_ = ::ExampleEditorState(this);
+        mEditorState_.load();
 
         ::SceneEditorFramework.HelperFunctions = {
             function sceneEditorInteractable(){
@@ -509,6 +560,8 @@
         mSceneTreePanel_ = mBase_.setupIMGUIWindow(PANEL_SCENE_TREE, ::SceneEditorFramework.IMGUI.SceneTree);
         mObjectPropertiesPanel_ = mBase_.setupIMGUIWindow(PANEL_OBJECT_PROPERTIES, ::SceneEditorFramework.IMGUI.ObjectProperties);
 
+        mEditorState_.apply();
+
         //Subscribes itself to the bus, which is how a right click in the scene
         //tree reaches it.
         mRightClickMenu_ = ::ExampleRightClickMenu(mBase_);
@@ -534,12 +587,14 @@
         //The dockspace comes first: a window submitted before the dockspace it
         //docks into is undocked again.
         mDockId_ = _imgui.dockSpaceOverViewport();
+        mEditorState_.setDisplaySize(_imgui.getDisplaySize());
         buildDefaultLayout_();
 
         drawMenuBar_();
         //A viewport opened by the menu above is drawn from this frame onwards.
         foreach(window in mRenderWindows_){
             window.draw(mSceneDockId_);
+            if(window.getDockId() != 0) mSceneDockId_ = window.getDockId();
         }
         //Straight after they are drawn, so the framework's update and the next
         //scene update are told where the cursor is now rather than where it was
@@ -577,6 +632,11 @@
         if(mLayoutBuilt_) return;
         mLayoutBuilt_ = true;
 
+        //A saved layout wins over the initial three-column arrangement. If it
+        //is incomplete or no longer usable, fall through to the known-good
+        //default instead of leaving the editor without a dockspace.
+        if(mEditorState_.buildSavedDockLayout(mDockId_)) return;
+
         //Start from nothing, so the layout is the one described here rather
         //than this on top of whatever the dockspace already had.
         _imgui.dockBuilderRemoveNode(mDockId_);
@@ -598,7 +658,9 @@
         //includes the ## id suffix that keeps their titles unique. Only the
         //first viewport is placed here; the rest tab in beside it as they are
         //opened, since the layout cannot describe windows which do not exist yet.
-        _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
+        if(mRenderWindows_.len() > 0){
+            _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
+        }
         _imgui.dockBuilderDockWindow(mSceneTreePanel_.mWindowTitle_, mSideDockId_);
         _imgui.dockBuilderDockWindow(mObjectPropertiesPanel_.mWindowTitle_, mPropertiesDockId_);
 
@@ -718,6 +780,7 @@
     }
 
     function end(){
+        if(mEditorState_ != null) mEditorState_.save();
         mBase_.shutdown();
 
         foreach(window in mRenderWindows_){

@@ -55,7 +55,9 @@
     function draw(){
         if(!mVisible_) return;
 
+        applyInitialWindowState_();
         local shown = _imgui.begin(mWindowTitle_);
+        captureWindowState_(shown);
         if(shown){
             mItemClicked_ = false;
             resetDropTarget_();
@@ -296,6 +298,60 @@
 
     function isExpanded_(entryId){
         return !mExpandedEntries_.rawin(entryId) || mExpandedEntries_.rawget(entryId);
+    }
+
+    /**
+     * Return only explicit expansion choices. Entries which have never been
+     * toggled keep the panel's normal expanded-by-default behaviour.
+     */
+    function getExpansionState(){
+        local result = [];
+        foreach(entryId, expanded in mExpandedEntries_){
+            local index = mSceneTree_.findEntryIdIndexInTree_(entryId);
+            if(index == null) continue;
+
+            local entry = mSceneTree_.mEntries_[index];
+            result.append({
+                "entryId": entryId,
+                "entryIndex": index,
+                "name": ::SceneEditorFramework.getNameForSceneEntry(entry),
+                "nodeType": entry.nodeType,
+                "expanded": expanded
+            });
+        }
+        return result;
+    }
+
+    /** Restore expansion choices which still name the same scene entries. */
+    function applyExpansionState(state){
+        if(state == null || typeof state != "array") return;
+
+        foreach(saved in state){
+            if(typeof saved != "table" || !saved.rawin("expanded")) continue;
+
+            local index = null;
+            if(saved.rawin("entryIndex") && typeof saved.rawget("entryIndex") == "integer"){
+                local savedIndex = saved.rawget("entryIndex");
+                if(savedIndex >= 0 && savedIndex < mSceneTree_.mEntries_.len()) index = savedIndex;
+            }
+            if(index == null && saved.rawin("entryId")){
+                index = mSceneTree_.findEntryIdIndexInTree_(saved.rawget("entryId"));
+            }
+            if(index == null) continue;
+
+            local entry = mSceneTree_.mEntries_[index];
+            if(entry.entryId == null) continue;
+            //The flattened entry index follows scene-file order and therefore
+            //survives a save/reload even when runtime ids have been recycled.
+            //The descriptive checks reject an old index after the scene file
+            //has changed independently of this state file.
+            if(saved.rawin("name") && saved.rawget("name") !=
+                ::SceneEditorFramework.getNameForSceneEntry(entry)){
+                continue;
+            }
+            if(saved.rawin("nodeType") && saved.rawget("nodeType") != entry.nodeType) continue;
+            mExpandedEntries_.rawset(entry.entryId, saved.rawget("expanded"));
+        }
     }
 
     function cancelRename_(){

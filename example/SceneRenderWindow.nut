@@ -79,6 +79,15 @@
     //Set when the window has asked to be closed, and acted on by the editor.
     mCloseRequested_ = false;
 
+    //Last ImGui placement. Docked windows are reconstructed by the editor's
+    //dock builder; a floating window applies its saved rectangle on first use.
+    mDockId_ = 0;
+    mWindowPosition_ = null;
+    mWindowSize_ = null;
+    mWindowCollapsed_ = false;
+    mTabVisible_ = true;
+    mInitialWindowStatePending_ = false;
+
     /**
      * @param id A number no other render window has used, which the window's
      * imgui, texture and camera names are all built from.
@@ -88,7 +97,7 @@
      * @param viewIndex Which view the window opens on. Wrapped, so the editor
      * can pass a plain count of the windows it has open.
      */
-    constructor(id, layer, viewIndex){
+    constructor(id, layer, viewIndex, savedState=null){
         mId_ = id;
         mLayer_ = layer;
         mName_ = "Scene " + id;
@@ -106,6 +115,7 @@
         setView(viewIndex % VIEW_MAX);
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
+        applyState(savedState);
     }
 
     /**
@@ -255,12 +265,24 @@
             return;
         }
 
-        _imgui.setNextWindowDockId(defaultDockId, _imgui.Cond_FirstUseEver);
+        local restoringFloatingWindow = mInitialWindowStatePending_ && mDockId_ == 0;
+        applyInitialWindowState_();
+        if(!restoringFloatingWindow){
+            _imgui.setNextWindowDockId(defaultDockId, _imgui.Cond_FirstUseEver);
+        }
         //No padding, so the image meets the edges of the panel like a viewport.
         //Popped straight after begin so the rest of the window is normal.
         _imgui.pushStyleVar(_imgui.StyleVar_WindowPadding, 0, 0);
         local state = begin_();
         _imgui.popStyleVar();
+
+        //These queries are valid even when the window is collapsed or hidden
+        //behind another tab, and must happen before end().
+        mDockId_ = _imgui.getWindowDockId();
+        mWindowPosition_ = _imgui.getWindowPos();
+        mWindowSize_ = _imgui.getWindowSize();
+        mWindowCollapsed_ = _imgui.isWindowCollapsed();
+        mTabVisible_ = state[0] && !mWindowCollapsed_;
 
         local visible = state[0];
         //The X, which is only false on the frame it was clicked. Acted on by the
@@ -390,6 +412,10 @@
         return mName_;
     }
 
+    function getId(){
+        return mId_;
+    }
+
     function getTitle(){
         return mTitle_;
     }
@@ -400,6 +426,79 @@
 
     function getLayer(){
         return mLayer_;
+    }
+
+    function getDockId(){
+        return mDockId_;
+    }
+
+    function getState(){
+        local position = mFPSCamera_.getPosition();
+        local direction = mFPSCamera_.getDirection();
+        return {
+            "id": mId_,
+            "layer": mLayer_,
+            "visible": mVisible_,
+            "view": mView_,
+            "cameraPosition": [position.x, position.y, position.z],
+            "cameraDirection": [direction.x, direction.y, direction.z],
+            "window": {
+                "title": mTitle_,
+                "dockId": mDockId_,
+                "position": mWindowPosition_,
+                "size": mWindowSize_,
+                "collapsed": mWindowCollapsed_,
+                "tabVisible": mTabVisible_
+            }
+        };
+    }
+
+    function applyState(state){
+        if(state == null || typeof state != "table") return;
+
+        if(state.rawin("visible")) mVisible_ = state.rawget("visible");
+        if(state.rawin("view")) setView(state.rawget("view"));
+        if(state.rawin("cameraPosition")){
+            local p = state.rawget("cameraPosition");
+            if(typeof p == "array" && p.len() >= 3){
+                mFPSCamera_.setPosition(Vec3(p[0], p[1], p[2]));
+            }
+        }
+        if(state.rawin("cameraDirection")){
+            local d = state.rawget("cameraDirection");
+            if(typeof d == "array" && d.len() >= 3){
+                mFPSCamera_.setDirection(Vec3(d[0], d[1], d[2]));
+            }
+        }
+
+        if(!state.rawin("window") || typeof state.rawget("window") != "table") return;
+        local window = state.rawget("window");
+        if(window.rawin("dockId")) mDockId_ = window.rawget("dockId");
+        if(window.rawin("position")) mWindowPosition_ = window.rawget("position");
+        if(window.rawin("size")) mWindowSize_ = window.rawget("size");
+        if(window.rawin("collapsed")) mWindowCollapsed_ = window.rawget("collapsed");
+        if(window.rawin("tabVisible")) mTabVisible_ = window.rawget("tabVisible");
+        mInitialWindowStatePending_ = true;
+    }
+
+    function applyInitialWindowState_(){
+        if(!mInitialWindowStatePending_) return;
+        if(mDockId_ != 0){
+            if(mTabVisible_) _imgui.setNextWindowFocus();
+            mInitialWindowStatePending_ = false;
+            return;
+        }
+
+        if(mWindowPosition_ != null){
+            _imgui.setNextWindowPos(mWindowPosition_[0], mWindowPosition_[1],
+                _imgui.Cond_FirstUseEver);
+        }
+        if(mWindowSize_ != null){
+            _imgui.setNextWindowSize(mWindowSize_[0], mWindowSize_[1],
+                _imgui.Cond_FirstUseEver);
+        }
+        _imgui.setNextWindowCollapsed(mWindowCollapsed_, _imgui.Cond_FirstUseEver);
+        mInitialWindowStatePending_ = false;
     }
 
     function isHovered(){
