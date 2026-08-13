@@ -13,6 +13,8 @@ _doFile("script://SceneEditorSceneFileParser.nut");
 _doFile("script://SceneEditorSceneFileWriter.nut");
 _doFile("script://SceneEditorBus.nut");
 
+_doFile("script://SceneEditorFPSCamera.nut");
+
 _doFile("script://SceneEditorGizmo.nut");
 _doFile("script://SceneEditorGizmoObjectHandles.nut");
 _doFile("script://SceneEditorGizmoOutlineBox.nut");

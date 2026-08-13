@@ -23,6 +23,12 @@
 //    answered for a single viewport - the one the cursor is working in - which is
 //    what keeps input to one viewport at a time.
 //    @see updateFocusedRenderWindow_
+//
+//Each viewport is flown with the framework's fps camera: hold the right mouse
+//button in one and it turns with the mouse and moves with WASD, QE for up and
+//down, shift and alt for faster. Only the viewport the button was pressed in
+//flies, and it keeps the mouse until the button is released.
+//@see updateRenderWindowCameras_
 
 //Raw SDL scancodes, which is what _input.getRawKeyScancodeInput() takes. In the
 //root table rather than an enum because the framework reads KeyScancode.LSHIFT
@@ -55,8 +61,8 @@
     //while the gui is built, which are different points in the frame.
     mPendingSceneMenuEntry_ = null
     //Whether the right mouse button was held last time the scene was picked.
-    //getMousePressed is cleared before sceneSafeUpdate runs again, so the press
-    //is found by watching the button rather than by asking for it.
+    //getMouseReleased is cleared before sceneSafeUpdate runs again, so the
+    //release is found by watching the button rather than by asking for it.
     mRightMouseDown_ = false
 
     //Every viewport onto the scene which is currently open.
@@ -66,6 +72,11 @@
     //questions about the scene are answered for.
     //@see updateFocusedRenderWindow_
     mFocusedRenderWindow_ = null
+    //The one whose camera is currently being flown, or null when none of them
+    //is. It has the mouse until the button flying it is released, so while this
+    //is set nothing else in the editor is using the cursor.
+    //@see updateRenderWindowCameras_
+    mFlyingRenderWindow_ = null
     //Never reused, so that a window's imgui, texture and camera names cannot
     //collide with those of one which has been closed.
     mNextRenderWindowId_ = 1
@@ -159,6 +170,7 @@
 
             //Nothing can be working in a viewport which no longer exists.
             if(mFocusedRenderWindow_ == window) mFocusedRenderWindow_ = null;
+            if(mFlyingRenderWindow_ == window) mFlyingRenderWindow_ = null;
 
             window.shutdown();
             mRenderWindows_.remove(i);
@@ -181,12 +193,37 @@
     //interacted with is a separate question. @see sceneEditorInteractable_
     function updateFocusedRenderWindow_(){
         if(mFocusedRenderWindow_ != null && _input.getMouseButton(_MB_LEFT)) return;
+        //A viewport being flown holds the cursor still and puts it back when it
+        //nears the edge of the window, so where the cursor is says nothing about
+        //where the user is working until the flight is over.
+        if(mFlyingRenderWindow_ != null) return;
 
         foreach(window in mRenderWindows_){
             if(!window.isHovered()) continue;
 
             mFocusedRenderWindow_ = window;
             return;
+        }
+    }
+
+    //Fly whichever viewport the user is holding the right mouse button in.
+    //
+    //Only the viewport the cursor is over may take the mouse, and only while no
+    //other one has it: a flight which began in one viewport carries on there
+    //however far the cursor wanders, which is what keeps a fast turn from
+    //handing the keyboard to whichever viewport the cursor crossed into.
+    //
+    //Called on every update rather than once per rendered frame, so that the
+    //distance a camera travels is the same however fast the editor is drawing.
+    function updateRenderWindowCameras_(){
+        foreach(window in mRenderWindows_){
+            local interactable = mFlyingRenderWindow_ == null && window.isHovered();
+
+            if(window.updateCamera(interactable)){
+                mFlyingRenderWindow_ = window;
+            }else if(mFlyingRenderWindow_ == window){
+                mFlyingRenderWindow_ = null;
+            }
         }
     }
 
@@ -248,9 +285,17 @@
     //Whether the cursor is over the focused viewport rather than somewhere else
     //in the editor. It can be focused without being hovered - the cursor has
     //moved onto a panel, or is part way through a drag which has left it.
-    function sceneEditorInteractable_(){
+    function sceneCursorInViewport_(){
         if(mFocusedRenderWindow_ == null) return false;
         return mFocusedRenderWindow_.isHovered();
+    }
+
+    //Whether the framework may act on the cursor. A viewport being flown has the
+    //mouse, and the cursor it is holding still is not pointing at anything the
+    //user means to pick or drag.
+    function sceneEditorInteractable_(){
+        if(mFlyingRenderWindow_ != null) return false;
+        return sceneCursorInViewport_();
     }
 
     //Where the cursor is within the focused viewport's image, in the 0-1 range
@@ -391,6 +436,10 @@
     }
 
     function update(){
+        //Before the framework's update, so that the gizmos it sizes by their
+        //distance from the camera are sized for where the camera is now.
+        updateRenderWindowCameras_();
+
         mBase_.update();
         if(!_imgui.isFirstUpdateOfFrame()) return;
 
@@ -548,15 +597,28 @@
     //Which object is under the cursor is a ray cast against the scene, which
     //needs the scene to be clean - so it happens here rather than while the gui
     //is built, and what it finds waits until then.
+    //
+    //On the release rather than the press, because the same button flies the
+    //camera: until it comes back up there is no telling whether it was a click
+    //asking for a menu or the beginning of a flight.
     function updateSceneRightClick_(){
         local down = _input.getMouseButton(_MB_RIGHT);
-        local pressed = down && !mRightMouseDown_;
+        local released = !down && mRightMouseDown_;
         mRightMouseDown_ = down;
 
         //Only a click in a viewport is a click on the scene, and the object it
         //finds is the one that viewport's camera sees under the cursor. Anywhere
         //else belongs to imgui, which draws its own context menus.
-        if(!pressed || !sceneEditorInteractable_()) return;
+        //
+        //Deliberately not sceneEditorInteractable_, which is false while the
+        //camera still has the mouse: this runs before the update which notices
+        //the button has come up, so on the frame a flight ends it would refuse
+        //every release, menu-worthy or not.
+        if(!released || !sceneCursorInViewport_()) return;
+        //A button which flew the camera was doing that rather than asking for
+        //anything. The camera keeps the answer until the next press, so it is
+        //still there to be asked once the flight is over.
+        if(mFocusedRenderWindow_.cameraWasFlown()) return;
 
         local sceneTree = mBase_.getActiveSceneTree();
         if(sceneTree == null) return;
@@ -576,6 +638,7 @@
         }
         mRenderWindows_.clear();
         mFocusedRenderWindow_ = null;
+        mFlyingRenderWindow_ = null;
     }
 };
 

@@ -5,10 +5,12 @@
 //which renders that camera into that texture. The editor can open as many as it
 //likes, and each shows the same scene from wherever its own camera is.
 //
-//Nothing here reads the mouse. Which viewport the cursor is working in is a
-//decision only the editor can make - it is the only thing which can see them all
-//- so a window records whether it was hovered while it was drawn and answers
+//Nothing here decides whether it is the window the cursor is working in. That is
+//a decision only the editor can make - it is the only thing which can see them
+//all - so a window records whether it was hovered while it was drawn and answers
 //questions about positions inside it, and the editor picks which one to believe.
+//The camera reads the mouse only once the editor has said it may. @see
+//updateCamera
 //
 //This is loaded with _doFile from the editor's start function, alongside
 //ExampleRightClickMenu.nut.
@@ -40,6 +42,9 @@
     mCamera_ = null;
     mCameraNode_ = null;
     mView_ = null;
+    //Flies the camera above. Each window has its own, so each is flown
+    //separately and only the one the cursor is in moves.
+    mFPSCamera_ = null;
 
     //The texture the scene is rendered into, and the workspace which does it.
     mTexture_ = null;
@@ -77,6 +82,10 @@
         mCameraNode_ = _scene.getRootSceneNode().createChildSceneNode();
         mCamera_ = _scene.createCamera("sceneEditorExample/camera" + id);
         mCameraNode_.attachObject(mCamera_);
+        //Created before the view is set, since it is what places the camera:
+        //the angles it flies by have to be the ones the view left it at, or the
+        //first turn would snap the view somewhere else.
+        mFPSCamera_ = ::SceneEditorFramework.FPSCamera(mCamera_);
         setView(viewIndex % VIEW_MAX);
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
@@ -87,6 +96,11 @@
      */
     function shutdown(){
         destroyTexture_();
+
+        //A window can be closed part way through a flight, and the cursor it
+        //hid has to come back whether or not the camera it was flying survives.
+        mFPSCamera_.cancel();
+        mFPSCamera_ = null;
 
         //Destroying the node destroys the camera attached to it, which the
         //workspace destroyed above was rendering through.
@@ -161,13 +175,31 @@
 
     /**
      * Point the window's camera at the scene from one of the preset views.
+     *
+     * Through the fps camera rather than around it, so that flying continues
+     * from the view rather than snapping back to wherever the camera was last
+     * flown to.
      */
     function setView(view){
         mView_ = view;
 
         local placement = viewPlacement_(view);
-        mCameraNode_.setPosition(placement[0]);
-        mCamera_.setDirection(placement[1]);
+        mFPSCamera_.setPosition(placement[0]);
+        mFPSCamera_.setDirection(placement[1]);
+    }
+
+    /**
+     * Fly the window's camera for one update. Call once per update rather than
+     * once per rendered frame, so that the distance flown does not depend on how
+     * fast the editor is drawing.
+     *
+     * @param interactable Whether the editor is willing to let this window take
+     * the mouse, which it is for the one the cursor is over and no other.
+     * @returns Whether the camera has taken it, which it keeps until the button
+     * is released however far the cursor wanders in the meantime.
+     */
+    function updateCamera(interactable){
+        return mFPSCamera_.update(interactable);
     }
 
     //Where each view puts the camera, as a position and the direction it faces
@@ -337,6 +369,15 @@
 
     function isHovered(){
         return mHovered_;
+    }
+
+    /**
+     * Whether the camera was flown by the right button which is being held, or
+     * by the one which was last released. What tells a right click in the scene
+     * apart from a right drag which flew the camera.
+     */
+    function cameraWasFlown(){
+        return mFPSCamera_.hasMoved();
     }
 
     function isVisible(){
