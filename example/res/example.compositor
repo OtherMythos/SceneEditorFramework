@@ -1,25 +1,184 @@
 //The example renders the scene into a texture rather than straight to the
 //window, so that it can be drawn inside a docked imgui window like any other
 //panel. avSetup.cfg turns off the engine's default compositor and the editor
-//builds these two workspaces itself during start().
+//builds these workspaces itself during start().
 
-//The scene, rendered into a texture supplied as an external channel. The
-//texture is created from script and re-created when the scene window is
-//resized, so this node has no say in its resolution.
-compositor_node SceneEditorExample/SceneToTextureNode
+//What every viewport draws, which is the scene followed by the gizmo.
+//
+//The gizmo is drawn apart from the scene for two reasons. It has to be on top of
+//the scene, and clearing the depth buffer before it is what puts it there -
+//which leaves it free to depth test against itself, so its arms overlap each
+//other in the order they are really in rather than in whatever order they were
+//submitted. And each viewport has a copy of the gizmo sized for its own camera,
+//so a viewport has to be able to draw the copy which belongs to it and no other.
+//@see SceneEditorGizmoLayers.nut
+//
+//$gizmoLayerMask names that copy: the framework gives the gizmo on layer n the
+//visibility flag 1 << n, so each of the nodes below asks for the layer it was
+//built for. The scene itself is not masked - the render queue is what keeps the
+//gizmo out of the pass which draws it.
+abstract target sceneEditorExampleSceneTarget
+{
+    pass clear
+    {
+        colour_value 0.156 0.184 0.215 1
+    }
+
+    //The scene. 99 is the framework's gizmo render queue, and rq_last is
+    //exclusive, so this is everything except the gizmo.
+    //@see SceneEditorFramework_RenderQueue
+    pass render_scene
+    {
+        rq_first 0
+        rq_last 99
+    }
+
+    //This viewport's copy of the gizmo, over the scene which has just been
+    //drawn. Only the depth buffer is cleared: the colour is kept, since the
+    //gizmo is drawn on top of the scene rather than instead of it.
+    pass render_scene
+    {
+        load
+        {
+            colour  load
+            depth   clear
+            stencil clear
+        }
+        store
+        {
+            colour  store_or_resolve
+            depth   dont_care
+            stencil dont_care
+        }
+
+        rq_first 99
+        rq_last max
+        visibility_mask $gizmoLayerMask
+    }
+}
+
+//One node and workspace per gizmo layer, differing only in which copy of the
+//gizmo they draw. A workspace is an instance of its definition and every
+//instance shares the pass definitions above, so a viewport which needs a
+//visibility mask of its own needs a definition of its own to hold it - which is
+//why there is a fixed number of these rather than one made per viewport.
+//
+//There are as many as the framework has gizmo layers, so the editor's limit on
+//how many viewports can be open at once is this list.
+//@see ::SceneEditorFramework.MAX_GIZMO_LAYERS
+
+compositor_node SceneEditorExample/SceneToTextureNode0
+{
+    //The texture is created from script and re-created when the viewport is
+    //resized, so this node has no say in its resolution.
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x01
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace0
+{
+    connect_output SceneEditorExample/SceneToTextureNode0 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode1
 {
     in 0 sceneTexture
 
-    target sceneTexture
+    target sceneTexture : sceneEditorExampleSceneTarget
     {
-        pass clear
-        {
-            colour_value 0.156 0.184 0.215 1
-        }
-        pass render_scene
-        {
-        }
+        set $gizmoLayerMask 0x02
     }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace1
+{
+    connect_output SceneEditorExample/SceneToTextureNode1 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode2
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x04
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace2
+{
+    connect_output SceneEditorExample/SceneToTextureNode2 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode3
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x08
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace3
+{
+    connect_output SceneEditorExample/SceneToTextureNode3 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode4
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x10
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace4
+{
+    connect_output SceneEditorExample/SceneToTextureNode4 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode5
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x20
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace5
+{
+    connect_output SceneEditorExample/SceneToTextureNode5 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode6
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x40
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace6
+{
+    connect_output SceneEditorExample/SceneToTextureNode6 0
+}
+
+compositor_node SceneEditorExample/SceneToTextureNode7
+{
+    in 0 sceneTexture
+
+    target sceneTexture : sceneEditorExampleSceneTarget
+    {
+        set $gizmoLayerMask 0x80
+    }
+}
+workspace SceneEditorExample/SceneToTextureWorkspace7
+{
+    connect_output SceneEditorExample/SceneToTextureNode7 0
 }
 
 //Nothing draws the window itself any more: the scene goes to a texture and the
@@ -37,11 +196,6 @@ compositor_node SceneEditorExample/ClearWindowNode
             colour_value 0.06 0.07 0.09 1
         }
     }
-}
-
-workspace SceneEditorExample/SceneToTextureWorkspace
-{
-    connect_output SceneEditorExample/SceneToTextureNode 0
 }
 
 workspace SceneEditorExample/ClearWindowWorkspace

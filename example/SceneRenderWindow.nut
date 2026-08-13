@@ -2,8 +2,15 @@
 //
 //Everything a viewport needs to be independent of the others belongs to an
 //instance of this: its own camera, its own render texture, and the workspace
-//which renders that camera into that texture. The editor can open as many as it
-//likes, and each shows the same scene from wherever its own camera is.
+//which renders that camera into that texture. Each shows the same scene from
+//wherever its own camera is.
+//
+//It also claims a gizmo layer, which is the framework's name for one viewport's
+//copy of the transform gizmo. The copy is sized for this window's camera, and
+//the workspace which draws it is the one belonging to that layer - so the gizmo
+//is the right size in every viewport at once rather than in one of them. There
+//are a fixed number of layers, and that is what limits how many of these the
+//editor can open. @see ::SceneEditorFramework.MAX_GIZMO_LAYERS
 //
 //Nothing here decides whether it is the window the cursor is working in. That is
 //a decision only the editor can make - it is the only thing which can see them
@@ -39,6 +46,12 @@
     mName_ = null;
     mTitle_ = null;
 
+    //Which gizmo layer this window has claimed, which is both the copy of the
+    //transform gizmo it draws and the workspace definition which draws it.
+    //Unlike the id it is reused: a closed window gives its layer back, since
+    //there are only so many of them. @see ::SceneEditorFramework.MAX_GIZMO_LAYERS
+    mLayer_ = null;
+
     mCamera_ = null;
     mCameraNode_ = null;
     mView_ = null;
@@ -69,11 +82,15 @@
     /**
      * @param id A number no other render window has used, which the window's
      * imgui, texture and camera names are all built from.
+     * @param layer A gizmo layer no other open render window is using, which
+     * decides which workspace definition draws this window and so which copy of
+     * the transform gizmo it shows.
      * @param viewIndex Which view the window opens on. Wrapped, so the editor
      * can pass a plain count of the windows it has open.
      */
-    constructor(id, viewIndex){
+    constructor(id, layer, viewIndex){
         mId_ = id;
+        mLayer_ = layer;
         mName_ = "Scene " + id;
         //imgui identifies a window by everything after the ##, and the dock
         //builder places windows by the whole string, so both halves matter.
@@ -117,11 +134,12 @@
         mTexture_.setResolution(width, height);
         mTexture_.scheduleTransitionTo(_GPU_RESIDENCY_RESIDENT);
 
-        //One workspace per window, all built from the same definition: a
-        //workspace is an instance of it, so each renders its own camera into its
-        //own texture.
+        //One workspace per window, each an instance of the definition belonging
+        //to the layer this window claimed - so each renders its own camera into
+        //its own texture, and draws the copy of the gizmo which was sized for
+        //that camera. @see res/example.compositor
         mWorkspace_ = _compositor.addWorkspace([mTexture_], mCamera_,
-            "SceneEditorExample/SceneToTextureWorkspace", true);
+            "SceneEditorExample/SceneToTextureWorkspace" + mLayer_, true);
 
         mTextureWidth_ = width;
         mTextureHeight_ = height;
@@ -378,6 +396,10 @@
 
     function getCamera(){
         return mCamera_;
+    }
+
+    function getLayer(){
+        return mLayer_;
     }
 
     function isHovered(){

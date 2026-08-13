@@ -23,6 +23,12 @@
 //    answered for a single viewport - the one the cursor is working in - which is
 //    what keeps input to one viewport at a time.
 //    @see updateFocusedRenderWindow_
+//  * A transform gizmo is sized by its distance from the camera so that it stays
+//    the same size on screen, and there is no one size which suits every
+//    viewport at once. So the framework draws a copy of it per viewport, sized
+//    for that viewport's camera, and each viewport is rendered by a workspace
+//    which draws its own copy and no other.
+//    @see gizmoLayerCameras_ and res/example.compositor
 //
 //Each viewport is flown with the framework's fps camera: hold the right mouse
 //button in one and it turns with the mouse and moves with WASD, QE for up and
@@ -145,13 +151,38 @@
      * Open another viewport onto the scene. It docks with the others the first
      * time it is drawn, and opens on a different view from the one before it so
      * that it is showing something new.
+     *
+     * @returns The new viewport, or null when every gizmo layer is taken and
+     * there is no room for another. @see findFreeGizmoLayer_
      */
     function addRenderWindow_(){
-        local window = ::ExampleSceneRenderWindow(mNextRenderWindowId_, mRenderWindows_.len());
+        local layer = findFreeGizmoLayer_();
+        if(layer == null) return null;
+
+        local window = ::ExampleSceneRenderWindow(mNextRenderWindowId_, layer, mRenderWindows_.len());
         mNextRenderWindowId_++;
 
         mRenderWindows_.append(window);
         return window;
+    }
+
+    //A gizmo layer no open viewport is using, or null when there are none left.
+    //
+    //A layer is a copy of the transform gizmo and the workspace definition which
+    //draws it, and the compositor declares a fixed number of those - so this is
+    //what limits how many viewports the editor can have open. Layers are handed
+    //back when a viewport closes, so closing one always makes room for another.
+    function findFreeGizmoLayer_(){
+        local used = array(::SceneEditorFramework.MAX_GIZMO_LAYERS, false);
+        foreach(window in mRenderWindows_){
+            used[window.getLayer()] = true;
+        }
+
+        foreach(layer,taken in used){
+            if(!taken) return layer;
+        }
+
+        return null;
     }
 
     //Close the viewports which asked to be closed while the last frame was
@@ -312,6 +343,34 @@
         return mFocusedRenderWindow_.getCamera();
     }
 
+    //The cameras every open viewport sees the scene through, by the gizmo layer
+    //each of them claimed.
+    //
+    //The framework puts a copy of the transform gizmo on each of these layers
+    //and sizes it for the camera named here, which is what gives every viewport
+    //a gizmo the right size for the view it is showing. A layer no viewport has
+    //claimed is named as null, and the copy of the gizmo on it is given up.
+    //
+    //Every open viewport is named, including one which is not being drawn: its
+    //workspace keeps rendering while it is tabbed out of sight, which is what
+    //makes selecting its tab show a live scene rather than a stale one.
+    function gizmoLayerCameras_(){
+        local cameras = array(::SceneEditorFramework.MAX_GIZMO_LAYERS, null);
+        foreach(window in mRenderWindows_){
+            cameras[window.getLayer()] = window.getCamera();
+        }
+
+        return cameras;
+    }
+
+    //Which of those layers the cursor is working in. Only that viewport's copy
+    //of the gizmo can be picked or dragged, so this is what keeps a drag going
+    //to the gizmo the user can actually see under the cursor.
+    function activeGizmoLayer_(){
+        if(mFocusedRenderWindow_ == null) return null;
+        return mFocusedRenderWindow_.getLayer();
+    }
+
     //Perform whatever the keyboard is asking for. The engine reports the state
     //of a key rather than delivering presses, so a press is a frame where the
     //command has turned from not held to held - which is what the previous
@@ -411,6 +470,26 @@
             //the engine's default one is the one the user is looking through.
             function activeSceneCamera(){
                 return ::ExampleEditor.activeSceneCamera_();
+            }
+
+            //A gizmo sized for one viewport's camera is the wrong size in every
+            //other viewport, so the framework builds one per viewport and each
+            //of these says which viewport it is sizing one for.
+            function gizmoLayerCameras(){
+                return ::ExampleEditor.gizmoLayerCameras_();
+            }
+
+            function activeGizmoLayer(){
+                return ::ExampleEditor.activeGizmoLayer_();
+            }
+
+            //Every viewport draws the gizmo in a pass of its own, having cleared
+            //the depth buffer first. That is what puts the gizmo over the scene,
+            //and it lets the gizmo depth test against itself so that its arms
+            //overlap in the order they are really in.
+            //@see res/example.compositor
+            function gizmoPassClearsDepth(){
+                return true;
             }
         };
 
@@ -550,7 +629,15 @@
         }
 
         if(_imgui.beginMenu("Window")){
-            if(_imgui.menuItem("Add Render Window")) addRenderWindow_();
+            //Only while there is a gizmo layer left for one to draw its gizmo
+            //on. Shown all the same once there are none, so that the way to get
+            //another viewport is to close one rather than to wonder where the
+            //entry went. @see findFreeGizmoLayer_
+            if(findFreeGizmoLayer_() != null){
+                if(_imgui.menuItem("Add Render Window")) addRenderWindow_();
+            }else{
+                _imgui.textDisabled("Add Render Window");
+            }
 
             //A viewport can also be closed from its own menu bar. This is the
             //way back to one which has been hidden, which its own menu bar

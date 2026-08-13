@@ -15,7 +15,7 @@
     function setup(parent){
         local newNode = parent.createChildSceneNode();
         local item = _scene.createItem("lineBox");
-        item.setRenderQueueGroup(30);
+        item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.SCENE);
         newNode.attachObject(item);
 
         mItem_ = item;

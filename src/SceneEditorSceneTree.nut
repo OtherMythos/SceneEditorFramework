@@ -65,6 +65,8 @@
 
     function update(){
         //TODO move out.
+        //Also what notices a viewport being opened or closed, since that is a
+        //copy of the gizmo appearing or going away.
         mMoveHandles_.update();
 
         if(mCurrentSelectionDeferred == -1){
@@ -75,10 +77,9 @@
         }
         mCurrentSelectionDeferred = null;
 
-        //Null when no viewport is showing the scene, which leaves the gizmo the
-        //size the last one to show it gave it rather than resizing it to nothing.
-        local cameraPos = ::SceneEditorFramework.getActiveSceneCameraPosition();
-        if(cameraPos != null) mMoveHandles_.updateCameraDist(cameraPos);
+        //After the selection above, so a gizmo which has just been put on
+        //another object is sized for where it now is.
+        mMoveHandles_.updateScales();
     }
 
     function getId(){
@@ -103,7 +104,7 @@
 
         if(mMoveHandles_ != null) mMoveHandles_.shutdown();
         mCurrentObjectTransformCoordinateType_ = coordType;
-        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(mParentNode_, mCurrentObjectTransformCoordinateType_, mBus_);
+        mMoveHandles_ = ::SceneEditorFramework.SceneEditorGizmoLayers(mParentNode_, mCurrentObjectTransformCoordinateType_, mBus_);
         if(mCurrentSelection != -1){
             positionTransformGizmo_();
         }
@@ -182,8 +183,8 @@
         if(nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             local item = _scene.createItem(entryData.meshName);
 
-            item.setRenderQueueGroup(30);
-            item.setQueryFlags(1 << 20);
+            item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.SCENE);
+            item.setQueryFlags(SceneEditorFramework_QueryFlag.SCENE_OBJECT);
             newNode.attachObject(item);
         }
         else if(nodeType == SceneEditorFramework_SceneTreeEntryType.USER0){
@@ -587,7 +588,7 @@
         if(camera == null) return null;
 
         local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
-        local result = _scene.testRayForObjectArray(ray, 1 << 20);
+        local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
         if(result == null || result.len() <= 0) return null;
 
         //Objects the framework did not construct can share the query mask, so
@@ -616,11 +617,11 @@
         }
 
         local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
-        local result = _scene.testRayForObjectArray(ray, 1 << 10);
+        local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.GIZMO_HANDLE);
         local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);
 
         if(interactedWithGizmo && _input.getMouseButton(_MB_LEFT)){
-            local result = _scene.testRayForObjectArray(ray, 1 << 20);
+            local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
             if(result != null){
                 if(result.len() > 0){
                     //Otherwise take the first item and highlight it.

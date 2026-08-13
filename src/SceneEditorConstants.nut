@@ -67,3 +67,40 @@ enum SceneEditorFramework_BasicCoordinateType{
     ORIENTATION,
     RAYCAST
 }
+
+//Where the framework's own geometry sits in the render queue.
+//
+//Ogre hands render queues 0-99 to v2 objects and 100-199 to v1 ones, so the
+//gizmo takes the last of the v2 groups: a project's own content can use anything
+//below it and still be drawn before the gizmo is.
+enum SceneEditorFramework_RenderQueue{
+    //Objects the scene tree builds, and the outline box drawn around the
+    //selected one. Part of the scene, and drawn with it.
+    SCENE = 30,
+    //The transform gizmo, which is not part of the scene: it is drawn over it.
+    //A project's compositor is expected to give this queue a pass of its own.
+    //@see ::SceneEditorFramework.gizmoPassClearsDepth
+    GIZMO = 99
+}
+
+//Masks the framework's own objects can be found by with a ray query. Written out
+//rather than shifted because a squirrel enum only takes literals.
+enum SceneEditorFramework_QueryFlag{
+    //The arms of the transform gizmo. Only the copy of the gizmo in the viewport
+    //the cursor is working in carries this.
+    //@see SceneEditorFramework.SceneEditorGizmoLayers
+    GIZMO_HANDLE = 0x400,     //1 << 10
+    //Objects the scene tree builds.
+    SCENE_OBJECT = 0x100000   //1 << 20
+}
+
+//How many viewports can show the transform gizmo at once.
+//
+//Each one draws its own copy of the gizmo, sized for the camera it is looking
+//through, and tells them apart by a visibility flag - so this is a count of the
+//flags the framework reserves for the purpose, being the lowest ones.
+//
+//A plain value rather than an enum, so that a project's entry file can name it
+//whether it was compiled before the framework's scripts ran or after.
+//@see ::SceneEditorFramework.getGizmoLayerCameras
+::SceneEditorFramework.MAX_GIZMO_LAYERS <- 8;

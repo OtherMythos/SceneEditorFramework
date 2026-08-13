@@ -1,3 +1,11 @@
+//One copy of the transform gizmo, belonging to a single viewport.
+//
+//An editor with more than one viewport has one of these per viewport rather than
+//one between them, because the size a gizmo has to be depends on the view it is
+//being looked at through. The layer is what keeps them apart: it decides which
+//viewport draws this copy, and only the copy in the viewport the cursor is
+//working in answers the mouse.
+//@see SceneEditorFramework.SceneEditorGizmoLayers
 ::SceneEditorFramework.SceneEditorGizmoObjectHandles <- class extends ::SceneEditorFramework.SceneEditorGizmo{
 
     mBus_ = null;
@@ -12,12 +20,18 @@
     mPerformingAction_ = null;
     mTestingPlane_ = null;
     mHandleType_ = null;
+    mLayer_ = null;
 
-    constructor(parent, handleType, bus){
+    /**
+     * @param layer Which gizmo layer this copy is on, which is the viewport
+     * which draws it. @see ::SceneEditorFramework.getGizmoLayerCameras
+     */
+    constructor(parent, handleType, bus, layer){
         base.constructor(parent);
 
         mBus_ = bus;
         mHandleType_ = handleType;
+        mLayer_ = layer;
 
         setup(mParentNode_);
     }
@@ -34,8 +48,14 @@
         for(local i = 0; i < NUM_HANDLES; i++){
             local newNode = parent.createChildSceneNode();
             local item = _scene.createItem(getObjectForHandle_());
-            item.setRenderQueueGroup(30);
-            item.setQueryFlags(1 << 10);
+            //Its own render queue, so that a compositor can draw the gizmo apart
+            //from the scene, and its own visibility flag, so that only the
+            //viewport this copy belongs to draws it.
+            item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.GIZMO);
+            item.setVisibilityFlags(1 << mLayer_);
+            //Not queryable until the cursor is in the viewport which draws this
+            //copy. @see setQueryable
+            item.setQueryFlags(0);
             newNode.attachObject(item);
             local scaleSize = getScaleObjectForHandle_()
             newNode.setScale(scaleSize, scaleSize, scaleSize);
@@ -51,6 +71,20 @@
 
     function shutdown(){
         mParentNode_.destroyNodeAndChildren();
+    }
+
+    /**
+     * Whether a ray cast for the gizmo may find this copy of it.
+     *
+     * Only the copy in the viewport the cursor is working in may. The others are
+     * sized for views the ray was not cast from, so what they cover on screen
+     * says nothing about what the cursor is over.
+     */
+    function setQueryable(queryable){
+        local flags = queryable ? SceneEditorFramework_QueryFlag.GIZMO_HANDLE : 0;
+        foreach(i in mPositionHandles_){
+            i.setQueryFlags(flags);
+        }
     }
 
     function update(){
@@ -176,24 +210,27 @@
 
             }else{
                 //Just perform a highlight
-                if(mHighlightAxis_ != null){
-                    resetHighlightForAxis_(mHighlightAxis_);
-                }
+                clearHighlight();
                 mPositionHandles_[axis].setDatablock("SceneEditorFramework/handleHighlight"+axis);
                 mHighlightAxis_ = axis;
             }
         }else{
-            if(mHighlightAxis_ != null){
-                //Reset the highlight.
-                //mPositionHandles_[mHighlightAxis_].setDatablock("SceneEditorFramework/handle"+mHighlightAxis_);
-                //mHighlightAxis_ = null;
-                resetHighlightForAxis_(axis);
-            }
+            clearHighlight();
             return true;
         }
         return false;
     }
-    function resetHighlightForAxis_(axis){
+
+    /**
+     * Put whichever arm the cursor was over back to its usual colour.
+     *
+     * Also what a copy which is losing the cursor to another viewport is told,
+     * since nothing else would take the highlight off an arm the cursor has
+     * stopped being over.
+     */
+    function clearHighlight(){
+        if(mHighlightAxis_ == null) return;
+
         mPositionHandles_[mHighlightAxis_].setDatablock("SceneEditorFramework/handle"+mHighlightAxis_);
         mHighlightAxis_ = null;
     }

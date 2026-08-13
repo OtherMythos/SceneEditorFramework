@@ -112,6 +112,20 @@ sees.
 }
 
 /**
+Where a camera is in the world, or null when there is no telling.
+
+A camera is placed by the node it is attached to, so that is what has the
+position. One which is attached to nothing - or no camera at all - is somewhere
+unknowable rather than at the origin.
+*/
+::SceneEditorFramework.getCameraPosition <- function(camera){
+    if(camera == null) return null;
+
+    local node = camera.getParentNode();
+    return node == null ? null : node.getDerivedPositionVec3();
+}
+
+/**
 Where the active scene camera is in the world, or null when there is no viewport.
 
 Gizmos size themselves by their distance from it, so that they stay the same size
@@ -122,14 +136,79 @@ on screen however far the view is from the object they belong to.
         return _camera.getPosition();
     }
 
-    local camera = ::SceneEditorFramework.HelperFunctions.activeSceneCamera();
-    if(camera == null) return null;
+    return ::SceneEditorFramework.getCameraPosition(
+        ::SceneEditorFramework.HelperFunctions.activeSceneCamera());
+}
 
-    //A camera is placed by the node it is attached to, so that is what has the
-    //position. One which is attached to nothing is somewhere unknowable rather
-    //than at the origin.
-    local node = camera.getParentNode();
-    return node == null ? null : node.getDerivedPositionVec3();
+/**
+The cameras which are showing the scene, one per gizmo layer.
+
+The transform gizmo sizes itself by its distance from the camera, so that it
+stays the same size on screen however far the view is from the object it belongs
+to. One set of scene nodes can only be one size, and an editor with more than one
+viewport needs a different size in each - so the framework builds a copy of the
+gizmo per layer, and sizes each copy for the camera of the layer it belongs to.
+
+A layer is drawn only by the viewport which claimed it, which is what keeps each
+copy in the viewport it was sized for. The framework gives the copy on layer n
+the visibility flag 1 << n and draws it in the gizmo render queue, so a project
+which uses more than one layer has to give each of its viewports a compositor
+which draws that queue with the matching visibility mask.
+@see SceneEditorFramework_RenderQueue
+@see ::SceneEditorFramework.MAX_GIZMO_LAYERS
+
+@returns An array indexed by layer, no longer than MAX_GIZMO_LAYERS. A null entry
+is a layer no viewport is using, and so one with no copy of the gizmo on it.
+*/
+::SceneEditorFramework.getGizmoLayerCameras <- function(){
+    //Optional, so a project written against an earlier version of the framework
+    //keeps working: without it the scene is shown by a single viewport, which
+    //puts its gizmo on the only layer such a project knows about.
+    if("gizmoLayerCameras" in ::SceneEditorFramework.HelperFunctions){
+        return ::SceneEditorFramework.HelperFunctions.gizmoLayerCameras();
+    }
+
+    return [::SceneEditorFramework.getActiveSceneCamera()];
+}
+
+/**
+Which gizmo layer the cursor is working in, or null when it is in none of them.
+
+Only that layer's copy of the gizmo answers the mouse. The others follow the
+object the gizmo is on and show its axes at a size which suits the view they are
+in, but they cannot be picked or dragged: a copy sized for a distant view is
+enormous next to one sized for a near view, and a ray cast from the near view
+would hit it long before reaching the arm the cursor is actually over.
+*/
+::SceneEditorFramework.getActiveGizmoLayer <- function(){
+    if("activeGizmoLayer" in ::SceneEditorFramework.HelperFunctions){
+        return ::SceneEditorFramework.HelperFunctions.activeGizmoLayer();
+    }
+
+    //A project with a single viewport has the cursor in the only layer there is.
+    return 0;
+}
+
+/**
+Whether the project's compositor draws the gizmo in a pass of its own, having
+cleared the depth buffer first.
+
+The gizmo has to be drawn over the scene rather than inside it. A pass of its own
+gets that from a cleared depth buffer, which leaves the gizmo free to depth test
+against itself - so its arms overlap in the order they are actually in.
+
+A project which draws the whole scene in one pass has nowhere to clear the depth
+buffer, so its gizmo is drawn with no depth testing at all. That still puts it on
+top, but its arms cannot sort against each other and are left overlapping in
+whatever order they happen to be drawn in.
+@see SceneEditorFramework_RenderQueue
+*/
+::SceneEditorFramework.gizmoPassClearsDepth <- function(){
+    if("gizmoPassClearsDepth" in ::SceneEditorFramework.HelperFunctions){
+        return ::SceneEditorFramework.HelperFunctions.gizmoPassClearsDepth();
+    }
+
+    return false;
 }
 
 ::SceneEditorFramework.Base <- class{
@@ -295,9 +374,15 @@ on screen however far the view is from the object they belong to.
             "SceneEditorFramework/handleHighlight"
         ];
 
+        //Depth testing the gizmo is only of use when the depth buffer it is
+        //tested against has been cleared for it, which is something only the
+        //project's compositor can do. Without that the gizmo has to ignore depth
+        //altogether to stay on top of the scene.
+        //@see ::SceneEditorFramework.gizmoPassClearsDepth
+        local depthTest = ::SceneEditorFramework.gizmoPassClearsDepth();
         local macroblock = _hlms.getMacroblock({
-            "depthCheck": false,
-            "depthWrite": false,
+            "depthCheck": depthTest,
+            "depthWrite": depthTest,
         });
         foreach(cc,i in handleColours){
             local targetBase = bases[cc];
