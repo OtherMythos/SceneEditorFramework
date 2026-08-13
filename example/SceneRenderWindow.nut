@@ -269,6 +269,11 @@
         local size = _imgui.getContentRegionAvail();
         mRect_ = [pos[0], pos[1], size[0], size[1]];
 
+        //Whether a drag which began in this window's scene is still going, read
+        //from the invisible button below - which is the item imgui hands such a
+        //drag to, and holds until the button comes back up.
+        local sceneItemActive = false;
+
         if(size[0] > 0 && size[1] > 0){
             //Drawn at the panel's size rather than the texture's, so a resize
             //shows a stretched scene for the few frames before the texture
@@ -287,6 +292,7 @@
             //item, so it is unaffected by this and still re-docks normally.
             _imgui.setCursorPos(cursorX, cursorY);
             _imgui.invisibleButton("##sceneViewport", size[0], size[1]);
+            sceneItemActive = _imgui.isItemActive();
         }
 
         //The scene is inside an imgui window, so wantCaptureMouse is true
@@ -294,6 +300,13 @@
         //over this window, and no other, is what makes the scene interactable.
         //AllowWhenBlockedByActiveItem keeps a drag alive while a gizmo is held.
         mHovered_ = _imgui.isWindowHovered(_imgui.HoveredFlags_AllowWhenBlockedByActiveItem);
+
+        //That flag allows it whoever the active item belongs to, though, and a
+        //drag on a control in another panel - a coordinate box in the object
+        //properties - is one the cursor may well cross this window during.
+        //Whatever grabbed the mouse keeps it until it is released, so the window
+        //is only hovered while something is active if that something is its own.
+        if(!sceneItemActive && _imgui.isAnyItemActive()) mHovered_ = false;
 
         _imgui.end();
     }
