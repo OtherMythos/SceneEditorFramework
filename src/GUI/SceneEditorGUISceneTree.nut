@@ -4,7 +4,6 @@
     mContainerWin_ = null;
     mGuiEntries_ = null;
     mHoverPanel_ = null;
-    mHighlightPanel_ = null;
     mSelectionResetButton_ = null;
 
     mHighlightId_ = null;
@@ -15,14 +14,16 @@
         mNodeType_ = null;
         mParent_ = null;
         mHoverPanel_ = null;
-        mHighlightPanel_ = null;
+        mSelectionPanel_ = null;
         mLabel_ = null;
         mId_ = null;
 
-        constructor(parent, win, hoverPanel, highlightPanel){
+        constructor(parent, win, hoverPanel){
             mHoverPanel_ = hoverPanel;
-            mHighlightPanel_ = highlightPanel;
             mParent_ = parent;
+            mSelectionPanel_ = win.createPanel();
+            mSelectionPanel_.setVisible(false);
+            mSelectionPanel_.setDatablock("EditorGUIFramework_FrameBgActive");
             local button = win.createButton();
             //button.setPosition(indent * 30, height);
             //button.setUserId(c);
@@ -42,6 +43,7 @@
                 mNodeType_ = SceneEditorFramework_SceneTreeEntryType.NONE;
                 mLabel_.setText(" ");
                 mBackgroundButton_.setDisabled(true);
+                mSelectionPanel_.setVisible(false);
 
                 return;
             }
@@ -53,6 +55,7 @@
             mLabel_.setText(testText);
             mBackgroundButton_.setUserId(mId_);
             mBackgroundButton_.setSize(mParent_.mContainerWin_.getSizeAfterClipping().x, mLabel_.getSize().y);
+            mSelectionPanel_.setSize(mBackgroundButton_.getSize());
             mBackgroundButton_.setDisabled(false);
         }
 
@@ -60,7 +63,7 @@
             if(action == _GUI_ACTION_PRESSED){
                 if(mNodeType_ == null) return;
                 local buttonId = widget.getUserId();
-                mParent_.mSceneTree_.notifySelectionChanged(buttonId);
+                mParent_.notifyEntrySelected_(buttonId);
             }
             else if(action == _GUI_ACTION_HIGHLIGHTED){
                 local id = widget.getUserId();
@@ -91,8 +94,13 @@
         }
 
         function setPosition(x, y){
+            mSelectionPanel_.setPosition(x, y);
             mBackgroundButton_.setPosition(x, y);
             mLabel_.setPosition(x, y);
+        }
+
+        function setSelected(selected){
+            mSelectionPanel_.setVisible(selected);
         }
 
         function setName(name){
@@ -116,17 +124,8 @@
     function notifyBusEvent(event, data){
 
         if(event == SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED){
-            if(data == null){
-                mHighlightPanel_.setVisible(false);
-            }else{
-                local e = data.entry.entryId;
-                foreach(c,i in mGuiEntries_){
-                    if(i.mId_ == e){
-                        mHighlightPanel_.setVisible(true);
-                        mHighlightPanel_.setPosition(i.getPosition());
-                        mHighlightPanel_.setSize(i.getSize());
-                    }
-                }
+            foreach(entry in mGuiEntries_){
+                entry.setSelected(entry.mId_ != null && mSceneTree_.isEntrySelected(entry.mId_));
             }
         }
         else if(event == SceneEditorFramework_BusEvents.SCENE_TREE_CONTENTS_CHANGED){
@@ -161,10 +160,6 @@
         mHoverPanel_.setVisible(false);
         mHoverPanel_.setDatablock("EditorGUIFramework_FrameBg");
 
-        mHighlightPanel_ = mContainerWin_.createPanel();
-        mHighlightPanel_.setVisible(false);
-        mHighlightPanel_.setDatablock("EditorGUIFramework_FrameBgActive");
-
         //TODO find a better way to get this.
         local activeTree = mBaseObj_.mActiveTree_;
 
@@ -191,13 +186,14 @@
 
             local guiEntry = null;
             if(cc >= mGuiEntries_.len()){
-                guiEntry = GUISceneTreeEntry(this, mContainerWin_, mHoverPanel_, mHighlightPanel_);
+                guiEntry = GUISceneTreeEntry(this, mContainerWin_, mHoverPanel_);
                 mGuiEntries_.append(guiEntry);
             }else{
                 guiEntry = mGuiEntries_[cc];
             }
 
             guiEntry.populateData(entry);
+            guiEntry.setSelected(mSceneTree_.isEntrySelected(entry.entryId));
 
             cc++;
 
@@ -216,6 +212,27 @@
             return;
         }
         mHighlightId_ = id;
+    }
+
+    function notifyEntrySelected_(entryId){
+        local control = isAnyKeyHeld_([
+            SceneEditorFramework_KeyScancode.LCTRL,
+            SceneEditorFramework_KeyScancode.RCTRL,
+            SceneEditorFramework_KeyScancode.LGUI,
+            SceneEditorFramework_KeyScancode.RGUI
+        ]);
+        local shift = isAnyKeyHeld_([
+            SceneEditorFramework_KeyScancode.LSHIFT,
+            SceneEditorFramework_KeyScancode.RSHIFT
+        ]);
+        mSceneTree_.notifySelectionChanged(entryId, control, shift);
+    }
+
+    function isAnyKeyHeld_(scancodes){
+        foreach(scancode in scancodes){
+            if(_input.getRawKeyScancodeInput(scancode)) return true;
+        }
+        return false;
     }
 
     function positionEntries(){

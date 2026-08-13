@@ -75,6 +75,18 @@ enum SceneEditorFramework_BasicCoordinateType{
     RAYCAST
 }
 
+//Raw SDL scancodes used by both scene-tree front ends. Keeping these in the
+//framework means modifier-aware selection does not depend on an editor defining
+//its own KeyScancode table.
+enum SceneEditorFramework_KeyScancode{
+    LCTRL = 224,
+    LSHIFT = 225,
+    LGUI = 227,
+    RCTRL = 228,
+    RSHIFT = 229,
+    RGUI = 231
+}
+
 //Where the framework's own geometry sits in the render queue.
 //
 //Ogre hands render queues 0-99 to v2 objects and 100-199 to v1 ones, so the

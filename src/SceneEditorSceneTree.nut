@@ -11,6 +11,12 @@
     mNodesForEntry_ = null;
     mMagneticEdit_ = false;
 
+    //Entry ids are keys so selection membership remains independent of tree
+    //position. Public helpers return ids in tree order, which is what later
+    //tree rearrangement actions need.
+    mSelectedIds_ = null;
+    mMostRecentSelection_ = null;
+
     mCurrentSelection = -1;
     mCurrentSelectionIdx = -1;
     mCurrentSelectionDeferred = null;
@@ -49,6 +55,7 @@
         mBus_ = bus;
         mNodesForEntry_ = {};
         mIdPool_ = IdPool();
+        mSelectedIds_ = {};
 
         bus.subscribeObject(this);
 
@@ -134,6 +141,8 @@
 
     function setEntries(entries){
         mEntries_ = entries;
+        mSelectedIds_.clear();
+        mMostRecentSelection_ = null;
 
         constructSceneTree_();
     }
@@ -228,7 +237,19 @@
         return aabb;
     }
 
+    //Set exactly one selected entry. Call notifySelectionChanged for the
+    //modifier-aware behavior used by scene-tree rows.
     function setCurrentSelection(entryId){
+        mSelectedIds_.clear();
+        mMostRecentSelection_ = entryId;
+        if(entryId != null) mSelectedIds_.rawset(entryId, true);
+        setPrimarySelection_(entryId);
+    }
+
+    //The primary selection is the most recently clicked entry. Existing gizmo
+    //and properties code continues to act on it while mSelectedIds_ represents
+    //the complete selection.
+    function setPrimarySelection_(entryId){
         if(mEntries_ == null) return;
         local newSelection = null;
         local newIdx = null;
@@ -254,10 +275,92 @@
         if(newSelection != null){
             data = {
                 "idx": newIdx,
-                "entry": newSelection
+                "entry": newSelection,
+                "selectedIds": getSelectedIds(),
+                "selectionCount": getSelectedCount()
             };
         }
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SCENE_TREE_SELECTION_CHANGED, data);
+    }
+
+    function isEntrySelected(entryId){
+        return mSelectedIds_.rawin(entryId);
+    }
+
+    function getSelectedCount(){
+        return mSelectedIds_.len();
+    }
+
+    //Return a copy so actions can retain the selection they were created for.
+    function getSelectedIds(){
+        local result = [];
+        foreach(entry in mEntries_){
+            if(entry.entryId != null && isEntrySelected(entry.entryId)){
+                result.append(entry.entryId);
+            }
+        }
+        return result;
+    }
+
+    function getFirstSelection(){
+        local selected = getSelectedIds();
+        return selected.len() == 0 ? -1 : selected[0];
+    }
+
+    function clearAllSelection(){
+        setCurrentSelection(null);
+    }
+
+    function setSingleSelection(entryId){
+        setCurrentSelection(entryId);
+    }
+
+    function setSelectionById(entryId){
+        if(findEntryIdIndexInTree_(entryId) == null) return;
+        setCurrentSelection(entryId);
+    }
+
+    //For setup/restoration callers which need to build a selection before one
+    //selection-changed notification is sent.
+    function setSelectedId_(entryId){
+        if(findEntryIdIndexInTree_(entryId) == null) return;
+        mSelectedIds_.rawset(entryId, true);
+    }
+
+    function selectAll(){
+        mSelectedIds_.clear();
+        foreach(entry in mEntries_){
+            if(isObjectEntry_(entry)) mSelectedIds_.rawset(entry.entryId, true);
+        }
+
+        local first = getFirstSelection();
+        mMostRecentSelection_ = first == -1 ? null : first;
+        setPrimarySelection_(mMostRecentSelection_);
+    }
+
+    //Selecting a parent already encompasses its descendants for deletion and
+    //rearrangement, so remove those descendants from the actionable selection.
+    function getReducedSelection(){
+        local result = [];
+        foreach(entryId in getSelectedIds()){
+            local index = findEntryIdIndexInTree_(entryId);
+            if(!isParentSelected_(index)) result.append(entryId);
+        }
+        return result;
+    }
+
+    function isParentSelected_(entryIndex){
+        local parentIndex = getIndexOfParentForEntry_(entryIndex);
+        while(parentIndex != null){
+            if(isEntrySelected(mEntries_[parentIndex].entryId)) return true;
+            parentIndex = getIndexOfParentForEntry_(parentIndex);
+        }
+        return false;
+    }
+
+    function isObjectEntry_(entry){
+        return entry.nodeType != SceneEditorFramework_SceneTreeEntryType.CHILD &&
+            entry.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM;
     }
 
     function setOutlineBox(entryId){
@@ -419,9 +522,10 @@
     }
 
     function deleteCurrentSelection(){
-        assert(mCurrentSelectionIdx != -1);
+        local selected = getReducedSelection();
+        assert(selected.len() > 0);
 
-        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_DELETION](this, mBus_, [mCurrentSelection]);
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_DELETION](this, mBus_, selected);
         mActionStack_.pushAction_(action);
         action.performAction();
 
@@ -609,8 +713,37 @@
         return null;
     }
 
-    function notifySelectionChanged(buttonId){
-        setCurrentSelection(buttonId);
+    function notifySelectionChanged(buttonId, controlModifier=false, shiftModifier=false){
+        if(buttonId == null){
+            clearAllSelection();
+            return;
+        }
+
+        local entryIndex = findEntryIdIndexInTree_(buttonId);
+        assert(entryIndex != null);
+        assert(isObjectEntry_(mEntries_[entryIndex]));
+
+        //As in Southsea, clicking an already-selected item keeps the rest of
+        //the selection intact so beginning a drag does not collapse the group.
+        if(!controlModifier && !shiftModifier && !isEntrySelected(buttonId)){
+            mSelectedIds_.clear();
+        }
+
+        if(shiftModifier && mMostRecentSelection_ != null){
+            local anchorIndex = findEntryIdIndexInTree_(mMostRecentSelection_);
+            if(anchorIndex != null){
+                local startIndex = entryIndex < anchorIndex ? entryIndex : anchorIndex;
+                local endIndex = entryIndex < anchorIndex ? anchorIndex : entryIndex;
+                for(local i = startIndex; i <= endIndex; i++){
+                    local entry = mEntries_[i];
+                    if(isObjectEntry_(entry)) mSelectedIds_.rawset(entry.entryId, true);
+                }
+            }
+        }
+
+        mSelectedIds_.rawset(buttonId, true);
+        mMostRecentSelection_ = buttonId;
+        setPrimarySelection_(buttonId);
     }
 
     function getEntryForId(id){

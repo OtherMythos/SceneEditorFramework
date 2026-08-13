@@ -168,7 +168,7 @@
         if(mRenamingEntryId_ == entry.entryId){
             drawRenameInput_(entry, nameWidth);
         }else{
-            local selected = entry.entryId == mSceneTree_.mCurrentSelection;
+            local selected = mSceneTree_.isEntrySelected(entry.entryId);
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) + "##name";
             _imgui.selectable(label, selected, 0, nameWidth, frameHeight);
 
@@ -195,7 +195,8 @@
         local doubleClick = mLastClickedEntryId_ == entry.entryId &&
             now - mLastClickTime_ <= DOUBLE_CLICK_TIME;
 
-        mSceneTree_.notifySelectionChanged(entry.entryId);
+        local modifiers = getSelectionModifiers_();
+        mSceneTree_.notifySelectionChanged(entry.entryId, modifiers.control, modifiers.shift);
         if(doubleClick){
             mRenamingEntryId_ = entry.entryId;
             mRenameText_ = ::SceneEditorFramework.getNameForSceneEntry(entry);
@@ -256,6 +257,28 @@
     function cancelRename_(){
         mRenamingEntryId_ = null;
         mRenameFocusPending_ = false;
+    }
+
+    function getSelectionModifiers_(){
+        return {
+            "control": isAnyKeyHeld_([
+                SceneEditorFramework_KeyScancode.LCTRL,
+                SceneEditorFramework_KeyScancode.RCTRL,
+                SceneEditorFramework_KeyScancode.LGUI,
+                SceneEditorFramework_KeyScancode.RGUI
+            ]),
+            "shift": isAnyKeyHeld_([
+                SceneEditorFramework_KeyScancode.LSHIFT,
+                SceneEditorFramework_KeyScancode.RSHIFT
+            ])
+        };
+    }
+
+    function isAnyKeyHeld_(scancodes){
+        foreach(scancode in scancodes){
+            if(_input.getRawKeyScancodeInput(scancode)) return true;
+        }
+        return false;
     }
 
     //Skip a CHILD/TERM group without drawing it when its parent is collapsed.
