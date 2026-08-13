@@ -9,6 +9,7 @@
     INDENT_WIDTH = 10.0;
     ICON_GAP = 6.0;
     SCROLLBAR_WIDTH = 14.0;
+    SELECTABLE_SPACING_HEIGHT = 4.0;
     DOUBLE_CLICK_TIME = 0.35;
     DRAG_THRESHOLD = 5.0;
 
@@ -138,6 +139,7 @@
         local guiScale = _imgui.getGlobalScale();
         local iconWidth = ICON_WIDTH * guiScale;
         local iconHeight = ICON_HEIGHT * guiScale;
+        local selectableHeight = frameHeight - SELECTABLE_SPACING_HEIGHT * guiScale;
         local indent = depth * INDENT_WIDTH;
         local arrowX = startX + indent;
         local iconX = arrowX + frameHeight + ICON_GAP;
@@ -200,7 +202,7 @@
                 _imgui.pushStyleColor(_imgui.Col_HeaderHovered, colour[0], colour[1], colour[2], colour[3]);
                 _imgui.pushStyleColor(_imgui.Col_HeaderActive, colour[0], colour[1], colour[2], colour[3]);
             }
-            _imgui.selectable(label, selected, 0, nameWidth, frameHeight);
+            _imgui.selectable(label, selected, 0, nameWidth, selectableHeight);
             if(dropTarget) _imgui.popStyleColor(3);
             if(dropTarget){
                 local targetName = ::SceneEditorFramework.getNameForSceneEntry(entry);
