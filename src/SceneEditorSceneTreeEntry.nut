@@ -14,6 +14,7 @@
     nodeType = SceneEditorFramework_SceneTreeEntryType.NONE;
     animIdx = -1;
     name = null;
+    visible = true;
 
     node = null;
     data = null;

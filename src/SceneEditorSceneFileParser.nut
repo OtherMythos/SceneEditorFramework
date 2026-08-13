@@ -47,6 +47,10 @@
         if(entryName != null){
             nodeEntry.name = entryName;
         }
+        local visible = node.getAttribute("visible");
+        if(visible != null){
+            nodeEntry.visible = visible != "false" && visible != "0";
+        }
 
         if(!node.hasChildren()){
             return;

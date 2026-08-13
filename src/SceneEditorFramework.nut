@@ -36,4 +36,5 @@ _doFile("script://IMGUI/SceneEditorIMGUIObjectProperties.nut");
 
 _doFile("script://actions/BasicCoordinatesChangeAction.nut");
 _doFile("script://actions/RenameSceneNodeAction.nut");
+_doFile("script://actions/ChangeSceneNodeVisibilityAction.nut");
 _doFile("script://actions/ObjectDeleteAction.nut");

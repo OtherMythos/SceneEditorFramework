@@ -70,6 +70,9 @@
         if(entry.name != null){
             inserted.setAttribute("name", entry.name);
         }
+        if(!entry.visible){
+            inserted.setAttribute("visible", "false");
+        }
 
         if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
             inserted.setAttribute("mesh", entry.data.meshName);

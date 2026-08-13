@@ -203,6 +203,7 @@
         newNode.setPosition(entry.position);
         newNode.setScale(entry.scale);
         newNode.setOrientation(entry.orientation);
+        newNode.setVisible(entry.visible);
 
         return newNode;
     }
@@ -432,15 +433,67 @@
     function renameCurrentSelection(newName){
         assert(mCurrentSelectionIdx != -1);
 
-        local entry = mEntries_[mCurrentSelectionIdx];
+        renameEntry(mCurrentSelection, newName);
+    }
+
+    /**
+     * Rename one entry without requiring the caller to change selection first.
+     * This is what allows an inline tree editor to commit the name it is
+     * editing, while keeping the action stack and undo behaviour consistent
+     * with the context-menu rename.
+     */
+    function renameEntry(entryId, newName){
+        local idx = findEntryIdIndexInTree_(entryId);
+        assert(idx != null);
+
+        local entry = mEntries_[idx];
         local oldVal = entry.name;
         if(oldVal == null){
             oldVal = ::SceneEditorFramework.getNameForSceneEntry(entry);
         }
 
-        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.RENAME_SCENE_NODE](this, mBus_, mCurrentSelection, oldVal, newName);
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.RENAME_SCENE_NODE](this, mBus_, entryId, oldVal, newName);
         mActionStack_.pushAction_(action);
         action.performAction();
+    }
+
+    /** Set an entry's scene-node visibility through an undoable action. */
+    function setEntryVisibility(entryId, visible){
+        local idx = findEntryIdIndexInTree_(entryId);
+        assert(idx != null);
+
+        local entry = mEntries_[idx];
+        if(entry.visible == visible) return;
+
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.CHANGE_SCENE_NODE_VISIBILITY](this, mBus_, entryId, entry.visible, visible);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+    }
+
+    //Called by ChangeSceneNodeVisibilityAction. Keeping the engine-node write
+    //here makes visibility work for every caller, not only the imgui panel.
+    function setEntryVisibility_(entryId, visible){
+        local idx = findEntryIdIndexInTree_(entryId);
+        assert(idx != null);
+
+        local entry = mEntries_[idx];
+        entry.visible = visible;
+        entry.node.setVisible(visible);
+
+        if(mCurrentSelection == entryId){
+            if(visible){
+                positionTransformGizmo_();
+                setOutlineBox(entryId);
+            }else{
+                mMoveHandles_.setVisible(false);
+                mOutlineBox_.setVisible(false);
+            }
+        }
+
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.OBJECT_VISIBILITY_CHANGE, {
+            "id": entryId,
+            "visible": visible
+        });
     }
 
     function deleteObjectFromTree_(id){
