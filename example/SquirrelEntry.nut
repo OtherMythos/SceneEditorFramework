@@ -3,16 +3,26 @@
 //
 //The scene is not drawn to the window. It is rendered into a texture by a
 //workspace the editor creates (see res/example.compositor), and that texture is
-//drawn into a docked "Scene" window with _imgui.image. Everything else - the
+//drawn into a docked viewport window with _imgui.image. Everything else - the
 //framework's scene tree and object properties panels - docks around it, so the
 //editor looks like an editor rather than panels floating over the game.
 //
-//Two consequences of the scene living inside a window, both handled below:
-//  * The cursor being over the scene means it is over an imgui window, so
+//There can be any number of those viewports, each an ::ExampleSceneRenderWindow
+//owning the camera it looks through, the texture it draws and the workspace which
+//renders one into the other. The Window menu opens them and each closes itself
+//from its own menu bar, taking its workspace with it.
+//
+//Three consequences of the scene living inside windows, all handled below:
+//  * The cursor being over a viewport means it is over an imgui window, so
 //    wantCaptureMouse can no longer decide whether the scene is interactable.
-//    Whether the scene window itself is hovered decides that instead.
-//  * Mouse positions have to be expressed relative to the scene window rather
-//    than the whole window, which is what normalisedSceneMousePosition is for.
+//    Whether a viewport itself is hovered decides that instead.
+//  * Mouse positions have to be expressed relative to a viewport rather than to
+//    the whole window, which is what normalisedSceneMousePosition is for.
+//  * "The scene" is no longer one thing. The framework asks where the cursor is
+//    in the scene and which camera the scene is seen through, and both are
+//    answered for a single viewport - the one the cursor is working in - which is
+//    what keeps input to one viewport at a time.
+//    @see updateFocusedRenderWindow_
 
 //Raw SDL scancodes, which is what _input.getRawKeyScancodeInput() takes. In the
 //root table rather than an enum because the framework reads KeyScancode.LSHIFT
@@ -37,10 +47,6 @@
     mSceneParent_ = null
     mSceneTreePanel_ = null
     mObjectPropertiesPanel_ = null
-    //sceneSafeUpdate runs before the next ImGui frame is built. Keep the
-    //previous frame's result so that asking the framework whether the scene is
-    //interactable never starts an ImGui frame too early.
-    mSceneEditorInteractable_ = true
 
     //The options offered for a right clicked object. @see ExampleRightClickMenu
     mRightClickMenu_ = null
@@ -53,20 +59,16 @@
     //is found by watching the button rather than by asking for it.
     mRightMouseDown_ = false
 
-    //The texture the scene is rendered into, and the workspace which does it.
-    mSceneTexture_ = null
-    mSceneWorkspace_ = null
-    mSceneTextureWidth_ = 0
-    mSceneTextureHeight_ = 0
-    //The size the scene window last asked for, and how many frames it has been
-    //asking for it. @see updateSceneTextureSize_
-    mRequestedWidth_ = 0
-    mRequestedHeight_ = 0
-    mRequestedFrames_ = 0
-
-    //Where the scene image ended up on screen last frame, in imgui coordinates,
-    //as [x, y, width, height]. Null when the scene window is not being drawn.
-    mSceneRect_ = null
+    //Every viewport onto the scene which is currently open.
+    //@see ExampleSceneRenderWindow
+    mRenderWindows_ = null
+    //The one of them the cursor is working in, which is the one the framework's
+    //questions about the scene are answered for.
+    //@see updateFocusedRenderWindow_
+    mFocusedRenderWindow_ = null
+    //Never reused, so that a window's imgui, texture and camera names cannot
+    //collide with those of one which has been closed.
+    mNextRenderWindowId_ = 1
 
     //The display scale the gui was last set to. @see updateGuiScale_
     mGuiScale_ = 1.0
@@ -82,7 +84,6 @@
     mSideDockId_ = 0
     mPropertiesDockId_ = 0
     mLayoutBuilt_ = false
-    mScenePanelVisible_ = true
 
     PANEL_SCENE_TREE = 0
     PANEL_OBJECT_PROPERTIES = 1
@@ -92,19 +93,6 @@
     KEY_COMMAND_UNDO = 0
     KEY_COMMAND_REDO = 1
     KEY_COMMAND_MAX = 2
-
-    //The dock builder places windows by title, so the scene window's has to be
-    //the same string in both places.
-    SCENE_WINDOW_TITLE = "Scene"
-    SCENE_TEXTURE_NAME = "sceneEditorExample/sceneTexture"
-    //The scene window has no size before its first frame, so the texture starts
-    //at something usable and is re-created once the window has been laid out.
-    INITIAL_SCENE_WIDTH = 1280
-    INITIAL_SCENE_HEIGHT = 720
-    //Re-creating the texture means re-creating the workspace with it, so a
-    //resize is not something to do on every frame of a splitter drag. The size
-    //has to hold still for this many rendered frames first.
-    RESIZE_SETTLE_FRAMES = 8
 
     function setupLights_(){
         local light = _scene.createLight();
@@ -122,7 +110,10 @@
     //added, and the imgui plugin appends its overlay to the end the first time a
     //frame uses imgui - after both of these.
     function setupCompositor_(){
-        createSceneTexture_(INITIAL_SCENE_WIDTH, INITIAL_SCENE_HEIGHT);
+        //The first viewport, which the default layout is built around. Its
+        //workspace renders into a texture rather than into the window, so
+        //nothing it does is undone by the clear below.
+        addRenderWindow_();
 
         _compositor.addWorkspace([_window.getRenderTexture()], _camera.getCamera(),
             "SceneEditorExample/ClearWindowWorkspace", true);
@@ -131,62 +122,72 @@
         //imgui, but creating it here pins it after the two workspaces above.
         //Ogre runs workspaces in the order they were added, so the gui is drawn
         //over the cleared window rather than being cleared away again.
+        //
+        //A viewport opened later ends up after the overlay, which only means its
+        //texture is a frame behind the one the gui draws - not something which
+        //can be seen, and the alternative is rebuilding every workspace whenever
+        //a viewport is opened.
         _imgui.createOverlayWorkspace();
     }
 
-    function createSceneTexture_(width, height){
-        mSceneTexture_ = _graphics.createTexture(SCENE_TEXTURE_NAME);
-        mSceneTexture_.setPixelFormat(_PFG_RGBA8_UNORM_SRGB);
-        mSceneTexture_.setResolution(width, height);
-        mSceneTexture_.scheduleTransitionTo(_GPU_RESIDENCY_RESIDENT);
+    /**
+     * Open another viewport onto the scene. It docks with the others the first
+     * time it is drawn, and opens on a different view from the one before it so
+     * that it is showing something new.
+     */
+    function addRenderWindow_(){
+        local window = ::ExampleSceneRenderWindow(mNextRenderWindowId_, mRenderWindows_.len());
+        mNextRenderWindowId_++;
 
-        mSceneWorkspace_ = _compositor.addWorkspace([mSceneTexture_], _camera.getCamera(),
-            "SceneEditorExample/SceneToTextureWorkspace", true);
-
-        mSceneTextureWidth_ = width;
-        mSceneTextureHeight_ = height;
-
-        //Nothing else sets this now the scene has left the window: without it
-        //the scene is stretched to the window's shape rather than the panel's,
-        //and the rays cast for picking and the gizmos miss.
-        _camera.setAspectRatio(width.tofloat() / height.tofloat());
+        mRenderWindows_.append(window);
+        return window;
     }
 
-    function destroySceneTexture_(){
-        if(mSceneWorkspace_ != null){
-            _compositor.removeWorkspace(mSceneWorkspace_);
-            mSceneWorkspace_ = null;
-        }
-        if(mSceneTexture_ != null){
-            _graphics.destroyTexture(mSceneTexture_);
-            mSceneTexture_ = null;
+    //Close the viewports which asked to be closed while the last frame was
+    //built, giving up the camera, texture and workspace each of them owns.
+    //
+    //Called at the top of the frame rather than where the request was made: the
+    //texture a window has handed to imgui is not drawn until the frame it was
+    //handed over in is over, so this is the only point at which destroying one
+    //is safe.
+    function sweepClosedRenderWindows_(){
+        //Backwards, so removing one does not move the next one out from under
+        //the loop.
+        for(local i = mRenderWindows_.len() - 1; i >= 0; i--){
+            local window = mRenderWindows_[i];
+            if(!window.isCloseRequested()) continue;
+
+            //Nothing can be working in a viewport which no longer exists.
+            if(mFocusedRenderWindow_ == window) mFocusedRenderWindow_ = null;
+
+            window.shutdown();
+            mRenderWindows_.remove(i);
         }
     }
 
-    //Re-create the render target once the scene window has settled on a size.
-    //Called at the top of the frame, before anything is drawn, so the texture
-    //the scene was rendered into this frame is the one about to be shown.
-    function updateSceneTextureSize_(){
-        if(mSceneRect_ == null) return;
+    //Which viewport the cursor is working in. Everything the framework asks
+    //about the scene - where the cursor is in it, which camera it is seen
+    //through - is answered for this one, which is what keeps the editor's input
+    //going to one viewport at a time however many are open.
+    //
+    //The focus follows the cursor, except while the left button is held: a drag
+    //which began in one viewport and wandered into another is still a drag in
+    //the one it began in, and the object being dragged should not start
+    //following the other viewport's camera half way through.
+    //
+    //It stays with the last viewport the cursor was over rather than being given
+    //up when the cursor leaves, so that the gizmos keep the size that viewport
+    //gave them while the cursor is off editing a panel. Whether the scene can be
+    //interacted with is a separate question. @see sceneEditorInteractable_
+    function updateFocusedRenderWindow_(){
+        if(mFocusedRenderWindow_ != null && _input.getMouseButton(_MB_LEFT)) return;
 
-        local width = mSceneRect_[2].tointeger();
-        local height = mSceneRect_[3].tointeger();
-        //A collapsed or newly docked window can report nothing usable.
-        if(width <= 0 || height <= 0) return;
-        if(width == mSceneTextureWidth_ && height == mSceneTextureHeight_) return;
+        foreach(window in mRenderWindows_){
+            if(!window.isHovered()) continue;
 
-        if(width != mRequestedWidth_ || height != mRequestedHeight_){
-            mRequestedWidth_ = width;
-            mRequestedHeight_ = height;
-            mRequestedFrames_ = 0;
+            mFocusedRenderWindow_ = window;
             return;
         }
-
-        mRequestedFrames_++;
-        if(mRequestedFrames_ < RESIZE_SETTLE_FRAMES) return;
-
-        destroySceneTexture_();
-        createSceneTexture_(width, height);
     }
 
     //Scale the gui to the display. imgui is given the window's size in pixels
@@ -235,21 +236,35 @@
         ];
     }
 
-    //Where the cursor is within the scene image, in the 0-1 range the framework
-    //wants. Deliberately not clamped: a drag which wanders out of the panel is
-    //still a drag, and the framework decides what to do with a position outside
-    //the viewport.
+    //The three questions the framework asks about the scene, all answered for
+    //the viewport the cursor is working in.
+    //
+    //None of them may call into imgui: the framework asks them during its scene
+    //update, before the gui for the frame is built, and every _imgui call begins
+    //the frame - which would throw away the gui built by the previous update and
+    //leave the window empty. What the viewports were told while they were drawn
+    //is remembered by them for exactly this reason.
+
+    //Whether the cursor is over the focused viewport rather than somewhere else
+    //in the editor. It can be focused without being hovered - the cursor has
+    //moved onto a panel, or is part way through a drag which has left it.
+    function sceneEditorInteractable_(){
+        if(mFocusedRenderWindow_ == null) return false;
+        return mFocusedRenderWindow_.isHovered();
+    }
+
+    //Where the cursor is within the focused viewport's image, in the 0-1 range
+    //the framework wants.
     function normalisedSceneMousePosition_(){
-        if(mSceneRect_ == null) return null;
-        if(mSceneRect_[2] <= 0 || mSceneRect_[3] <= 0) return null;
+        if(mFocusedRenderWindow_ == null) return null;
+        return mFocusedRenderWindow_.normalisedMousePosition(imguiMousePosition_());
+    }
 
-        local mouse = imguiMousePosition_();
-        if(mouse == null) return null;
-
-        return Vec2(
-            (mouse[0] - mSceneRect_[0]) / mSceneRect_[2],
-            (mouse[1] - mSceneRect_[1]) / mSceneRect_[3]
-        );
+    //The camera the focused viewport sees the scene through, which is the one
+    //the framework casts the cursor's ray from.
+    function activeSceneCamera_(){
+        if(mFocusedRenderWindow_ == null) return null;
+        return mFocusedRenderWindow_.getCamera();
     }
 
     //Perform whatever the keyboard is asking for. The engine reports the state
@@ -317,10 +332,11 @@
         }
 
         _doFile("res://ExampleRightClickMenu.nut");
+        _doFile("res://SceneRenderWindow.nut");
 
         ::SceneEditorFramework.HelperFunctions = {
             function sceneEditorInteractable(){
-                return ::ExampleEditor.mSceneEditorInteractable_;
+                return ::ExampleEditor.sceneEditorInteractable_();
             }
 
             function sceneTreeConstructObjectForUserEntry(userId, parentNode, entryData){}
@@ -340,18 +356,27 @@
             function drawIMGUIObjectPropertiesForUserEntry(userId, entry){
             }
 
-            //The scene is a panel now, not the whole window.
+            //The scene is a panel now, not the whole window - and there can be
+            //more than one of them.
             function normalisedSceneMousePosition(){
                 return ::ExampleEditor.normalisedSceneMousePosition_();
+            }
+
+            //Each viewport has its own camera, so the framework cannot assume
+            //the engine's default one is the one the user is looking through.
+            function activeSceneCamera(){
+                return ::ExampleEditor.activeSceneCamera_();
             }
         };
 
         mKeyCommandHeld_ = array(KEY_COMMAND_MAX, false);
+        mRenderWindows_ = [];
 
         setupLights_();
+        //Each viewport places its own camera, so the engine's default one is
+        //left alone. Nothing looks through it: it exists for the workspace which
+        //clears the window behind the gui, which draws no scene.
         setupCompositor_();
-        _camera.setPosition(12, 8, 15);
-        _camera.setDirection(Vec3(-12, -8, -15));
 
         mBase_ = ::SceneEditorFramework.Base();
         mSceneParent_ = _scene.getRootSceneNode().createChildSceneNode();
@@ -370,7 +395,12 @@
         if(!_imgui.isFirstUpdateOfFrame()) return;
 
         updateGuiScale_();
-        updateSceneTextureSize_();
+        //Both of these create and destroy render targets, so they come before
+        //anything this frame is drawn. @see sweepClosedRenderWindows_
+        sweepClosedRenderWindows_();
+        foreach(window in mRenderWindows_){
+            window.updateTextureSize();
+        }
         updateKeyCommands_();
 
         //The dockspace comes first: a window submitted before the dockspace it
@@ -379,7 +409,14 @@
         buildDefaultLayout_();
 
         drawMenuBar_();
-        drawSceneWindow_();
+        //A viewport opened by the menu above is drawn from this frame onwards.
+        foreach(window in mRenderWindows_){
+            window.draw(mSceneDockId_);
+        }
+        //Straight after they are drawn, so the framework's update and the next
+        //scene update are told where the cursor is now rather than where it was
+        //a frame ago.
+        updateFocusedRenderWindow_();
         mBase_.drawIMGUI();
 
         //Last, so a request made by the scene tree while it was drawn above is
@@ -429,80 +466,15 @@
         mPropertiesDockId_ = right[0];
         mSceneDockId_ = right[1];
 
-        //By title, which for the framework's panels includes the ## id suffix
-        //that keeps their titles unique.
-        _imgui.dockBuilderDockWindow(SCENE_WINDOW_TITLE, mSceneDockId_);
+        //By title, which for the framework's panels and the viewports alike
+        //includes the ## id suffix that keeps their titles unique. Only the
+        //first viewport is placed here; the rest tab in beside it as they are
+        //opened, since the layout cannot describe windows which do not exist yet.
+        _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
         _imgui.dockBuilderDockWindow(mSceneTreePanel_.mWindowTitle_, mSideDockId_);
         _imgui.dockBuilderDockWindow(mObjectPropertiesPanel_.mWindowTitle_, mPropertiesDockId_);
 
         _imgui.dockBuilderFinish(mDockId_);
-    }
-
-    function drawSceneWindow_(){
-        if(!mScenePanelVisible_){
-            notifySceneNotDrawn_();
-            return;
-        }
-
-        _imgui.setNextWindowDockId(mSceneDockId_, _imgui.Cond_FirstUseEver);
-        //No padding, so the image meets the edges of the panel like a viewport.
-        //Popped straight after begin so the rest of the window is normal.
-        _imgui.pushStyleVar(_imgui.StyleVar_WindowPadding, 0, 0);
-        local visible = _imgui.begin(SCENE_WINDOW_TITLE,
-            _imgui.WindowFlags_NoScrollbar | _imgui.WindowFlags_NoScrollWithMouse);
-        _imgui.popStyleVar();
-
-        if(!visible){
-            //Collapsed or tabbed out of sight. The workspace keeps rendering,
-            //which is what makes the tab show a live scene the moment it is
-            //selected again, but nothing on screen can be interacted with.
-            notifySceneNotDrawn_();
-            _imgui.end();
-            return;
-        }
-
-        //Read before anything is drawn: the cursor sits at the top left of the
-        //content region until something moves it.
-        local cursorX = _imgui.getCursorPosX();
-        local cursorY = _imgui.getCursorPosY();
-        local pos = _imgui.getCursorScreenPos();
-        local size = _imgui.getContentRegionAvail();
-        mSceneRect_ = [pos[0], pos[1], size[0], size[1]];
-
-        if(size[0] > 0 && size[1] > 0){
-            //Drawn at the panel's size rather than the texture's, so a resize
-            //shows a stretched scene for the few frames before the texture
-            //catches up rather than a gap.
-            _imgui.image(mSceneTexture_, size[0], size[1]);
-
-            //An invisible button over the image, so that dragging in the scene
-            //is a drag on an item rather than on the window's empty space -
-            //which imgui reads as dragging the window itself, and which here
-            //would drag the panel out of the layout every time an object is
-            //dragged. An image is not an item, so without this the whole panel
-            //is empty space as far as imgui is concerned.
-            //
-            //Deliberately not WindowFlags_NoMove, which would also stop the
-            //panel being dragged by its tab. The tab bar sets its own hovered
-            //item, so it is unaffected by this and still re-docks normally.
-            _imgui.setCursorPos(cursorX, cursorY);
-            _imgui.invisibleButton("##sceneViewport", size[0], size[1]);
-        }
-
-        //The scene is inside an imgui window now, so wantCaptureMouse is true
-        //whenever the cursor is over it and cannot be what decides this. Being
-        //over this window, and no other, is what makes the scene interactable.
-        //AllowWhenBlockedByActiveItem keeps a drag alive while a gizmo is held.
-        mSceneEditorInteractable_ = _imgui.isWindowHovered(_imgui.HoveredFlags_AllowWhenBlockedByActiveItem);
-
-        _imgui.end();
-    }
-
-    //Nothing is showing the scene, so there is no viewport to map the mouse
-    //into and nothing to interact with.
-    function notifySceneNotDrawn_(){
-        mSceneRect_ = null;
-        mSceneEditorInteractable_ = false;
     }
 
     function drawMenuBar_(){
@@ -529,9 +501,30 @@
         }
 
         if(_imgui.beginMenu("Window")){
-            if(_imgui.menuItem("Scene", null, mScenePanelVisible_)){
-                mScenePanelVisible_ = !mScenePanelVisible_;
+            if(_imgui.menuItem("Add Render Window")) addRenderWindow_();
+
+            //A viewport can also be closed from its own menu bar. This is the
+            //way back to one which has been hidden, which its own menu bar
+            //cannot offer while it is not being drawn.
+            //
+            //Skipped entirely when every viewport has been closed, so that the
+            //separators around the list do not end up next to each other with
+            //nothing between them to divide.
+            if(mRenderWindows_.len() > 0){
+                _imgui.separator();
+                foreach(window in mRenderWindows_){
+                    //Named for the window, which is unique, so the entries do
+                    //not share an imgui id.
+                    if(!_imgui.beginMenu(window.getName())) continue;
+
+                    if(_imgui.menuItem("Visible", null, window.isVisible())) window.toggleVisible();
+                    if(_imgui.menuItem("Close")) window.requestClose();
+
+                    _imgui.endMenu();
+                }
             }
+
+            _imgui.separator();
             if(_imgui.menuItem("Scene Tree", null, mSceneTreePanel_.isVisible())){
                 mSceneTreePanel_.toggleVisible();
             }
@@ -560,9 +553,10 @@
         local pressed = down && !mRightMouseDown_;
         mRightMouseDown_ = down;
 
-        //Only a click in the scene panel is a click on the scene. Anywhere else
-        //belongs to imgui, which draws its own context menus.
-        if(!pressed || !mSceneEditorInteractable_) return;
+        //Only a click in a viewport is a click on the scene, and the object it
+        //finds is the one that viewport's camera sees under the cursor. Anywhere
+        //else belongs to imgui, which draws its own context menus.
+        if(!pressed || !sceneEditorInteractable_()) return;
 
         local sceneTree = mBase_.getActiveSceneTree();
         if(sceneTree == null) return;
@@ -576,7 +570,12 @@
 
     function end(){
         mBase_.shutdown();
-        destroySceneTexture_();
+
+        foreach(window in mRenderWindows_){
+            window.shutdown();
+        }
+        mRenderWindows_.clear();
+        mFocusedRenderWindow_ = null;
     }
 };
 

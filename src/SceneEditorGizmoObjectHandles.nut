@@ -59,9 +59,15 @@
         //A drag which leaves the scene viewport is still a drag, so the position
         //is used whether or not it falls inside it. Null means there is no
         //scene viewport at all, which there is nothing sensible to drag against.
+        //
+        //The camera is the one belonging to the viewport being dragged in, which
+        //is what keeps a drag pointing into the view it began in when the cursor
+        //crosses into another viewport. Null means that viewport has gone -
+        //closed part way through a drag - so the drag ends with it.
         local mousePos = ::SceneEditorFramework.getNormalisedSceneMousePosition();
-        if(mPerformingAction_ && mTestingPlane_ != null && mousePos != null){
-            local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        local camera = ::SceneEditorFramework.getActiveSceneCamera();
+        if(mPerformingAction_ && mTestingPlane_ != null && mousePos != null && camera != null){
+            local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
             local point = ray.intersects(mTestingPlane_);
             if(point != false){
                 local worldPoint = ray.getPoint(point);

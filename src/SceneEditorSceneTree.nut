@@ -75,7 +75,10 @@
         }
         mCurrentSelectionDeferred = null;
 
-        mMoveHandles_.updateCameraDist(_camera.getPosition());
+        //Null when no viewport is showing the scene, which leaves the gizmo the
+        //size the last one to show it gave it rather than resizing it to nothing.
+        local cameraPos = ::SceneEditorFramework.getActiveSceneCameraPosition();
+        if(cameraPos != null) mMoveHandles_.updateCameraDist(cameraPos);
     }
 
     function getId(){
@@ -578,7 +581,12 @@
     function findEntryIdAtScenePosition(mousePos){
         if(mousePos == null) return null;
 
-        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        //The position is within whichever viewport the cursor is in, so the ray
+        //has to be cast through that viewport's camera to reach what is under it.
+        local camera = ::SceneEditorFramework.getActiveSceneCamera();
+        if(camera == null) return null;
+
+        local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, 1 << 20);
         if(result == null || result.len() <= 0) return null;
 
@@ -595,7 +603,10 @@
      * @param mousePos Position of the mouse in screen space. Can be null if the current position is invalid and the editor can respond in some way as a result of that.
      */
     function updateSceneSafeMousePosition(mousePos){
-        if(mousePos == null){
+        //No camera means no viewport for the cursor to be in, which is the same
+        //situation as it being outside one.
+        local camera = ::SceneEditorFramework.getActiveSceneCamera();
+        if(mousePos == null || camera == null){
             mMoveHandles_.notifyNewQueryResults(null);
             return;
         }
@@ -604,7 +615,7 @@
             return;
         }
 
-        local ray = _camera.getCameraToViewportRay(mousePos.x, mousePos.y);
+        local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, 1 << 10);
         local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);
 

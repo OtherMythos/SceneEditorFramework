@@ -90,6 +90,48 @@ here, so a project only has to describe its viewport once.
     return Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
 }
 
+/**
+Get the camera the scene is being viewed through, or null when nothing is
+showing it.
+
+Everything which turns the cursor into a ray through the scene needs a camera to
+cast it from, and an editor with more than one viewport has more than one to
+choose from. This names the one whose viewport the cursor is working in, so that
+a click picks what the user is looking at rather than what some other viewport
+sees.
+*/
+::SceneEditorFramework.getActiveSceneCamera <- function(){
+    //Optional, so a project written against an earlier version of the framework
+    //keeps working: without it the scene is viewed through the engine's default
+    //camera, which is the only one such a project has.
+    if("activeSceneCamera" in ::SceneEditorFramework.HelperFunctions){
+        return ::SceneEditorFramework.HelperFunctions.activeSceneCamera();
+    }
+
+    return _camera.getCamera();
+}
+
+/**
+Where the active scene camera is in the world, or null when there is no viewport.
+
+Gizmos size themselves by their distance from it, so that they stay the same size
+on screen however far the view is from the object they belong to.
+*/
+::SceneEditorFramework.getActiveSceneCameraPosition <- function(){
+    if(!("activeSceneCamera" in ::SceneEditorFramework.HelperFunctions)){
+        return _camera.getPosition();
+    }
+
+    local camera = ::SceneEditorFramework.HelperFunctions.activeSceneCamera();
+    if(camera == null) return null;
+
+    //A camera is placed by the node it is attached to, so that is what has the
+    //position. One which is attached to nothing is somewhere unknowable rather
+    //than at the origin.
+    local node = camera.getParentNode();
+    return node == null ? null : node.getDerivedPositionVec3();
+}
+
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
