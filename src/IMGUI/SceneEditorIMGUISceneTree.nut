@@ -145,7 +145,7 @@
         //Two scrollbar widths are left between the sprite's left edge
         //and the content edge. ScrollbarSize defaults to 14 and is style-scaled.
         local scrollbarSize = (SCROLLBAR_WIDTH * guiScale).tointeger();
-        local visibilityX = startX + rowWidth - iconWidth - scrollbarSize * 2.0;
+        local visibilityX = startX + rowWidth - iconWidth - scrollbarSize;
         local nameWidth = visibilityX - nameX;
         if(nameWidth < 8.0) nameWidth = 8.0;
 
@@ -156,11 +156,15 @@
         _imgui.setCursorPos(arrowX, startY);
         if(hasChildren){
             local direction = isExpanded_(entry.entryId) ? _imgui.Dir_Down : _imgui.Dir_Right;
+            _imgui.pushStyleColor(_imgui.Col_Button, 0.0, 0.0, 0.0, 0.0);
+            _imgui.pushStyleColor(_imgui.Col_ButtonHovered, 0.4, 0.4, 0.4, 1.0);
+            _imgui.pushStyleColor(_imgui.Col_ButtonActive, 0.6, 0.6, 0.6, 1.0);
             if(_imgui.arrowButton("##expand", direction)){
                 mExpandedEntries_.rawset(entry.entryId, !isExpanded_(entry.entryId));
                 mItemClicked_ = true;
                 cancelRename_();
             }
+            _imgui.popStyleColor(3);
         }else{
             _imgui.dummy(frameHeight, frameHeight);
         }
@@ -169,12 +173,15 @@
         _imgui.setCursorPos(iconX, startY + (frameHeight - iconHeight) * 0.5);
         drawObjectIcon_(entry.nodeType, iconWidth, iconHeight);
 
-        //ImageButton is an actual ImGui button: it supplies the framed hover
-        //and active states while the eye sprite supplies its image.
         _imgui.setCursorPos(visibilityX, startY);
         local visibilityUv0 = entry.visible ? 0.0 : ICON_CELL_WIDTH;
-        if(_imgui.imageButton("##visibility", mVisibilityIcons_, iconWidth, iconHeight,
-            visibilityUv0, 0.0, visibilityUv0 + ICON_CELL_WIDTH, 1.0)){
+        _imgui.pushStyleColor(_imgui.Col_Button, 0.0, 0.0, 0.0, 0.0);
+        _imgui.pushStyleColor(_imgui.Col_ButtonHovered, 0.4, 0.4, 0.4, 1.0);
+        _imgui.pushStyleColor(_imgui.Col_ButtonActive, 0.6, 0.6, 0.6, 1.0);
+        local visibilityClicked = _imgui.imageButton("##visibility", mVisibilityIcons_, iconWidth, iconHeight,
+            visibilityUv0, 0.0, visibilityUv0 + ICON_CELL_WIDTH, 1.0, ColourValue(1, 1, 1, 0));
+        _imgui.popStyleColor(3);
+        if(visibilityClicked){
             mSceneTree_.setEntryVisibility(entry.entryId, !entry.visible);
             mItemClicked_ = true;
         }
