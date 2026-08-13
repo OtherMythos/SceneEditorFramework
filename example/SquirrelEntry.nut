@@ -49,6 +49,9 @@
     //as [x, y, width, height]. Null when the scene window is not being drawn.
     mSceneRect_ = null
 
+    //The display scale the gui was last set to. @see updateGuiScale_
+    mGuiScale_ = 1.0
+
     //The dockspace, and the nodes of the default layout built inside it.
     mDockId_ = 0
     mSceneDockId_ = 0
@@ -158,6 +161,32 @@
         createSceneTexture_(width, height);
     }
 
+    //Scale the gui to the display. imgui is given the window's size in pixels
+    //as its display size, so on a screen with a scale factor - a retina Mac,
+    //a scaled Windows desktop - it draws at that resolution and everything in
+    //it comes out that fraction of the physical size it would be at 1:1, which
+    //is half size at 2x. Scaling the gui by the same factor puts it back.
+    //
+    //Checked every frame rather than once at startup, so moving the window to
+    //a display with a different scale factor is picked up. Setting the scale
+    //it already has does nothing, and the plugin applies a new one at the
+    //start of the next frame - the font is re-baked at the scaled size, which
+    //cannot happen part way through a frame.
+    function updateGuiScale_(){
+        local windowSize = _window.getSize();
+        if(windowSize.x <= 0) return;
+
+        local pixelSize = _window.getActualSize();
+        local scale = pixelSize.x / windowSize.x;
+        //Only ever scaled up. A window with fewer pixels than desktop units
+        //would otherwise shrink the gui rather than leave it alone.
+        if(scale < 1.0) scale = 1.0;
+
+        if(scale == mGuiScale_) return;
+        mGuiScale_ = scale;
+        _imgui.setGlobalScale(scale);
+    }
+
     //The mouse in imgui's coordinates. The engine reports it in window units,
     //which are not imgui's on a display with a scale factor, so it is scaled by
     //the same ratio the plugin uses when it feeds the mouse to imgui: imgui's
@@ -251,6 +280,7 @@
         mBase_.update();
         if(!_imgui.isFirstUpdateOfFrame()) return;
 
+        updateGuiScale_();
         updateSceneTextureSize_();
 
         //The dockspace comes first: a window submitted before the dockspace it
