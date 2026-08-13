@@ -28,6 +28,7 @@ _doFile("script://GUI/SceneEditorGUIObjectProperties.nut");
 //engine GUI panels above. Projects can opt into it without changing an
 //existing EditorGUIFramework integration.
 ::SceneEditorFramework.IMGUI <- {};
+_doFile("script://IMGUI/SceneEditorIMGUITextures.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIPanel.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIWidgets.nut");
 _doFile("script://IMGUI/SceneEditorIMGUISceneTree.nut");

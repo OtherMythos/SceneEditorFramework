@@ -1,11 +1,24 @@
 ::SceneEditorFramework.IMGUI.ObjectProperties <- class extends ::SceneEditorFramework.IMGUI.Panel{
 
+    ICON_WIDTH = 14.0;
+    ICON_HEIGHT = 12.0;
+    ICON_CELL_WIDTH = 0.1;
+    REFRESH_ICON = 6;
+
     mWindowTitle_ = "Object Properties##SceneEditorFrameworkObjectProperties";
     mEditStates_ = null;
+    mObjectIcons_ = null;
+    mVisibilityIcons_ = null;
 
     constructor(baseObj, bus){
         base.constructor(baseObj, bus);
         mEditStates_ = {};
+        mObjectIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
+            ::SceneEditorFramework.IMGUI.Textures.OBJECT_ICONS
+        );
+        mVisibilityIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
+            ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
+        );
     }
 
     function draw(){
@@ -26,6 +39,8 @@
         }
 
         local entry = sceneTree.getEntryForId(sceneTree.mCurrentSelection);
+        drawObjectIcon_(entry.nodeType);
+        _imgui.sameLine();
         _imgui.text(::SceneEditorFramework.getNameForSceneEntry(entry));
         _imgui.separator();
 
@@ -43,7 +58,7 @@
 
         if(!vectorEquals_(value, resetValue)){
             _imgui.sameLine();
-            if(_imgui.smallButton("Reset##" + label)){
+            if(drawResetButton_(label)){
                 performAndPushAction_(coordinateType, entry.entryId, value, resetValue);
             }
         }
@@ -55,10 +70,39 @@
 
         if(!quatEquals_(entry.orientation, Quat())){
             _imgui.sameLine();
-            if(_imgui.smallButton("Reset##" + label)){
+            if(drawResetButton_(label)){
                 performAndPushAction_(SceneEditorFramework_BasicCoordinateType.ORIENTATION, entry.entryId, entry.orientation, Quat());
             }
         }
+    }
+
+    function drawResetButton_(label){
+        local guiScale = _imgui.getGlobalScale();
+        local uv0 = REFRESH_ICON * ICON_CELL_WIDTH;
+        return _imgui.imageButton("##reset" + label, mVisibilityIcons_,
+            ICON_WIDTH * guiScale, ICON_HEIGHT * guiScale,
+            uv0, 0.0, uv0 + ICON_CELL_WIDTH, 1.0);
+    }
+
+    function drawObjectIcon_(type){
+        local cell = 0;
+        if(type == SceneEditorFramework_SceneTreeEntryType.MESH){
+            cell = 1;
+        }else if(type == SceneEditorFramework_SceneTreeEntryType.USER0){
+            cell = 2;
+        }else if(type == SceneEditorFramework_SceneTreeEntryType.USER1){
+            cell = 3;
+        }else if(
+            type == SceneEditorFramework_SceneTreeEntryType.USER2 ||
+            type == SceneEditorFramework_SceneTreeEntryType.USER3
+        ){
+            cell = 4;
+        }
+
+        local guiScale = _imgui.getGlobalScale();
+        local uv0 = cell * ICON_CELL_WIDTH;
+        _imgui.image(mObjectIcons_, ICON_WIDTH * guiScale, ICON_HEIGHT * guiScale,
+            uv0, 0.0, uv0 + ICON_CELL_WIDTH, 1.0);
     }
 
     //While a control is dragged, apply changes immediately. On release add one

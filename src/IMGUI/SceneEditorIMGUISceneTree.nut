@@ -24,7 +24,7 @@
     mLastClickedEntryId_ = null;
     mLastClickTime_ = -100.0;
 
-    //Hierarchy sprite sheets, copied into this framework's res folder.
+    //Shared hierarchy sprite sheets.
     mObjectIcons_ = null;
     mVisibilityIcons_ = null;
 
@@ -33,23 +33,12 @@
         mSceneTree_ = baseObj.getActiveSceneTree();
         mExpandedEntries_ = {};
 
-        //ImGui consumes the engine's ordinary TextureGpu userdata, so texture
-        //creation and streaming belong to the built-in graphics API.
-        mObjectIcons_ = loadIconTexture_("objectIcons.png");
-        mVisibilityIcons_ = loadIconTexture_("visibleIcon.png");
-    }
-
-    function loadIconTexture_(textureName){
-        local texture = _graphics.createOrRetrieveTexture(
-            textureName,
-            _GPU_PAGE_OUT_STRATEGY_DISCARD,
-            _TEXTURE_FLAG_NONE,
-            _TEXTURE_TYPE_2D,
-            "SceneEditor/general"
+        mObjectIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
+            ::SceneEditorFramework.IMGUI.Textures.OBJECT_ICONS
         );
-        texture.scheduleTransitionTo(_GPU_RESIDENCY_RESIDENT);
-        texture.waitForData();
-        return texture;
+        mVisibilityIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
+            ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
+        );
     }
 
     function draw(){
