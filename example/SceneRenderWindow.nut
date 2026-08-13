@@ -209,9 +209,14 @@
         //No padding, so the image meets the edges of the panel like a viewport.
         //Popped straight after begin so the rest of the window is normal.
         _imgui.pushStyleVar(_imgui.StyleVar_WindowPadding, 0, 0);
-        local visible = _imgui.begin(mTitle_, _imgui.WindowFlags_NoScrollbar |
-            _imgui.WindowFlags_NoScrollWithMouse | _imgui.WindowFlags_MenuBar);
+        local state = begin_();
         _imgui.popStyleVar();
+
+        local visible = state[0];
+        //The X, which is only false on the frame it was clicked. Acted on by the
+        //editor at the top of the next frame: the texture handed to imgui below
+        //is not drawn until this one is over, so it cannot be destroyed now.
+        if(!state[1]) mCloseRequested_ = true;
 
         if(!visible){
             //Collapsed or tabbed out of sight. The workspace keeps rendering,
@@ -261,6 +266,22 @@
         _imgui.end();
     }
 
+    //Begin the window with a close button in its title bar - and on its tab once
+    //it is docked - as [visible, open].
+    //
+    //Handing imgui somewhere to write the open state is the only way to get one;
+    //there is no window flag for it. A plugin build from before beginClosable
+    //existed has no way to draw it, and gets a window which is closed from the
+    //editor's Window menu instead.
+    function begin_(){
+        local flags = _imgui.WindowFlags_NoScrollbar |
+            _imgui.WindowFlags_NoScrollWithMouse | _imgui.WindowFlags_MenuBar;
+
+        if("beginClosable" in _imgui) return _imgui.beginClosable(mTitle_, flags);
+
+        return [_imgui.begin(mTitle_, flags), true];
+    }
+
     function drawMenuBar_(){
         if(!_imgui.beginMenuBar()) return;
 
@@ -270,11 +291,6 @@
             }
             _imgui.endMenu();
         }
-
-        //Only asked for here. The texture this window has already handed to
-        //imgui is not drawn until the frame is over, so the editor closes the
-        //window at the top of the next one.
-        if(_imgui.menuItem("Close")) mCloseRequested_ = true;
 
         _imgui.endMenuBar();
     }
