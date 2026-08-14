@@ -25,5 +25,6 @@
         entry.data.meshName = meshName;
         mSceneTree_.regenerateSceneEntry(mId_);
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, entry);
+        mSceneTree_.setOutlineBox(mId_);
     }
 };
