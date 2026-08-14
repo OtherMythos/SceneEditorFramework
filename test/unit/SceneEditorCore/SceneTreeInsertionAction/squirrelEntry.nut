@@ -7,6 +7,7 @@ function start(){
     editorBase.setActiveSceneTree(tree);
 
     local parent = findId(tree, "Parent");
+    local existingChild = findId(tree, "Existing child");
     local leaf = findId(tree, "Leaf");
     local tail = findId(tree, "Tail");
     tree.setSingleSelection(parent);
@@ -69,6 +70,19 @@ function start(){
     _test.assertEqual(planeId, replacementId);
     assertEntryIsChildOf(tree, replacementId, tail);
 
+    //A parent outline includes renderables below nested empty children. The
+    //parent itself has no mesh, so this verifies the separate child-structure
+    //outline rather than the ordinary selected-object outline.
+    local nestedMesh = tree.insertPrimitiveMeshChild(existingChild, "cube",
+        "Nested cube");
+    tree.getEntryForId(nestedMesh).setPosition(Vec3(3, 0, 0));
+    tree.setSingleSelection(parent);
+    local childrenBounds = tree.getChildrenAABB_(
+        tree.findEntryIdIndexInTree_(parent));
+    _test.assertNotEqual(null, childrenBounds);
+    assertClose(childrenBounds.getCentre().x,
+        tree.mChildrenOutlineBox_.mCentre_.x);
+
     _test.endTest();
 }
 
@@ -87,4 +101,10 @@ function assertEntryIsChildOf(tree, childId, parentId){
 
 function nodeType(name){
     return ::SceneEditorFramework.FileParser().getNodeTypeForName(name);
+}
+
+function assertClose(expected, found){
+    local difference = expected - found;
+    if(difference < 0) difference = -difference;
+    _test.assertTrue(difference <= 0.001);
 }

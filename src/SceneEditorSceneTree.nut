@@ -6,6 +6,7 @@
     mActionStack_ = null;
     mMoveHandles_ = null;
     mOutlineBox_ = null;
+    mChildrenOutlineBox_ = null;
     mCurrentPopulateAction_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
@@ -71,6 +72,8 @@
 
         setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
         mOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(mParentNode_, mBus_);
+        mChildrenOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
+            mParentNode_, mBus_);
         mMoveHandles_.setVisible(false);
     }
 
@@ -637,22 +640,55 @@
     }
 
     function setOutlineBox(entryId){
-        if(mEntries_ == null || entryId == null){
-            mOutlineBox_.setVisible(false);
+        mOutlineBox_.setVisible(false);
+        mChildrenOutlineBox_.setVisible(false);
+        if(mEntries_ == null || entryId == null || mCurrentSelectionIdx == -1){
             return;
         }
         local node = mEntries_[mCurrentSelectionIdx].node;
         local num = node.getNumAttachedObjects();
-        if(num == 0){
-            mOutlineBox_.setVisible(false);
-            return;
+        if(num > 0){
+            local aabb = node.getAttachedObject(0).getWorldAabbUpdated();
+            mOutlineBox_.setBounds(aabb.getCentre(), aabb.getHalfSize());
+            mOutlineBox_.setVisible(true);
         }
 
-        local aabb = node.getAttachedObject(0).getWorldAabbUpdated();
-        local centre = aabb.getCentre();
-        local halfSize = aabb.getHalfSize();
-        mOutlineBox_.setBounds(centre, halfSize);
-        mOutlineBox_.setVisible(true);
+        local childrenAabb = getChildrenAABB_(mCurrentSelectionIdx);
+        if(childrenAabb == null) return;
+
+        mChildrenOutlineBox_.setBounds(childrenAabb.getCentre(),
+            childrenAabb.getHalfSize());
+        mChildrenOutlineBox_.setVisible(true);
+    }
+
+    //The flattened tree puts a CHILD marker immediately after an entry which
+    //has descendants. Merge every renderable below that marker, including
+    //nested descendants, into the second selection outline.
+    function getChildrenAABB_(entryIndex){
+        if(!entryHasChildrenInEntries_(mEntries_, entryIndex)) return null;
+
+        local childMarker = entryIndex + 1;
+        local endIndex = getTerminatorForChildInEntries_(mEntries_, childMarker);
+        if(endIndex == -1) return null;
+
+        local result = null;
+        for(local index = childMarker + 1; index < endIndex - 1; index++){
+            local entry = mEntries_[index];
+            if(!isObjectEntry_(entry)) continue;
+
+            local node = entry.node;
+            for(local objectIndex = 0;
+                    objectIndex < node.getNumAttachedObjects(); objectIndex++){
+                local bounds = node.getAttachedObject(objectIndex).
+                    getWorldAabbUpdated();
+                if(result == null){
+                    result = AABB(bounds.getCentre(), bounds.getHalfSize());
+                }else{
+                    result.merge(bounds);
+                }
+            }
+        }
+        return result;
     }
 
     function positionTransformGizmo_(){
@@ -769,9 +805,9 @@
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_SCALE_CHANGE){
+            setOutlineBox(mCurrentSelection);
             if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
-                setOutlineBox(mCurrentSelectionIdx);
             }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_ORIENTATION_CHANGE){
@@ -779,6 +815,9 @@
             if(data.id == mCurrentSelection){
                 mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, mEntries_[mCurrentSelectionIdx]);
             }
+        }
+        else if(event == SceneEditorFramework_BusEvents.OBJECT_VISIBILITY_CHANGE){
+            setOutlineBox(mCurrentSelection);
         }
     }
     function getValueForObjectCoordsChange_(coordsType){
@@ -880,6 +919,7 @@
             }else{
                 mMoveHandles_.setVisible(false);
                 mOutlineBox_.setVisible(false);
+                mChildrenOutlineBox_.setVisible(false);
             }
         }
 
