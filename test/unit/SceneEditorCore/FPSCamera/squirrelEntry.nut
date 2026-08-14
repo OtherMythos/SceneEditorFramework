@@ -155,6 +155,38 @@ function start(){
         _test.assertTrue(position.distance(Vec3(2, 3, 4)) > 0.001);
     }
 
+    { //Camera poses animate with deterministic, eased progress. The target and
+      //distance become the orbit state at every point along the transition.
+        fpsCamera.setPosition(Vec3(0, 0, 0));
+        fpsCamera.setDirection(Vec3(0, 0, -1));
+        fpsCamera.setOrbitDistance(10.0);
+
+        _test.assertTrue(fpsCamera.animateFrame(Vec3(10, 0, 0), 5.0, 1.0));
+        _test.assertTrue(fpsCamera.isAnimating());
+        _test.assertTrue(fpsCamera.updateAnimation(0.5));
+
+        local position = fpsCamera.getPosition();
+        assertClose(5, position.x, "animated position x at midpoint");
+        assertClose(2.5, position.z, "animated position z at midpoint");
+        assertClose(7.5, fpsCamera.getOrbitDistance(),
+            "animated orbit distance at midpoint");
+        assertDirection(0, 0, -1, fpsCamera.getDirection());
+
+        _test.assertTrue(fpsCamera.updateAnimation(0.5));
+        _test.assertFalse(fpsCamera.isAnimating());
+        position = fpsCamera.getPosition();
+        assertClose(10, position.x, "animated position x at end");
+        assertClose(5, position.z, "animated position z at end");
+        assertClose(5, fpsCamera.getOrbitDistance(), "animated orbit distance at end");
+
+        //A zero-duration transition is also useful to callers which share the
+        //pose API but allow animation to be disabled in configuration.
+        _test.assertTrue(fpsCamera.animateTo(Vec3(0, 0, 0),
+            Vec3(1, 0, 0), 0.0));
+        assertDirection(1, 0, 0, fpsCamera.getDirection());
+        _test.assertFalse(fpsCamera.isAnimating());
+    }
+
     cameraNode.destroyNodeAndChildren();
 
     _test.endTest();

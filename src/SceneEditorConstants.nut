@@ -74,6 +74,7 @@ enum SceneEditorFramework_BasicCoordinateType{
 //KeyScancode table.
 enum SceneEditorFramework_KeyScancode{
     ESCAPE = 41,
+    C = 6,
     NUMBER_1 = 30,
     NUMBER_2 = 31,
     NUMBER_3 = 32,

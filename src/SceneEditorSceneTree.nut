@@ -342,6 +342,38 @@
         return selected.len() == 0 ? -1 : selected[0];
     }
 
+    /**
+     * Fresh world bounds for an entry and, by default, everything below it.
+     * Empty hierarchy entries therefore remain useful framing targets while a
+     * mesh entry simply returns the bounds of its attached renderable.
+     */
+    function getEntryAABB(entryId, includeChildren=true){
+        local entryIndex = findEntryIdIndexInTree_(entryId);
+        if(entryIndex == null) return null;
+
+        local result = null;
+        local node = mEntries_[entryIndex].node;
+        for(local objectIndex = 0;
+                objectIndex < node.getNumAttachedObjects(); objectIndex++){
+            local bounds = node.getAttachedObject(objectIndex).getWorldAabbUpdated();
+            if(result == null){
+                result = AABB(bounds.getCentre(), bounds.getHalfSize());
+            }else{
+                result.merge(bounds);
+            }
+        }
+
+        if(includeChildren){
+            local children = getChildrenAABB_(entryIndex);
+            if(result == null){
+                result = children;
+            }else if(children != null){
+                result.merge(children);
+            }
+        }
+        return result;
+    }
+
     function clearAllSelection(){
         setCurrentSelection(null);
     }

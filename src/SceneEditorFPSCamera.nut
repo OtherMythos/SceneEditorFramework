@@ -91,6 +91,11 @@
     mPanSensitivity_ = null;
     mZoomSensitivity_ = null;
 
+    //A reusable transition between two camera poses. A pose is a position and
+    //the point it looks at; interpolating both also leaves orbit navigation with
+    //the correct target when the transition finishes.
+    mTransition_ = null;
+
     //Whether the camera currently has the mouse.
     mLooking_ = false;
     //Right and middle drags use the same cursor capture machinery. The mode is
@@ -172,7 +177,7 @@
      * @returns Whether the camera has the mouse, which it keeps until the button
      * is released whatever the cursor is over by then.
      */
-    function update(interactable = null){
+    function update(interactable = null, deltaSeconds = 1.0 / 60.0){
         if(interactable == null){
             interactable = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
         }
@@ -201,6 +206,8 @@
             if(wheel != 0) zoom(wheel);
         }
 
+        if(mNavigationMode_ == null) updateAnimation(deltaSeconds);
+
         if(mNavigationMode_ == null) return false;
 
         if(mNavigationMode_ == "look"){
@@ -214,6 +221,7 @@
     }
 
     function beginNavigation_(mode){
+        cancelAnimation();
         mNavigationMode_ = mode;
         mLooking_ = mode == "look";
         mMoved_ = false;
@@ -422,8 +430,13 @@
      * A direction of no length leaves the camera pointed where it was.
      */
     function setDirection(direction){
+        cancelAnimation();
+        setDirection_(direction, true);
+    }
+
+    function setDirection_(direction, syncOrbit){
         local length = direction.length();
-        if(length < MOVEMENT_EPSILON) return;
+        if(length < MOVEMENT_EPSILON) return false;
 
         local normalised = direction / length;
         //Clamped because a direction which is a hair over one from being
@@ -432,7 +445,9 @@
         if(y > 1.0) y = 1.0;
         if(y < -1.0) y = -1.0;
 
-        setYawPitch(degrees_(atan2(normalised.z, normalised.x)), degrees_(asin(y)));
+        setYawPitch_(degrees_(atan2(normalised.z, normalised.x)),
+            degrees_(asin(y)), syncOrbit);
+        return true;
     }
 
     /**
@@ -440,6 +455,11 @@
      * is wrapped, so any pair of numbers is a valid place to look.
      */
     function setYawPitch(yaw, pitch){
+        cancelAnimation();
+        setYawPitch_(yaw, pitch, true);
+    }
+
+    function setYawPitch_(yaw, pitch, syncOrbit){
         mYaw_ = yaw % 360.0;
         if(mYaw_ < 0.0) mYaw_ += 360.0;
 
@@ -448,18 +468,20 @@
         if(mPitch_ < -PITCH_LIMIT) mPitch_ = -PITCH_LIMIT;
 
         applyDirection_();
-        syncOrbitTarget_();
+        if(syncOrbit) syncOrbitTarget_();
     }
 
     function setPosition(position){
+        cancelAnimation();
         mCameraNode_.setPosition(position);
         syncOrbitTarget_();
     }
 
     /** Orbit around the current target by yaw and pitch deltas in degrees. */
     function orbit(yawDelta, pitchDelta){
+        cancelAnimation();
         local target = mOrbitTarget_;
-        setYawPitch(mYaw_ + yawDelta, mPitch_ + pitchDelta);
+        setYawPitch_(mYaw_ + yawDelta, mPitch_ + pitchDelta, false);
         mOrbitTarget_ = target;
         applyOrbitPosition_();
     }
@@ -469,6 +491,7 @@
      * drags it down, matching Blender's grab-style middle-mouse pan.
      */
     function pan(horizontal, vertical){
+        cancelAnimation();
         local front = directionVector_();
         local right = front.cross(Vec3(0, 1, 0));
         if(right.length() < MOVEMENT_EPSILON) return;
@@ -484,6 +507,7 @@
 
     /** Move along the view direction while retaining the current orbit point. */
     function zoom(amount){
+        cancelAnimation();
         local distance = mOrbitDistance_ * (1.0 - amount * mZoomSensitivity_);
         if(distance < MIN_ORBIT_DISTANCE) distance = MIN_ORBIT_DISTANCE;
         mOrbitDistance_ = distance;
@@ -491,6 +515,7 @@
     }
 
     function setOrbitDistance(distance){
+        cancelAnimation();
         mOrbitDistance_ = distance;
         if(mOrbitDistance_ < MIN_ORBIT_DISTANCE) mOrbitDistance_ = MIN_ORBIT_DISTANCE;
         syncOrbitTarget_();
@@ -498,6 +523,82 @@
 
     function getOrbitDistance(){
         return mOrbitDistance_;
+    }
+
+    /**
+     * Smoothly move to a position looking at a target. This is deliberately a
+     * general camera-pose operation rather than framing-specific logic, so
+     * other editor actions can use the same animation.
+     */
+    function animateTo(position, target, duration=0.3){
+        if((target - position).length() < MOVEMENT_EPSILON) return false;
+
+        //An explicit camera command wins over a drag already in progress. The
+        //held button cannot recapture until it has been released and pressed
+        //again because its previous state is still tracked by update().
+        if(mNavigationMode_ != null) cancel();
+
+        if(duration <= 0.0){
+            applyPose_(position, target);
+            mTransition_ = null;
+            return true;
+        }
+
+        mTransition_ = {
+            "startPosition": getPosition(),
+            "startTarget": mOrbitTarget_,
+            "endPosition": position,
+            "endTarget": target,
+            "elapsed": 0.0,
+            "duration": duration
+        };
+        return true;
+    }
+
+    /** Frame a target at a distance while retaining the current viewing angle. */
+    function animateFrame(target, distance, duration=0.3){
+        if(distance < MIN_ORBIT_DISTANCE) distance = MIN_ORBIT_DISTANCE;
+        return animateTo(target - directionVector_() * distance, target, duration);
+    }
+
+    /** Advance an active transition by a number of seconds. */
+    function updateAnimation(deltaSeconds){
+        if(mTransition_ == null) return false;
+        if(deltaSeconds < 0.0) deltaSeconds = 0.0;
+
+        mTransition_.elapsed += deltaSeconds;
+        local progress = mTransition_.elapsed / mTransition_.duration;
+        if(progress > 1.0) progress = 1.0;
+        //Smoothstep starts and stops without an abrupt change in velocity.
+        local eased = progress * progress * (3.0 - 2.0 * progress);
+        local position = lerpVec3_(mTransition_.startPosition,
+            mTransition_.endPosition, eased);
+        local target = lerpVec3_(mTransition_.startTarget,
+            mTransition_.endTarget, eased);
+        applyPose_(position, target);
+
+        if(progress >= 1.0) mTransition_ = null;
+        return true;
+    }
+
+    function applyPose_(position, target){
+        mCameraNode_.setPosition(position);
+        if(!setDirection_(target - position, false)) return;
+        mOrbitTarget_ = target;
+        mOrbitDistance_ = (target - position).length();
+        if(mOrbitDistance_ < MIN_ORBIT_DISTANCE) mOrbitDistance_ = MIN_ORBIT_DISTANCE;
+    }
+
+    function lerpVec3_(from, to, amount){
+        return from + (to - from) * amount;
+    }
+
+    function cancelAnimation(){
+        mTransition_ = null;
+    }
+
+    function isAnimating(){
+        return mTransition_ != null;
     }
 
     function getPosition(){

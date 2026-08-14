@@ -31,7 +31,8 @@ tool can start with only a scene path:
 Viewport navigation follows Blender-style controls: hold the right mouse button
 and use WASDQE for FPS flight, drag the middle mouse button to orbit,
 Shift-middle-drag to pan, and use the mouse wheel to zoom. Switching styles
-continues from the camera's current position and direction.
+continues from the camera's current position and direction. Shift+C smoothly
+frames the currently selected object in the focused viewport.
 
 ```squirrel
 ::MyEditor <- null;
@@ -68,6 +69,7 @@ The options table keeps common variations out of copied editor code:
 | `showViewportToolbar` | `true` | Show transform tools over each viewport. |
 | `showAxisIndicator` | `true` | Show the camera-oriented XYZ indicator. |
 | `showMainMenuBar` | `true` | Show the standard File, Edit and Window menus. |
+| `cameraFocusDuration` | `0.3` | Seconds used to animate Shift+C framing. |
 | `drawMainMenu` | `null` | Callback for adding project menus to the main bar. |
 | `drawSceneTreeContextMenu` | `null` | Callback for adding project-specific object actions. |
 | `resourcePrefix` | `sceneEditorFramework` | Prefix for generated camera and texture names. |

@@ -83,6 +83,13 @@ function start(){
     assertClose(childrenBounds.getCentre().x,
         tree.mChildrenOutlineBox_.mCentre_.x);
 
+    //Camera framing uses the public entry-bounds query. Empty parents inherit
+    //their descendants' bounds, just as their selection outline does.
+    local framingBounds = tree.getEntryAABB(parent);
+    _test.assertNotEqual(null, framingBounds);
+    assertClose(childrenBounds.getCentre().x, framingBounds.getCentre().x);
+    assertClose(childrenBounds.getHalfSize().x, framingBounds.getHalfSize().x);
+
     _test.endTest();
 }
 

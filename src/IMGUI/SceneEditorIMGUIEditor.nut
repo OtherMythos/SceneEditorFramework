@@ -101,7 +101,8 @@
     KEY_COMMAND_TRANSFORM_POSITION = 2
     KEY_COMMAND_TRANSFORM_SCALE = 3
     KEY_COMMAND_TRANSFORM_ORIENTATION = 4
-    KEY_COMMAND_MAX = 5
+    KEY_COMMAND_FRAME_SELECTION = 5
+    KEY_COMMAND_MAX = 6
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -147,6 +148,11 @@
 
     function resetWindowLayout(){
         resetWindowLayout_();
+    }
+
+    /** Frame the primary selection in the viewport the user last worked in. */
+    function frameSelection(){
+        return frameSelection_();
     }
 
     function setupLights_(){
@@ -333,11 +339,11 @@
     //
     //Called on every update rather than once per rendered frame, so that the
     //distance a camera travels is the same however fast the editor is drawing.
-    function updateRenderWindowCameras_(){
+    function updateRenderWindowCameras_(deltaSeconds){
         foreach(window in mRenderWindows_){
             local interactable = mFlyingRenderWindow_ == null && window.isHovered();
 
-            if(window.updateCamera(interactable)){
+            if(window.updateCamera(interactable, deltaSeconds)){
                 mFlyingRenderWindow_ = window;
             }else if(mFlyingRenderWindow_ == window){
                 mFlyingRenderWindow_ = null;
@@ -483,10 +489,23 @@
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
             }else if(i == KEY_COMMAND_TRANSFORM_SCALE){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.SCALE);
-            }else{
+            }else if(i == KEY_COMMAND_TRANSFORM_ORIENTATION){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.ORIENTATION);
+            }else{
+                frameSelection_();
             }
         }
+    }
+
+    function frameSelection_(){
+        if(mFocusedRenderWindow_ == null || mBase_ == null) return false;
+        local tree = mBase_.getActiveSceneTree();
+        if(tree == null || tree.mCurrentSelection == -1) return false;
+
+        local bounds = tree.getEntryAABB(tree.mCurrentSelection);
+        if(bounds == null) return false;
+        return mFocusedRenderWindow_.frameBounds(bounds,
+            option_("cameraFocusDuration", 0.3));
     }
 
     //The command the keyboard is currently expressing, or null for none. Only
@@ -495,6 +514,11 @@
         //Ctrl+clicking a drag field in the object properties turns it into a
         //text box. Typing in one is not a request for a shortcut.
         if(_imgui.wantCaptureKeyboard()) return null;
+
+        local shift = anyKeyHeld_([SceneEditorFramework_KeyScancode.LSHIFT,
+            SceneEditorFramework_KeyScancode.RSHIFT]);
+        if(shift && _input.getRawKeyScancodeInput(
+            SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_FRAME_SELECTION;
 
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_1)) return KEY_COMMAND_TRANSFORM_POSITION;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_2)) return KEY_COMMAND_TRANSFORM_SCALE;
@@ -509,8 +533,7 @@
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Y)) return KEY_COMMAND_REDO;
         if(!_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Z)) return null;
 
-        return anyKeyHeld_([SceneEditorFramework_KeyScancode.LSHIFT, SceneEditorFramework_KeyScancode.RSHIFT]) ?
-            KEY_COMMAND_REDO : KEY_COMMAND_UNDO;
+        return shift ? KEY_COMMAND_REDO : KEY_COMMAND_UNDO;
     }
 
     function anyKeyHeld_(scancodes){
@@ -530,6 +553,7 @@
         if(command == KEY_COMMAND_REDO) return modifier + "+Shift+Z";
         if(command == KEY_COMMAND_TRANSFORM_POSITION) return "1";
         if(command == KEY_COMMAND_TRANSFORM_SCALE) return "2";
+        if(command == KEY_COMMAND_FRAME_SELECTION) return "Shift+C";
         return "3";
     }
 
@@ -650,10 +674,10 @@
         ::SceneEditorFramework.HelperFunctions = helpers;
     }
 
-    function update(){
+    function update(deltaSeconds=1.0 / 60.0){
         //Before the framework's update, so that the gizmos it sizes by their
         //distance from the camera are sized for where the camera is now.
-        updateRenderWindowCameras_();
+        updateRenderWindowCameras_(deltaSeconds);
 
         mBase_.update();
         if(!_imgui.isFirstUpdateOfFrame()) return;
@@ -802,6 +826,12 @@
             if(_imgui.menuItem("Rotate", keyCommandLabel_(KEY_COMMAND_TRANSFORM_ORIENTATION))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.ORIENTATION);
             }
+            _imgui.endMenu();
+        }
+
+        if(_imgui.beginMenu("View")){
+            if(_imgui.menuItem("Frame Selected",
+                keyCommandLabel_(KEY_COMMAND_FRAME_SELECTION))) frameSelection_();
             _imgui.endMenu();
         }
 

@@ -46,6 +46,11 @@
     //resize is not something to do on every frame of a splitter drag. The size
     //has to hold still for this many rendered frames first.
     RESIZE_SETTLE_FRAMES = 8
+    //The perspective camera uses Ogre's default 45-degree vertical field of
+    //view. Bounds are treated as a sphere with a little breathing room.
+    FRAME_HALF_FOV = 22.5
+    FRAME_MARGIN = 1.15
+    MIN_FRAME_RADIUS = 0.5
 
     //Unique among the windows which have ever been opened, so that the names
     //below never collide with one belonging to a window which has been closed.
@@ -244,8 +249,25 @@
      * @returns Whether the camera has taken it, which it keeps until the button
      * is released however far the cursor wanders in the meantime.
      */
-    function updateCamera(interactable){
-        return mFPSCamera_.update(interactable);
+    function updateCamera(interactable, deltaSeconds=1.0 / 60.0){
+        return mFPSCamera_.update(interactable, deltaSeconds);
+    }
+
+    /** Animate this viewport to contain the supplied world-space bounds. */
+    function frameBounds(bounds, duration=0.3){
+        if(bounds == null) return false;
+
+        local radius = bounds.getHalfSize().length();
+        if(radius < MIN_FRAME_RADIUS) radius = MIN_FRAME_RADIUS;
+        local distance = radius * FRAME_MARGIN / sin(FRAME_HALF_FOV * PI / 180.0);
+
+        //The vertical FOV is fixed; a portrait viewport has a narrower
+        //horizontal FOV, so pull back far enough to fit the same sphere there.
+        if(mRect_ != null && mRect_[2] > 0 && mRect_[3] > 0){
+            local aspect = mRect_[2] / mRect_[3];
+            if(aspect < 1.0) distance /= aspect;
+        }
+        return mFPSCamera_.animateFrame(bounds.getCentre(), distance, duration);
     }
 
     //Where each view puts the camera, as a position and the direction it faces
