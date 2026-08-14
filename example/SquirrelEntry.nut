@@ -628,14 +628,14 @@
     //nodes inside it. Docking a window by name works before that window has
     //ever been submitted, which is what lets the layout be described in one
     //place rather than at each window.
-    function buildDefaultLayout_(){
+    function buildDefaultLayout_(forceDefault=false){
         if(mLayoutBuilt_) return;
         mLayoutBuilt_ = true;
 
         //A saved layout wins over the initial three-column arrangement. If it
         //is incomplete or no longer usable, fall through to the known-good
         //default instead of leaving the editor without a dockspace.
-        if(mEditorState_.buildSavedDockLayout(mDockId_)) return;
+        if(!forceDefault && mEditorState_.buildSavedDockLayout(mDockId_)) return;
 
         //Start from nothing, so the layout is the one described here rather
         //than this on top of whatever the dockspace already had.
@@ -658,13 +658,35 @@
         //includes the ## id suffix that keeps their titles unique. Only the
         //first viewport is placed here; the rest tab in beside it as they are
         //opened, since the layout cannot describe windows which do not exist yet.
-        if(mRenderWindows_.len() > 0){
+        if(forceDefault){
+            foreach(window in mRenderWindows_){
+                _imgui.dockBuilderDockWindow(window.getTitle(), mSceneDockId_);
+            }
+        }else if(mRenderWindows_.len() > 0){
             _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
         }
         _imgui.dockBuilderDockWindow(mSceneTreePanel_.mWindowTitle_, mSideDockId_);
         _imgui.dockBuilderDockWindow(mObjectPropertiesPanel_.mWindowTitle_, mPropertiesDockId_);
 
         _imgui.dockBuilderFinish(mDockId_);
+    }
+
+    //Recreate the example's initial three-column arrangement immediately. The
+    //scene is left unchanged; existing viewports become tabs in the middle.
+    function resetWindowLayout_(){
+        mSceneTreePanel_.setVisible(true);
+        mObjectPropertiesPanel_.setVisible(true);
+
+        if(mRenderWindows_.len() == 0){
+            addRenderWindow_();
+        }else{
+            foreach(window in mRenderWindows_){
+                if(!window.isVisible()) window.toggleVisible();
+            }
+        }
+
+        mLayoutBuilt_ = false;
+        buildDefaultLayout_(true);
     }
 
     function drawMenuBar_(){
@@ -691,6 +713,9 @@
         }
 
         if(_imgui.beginMenu("Window")){
+            if(_imgui.menuItem("Reset Layout")) resetWindowLayout_();
+            _imgui.separator();
+
             //Only while there is a gizmo layer left for one to draw its gizmo
             //on. Shown all the same once there are none, so that the way to get
             //another viewport is to close one rather than to wonder where the
