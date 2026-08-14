@@ -48,7 +48,10 @@
             local entry = sceneTree.getEntryForId(entryId);
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) +
                 "##raycastEntry" + entryId;
-            if(_imgui.menuItem(label)){
+            //The checked state is rendered as a tick in the popup's right-hand
+            //column, so an Alt-click chooser shows which hits are already part
+            //of the current multi-selection.
+            if(_imgui.menuItem(label, null, sceneTree.isEntrySelected(entryId))){
                 sceneTree.notifySelectionChanged(entryId);
             }
         }
