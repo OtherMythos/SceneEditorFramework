@@ -1,12 +1,134 @@
 <scene>
     <empty name="Example scene">
-        <mesh name="Move me" mesh="lineBox">
-            <position x="0" y="0" z="0"/>
-            <scale x="2" y="2" z="2"/>
-        </mesh>
-        <mesh name="Nested box" mesh="lineBox">
-            <position x="4" y="0" z="0"/>
-            <scale x="1" y="1" z="1"/>
-        </mesh>
+        <empty name="Root Structure 1">
+            <mesh name="Main Box" mesh="lineBox">
+                <scale x="2" y="2" z="2"/>
+            </mesh>
+            <empty name="Branch A">
+                <position x="10" y="0" z="0"/>
+                <mesh name="Branch A Box" mesh="lineBox">
+                    <scale x="1.5" y="1.5" z="1.5"/>
+                </mesh>
+                <empty name="Sub-branch A1">
+                    <position x="8" y="0" z="0"/>
+                    <mesh name="A1 Box" mesh="lineBox"/>
+                    <mesh name="A1 Sibling" mesh="lineBox">
+                        <position x="0" y="5" z="0"/>
+                        <scale x="0.8" y="0.8" z="0.8"/>
+                    </mesh>
+                </empty>
+                <empty name="Sub-branch A2">
+                    <position x="8" y="8" z="0"/>
+                    <mesh name="A2 Box" mesh="lineBox">
+                        <scale x="1.2" y="1.2" z="1.2"/>
+                    </mesh>
+                    <mesh name="A2 Child 1" mesh="lineBox">
+                        <position x="5" y="0" z="0"/>
+                        <scale x="0.9" y="0.9" z="0.9"/>
+                    </mesh>
+                    <mesh name="A2 Child 2" mesh="lineBox">
+                        <position x="0" y="5" z="0"/>
+                        <scale x="0.9" y="0.9" z="0.9"/>
+                    </mesh>
+                </empty>
+            </empty>
+            <empty name="Branch B">
+                <position x="0" y="15" z="0"/>
+                <mesh name="Branch B Box" mesh="lineBox">
+                    <scale x="1.5" y="1.5" z="1.5"/>
+                </mesh>
+                <empty name="Sub-branch B1">
+                    <position x="0" y="8" z="0"/>
+                    <mesh name="B1 Box" mesh="lineBox"/>
+                </empty>
+                <empty name="Sub-branch B2">
+                    <position x="10" y="8" z="0"/>
+                    <mesh name="B2 Box" mesh="lineBox">
+                        <scale x="1.1" y="1.1" z="1.1"/>
+                    </mesh>
+                    <mesh name="B2 Child" mesh="lineBox">
+                        <position x="5" y="5" z="0"/>
+                        <scale x="0.8" y="0.8" z="0.8"/>
+                    </mesh>
+                </empty>
+            </empty>
+            <empty name="Branch C">
+                <position x="-15" y="0" z="0"/>
+                <mesh name="Branch C Box" mesh="lineBox">
+                    <scale x="1.5" y="1.5" z="1.5"/>
+                </mesh>
+                <mesh name="C Direct Child" mesh="lineBox">
+                    <position x="5" y="0" z="0"/>
+                    <scale x="0.9" y="0.9" z="0.9"/>
+                </mesh>
+            </empty>
+        </empty>
+        <empty name="Root Structure 2">
+            <position x="0" y="0" z="20"/>
+            <mesh name="Second Root Box" mesh="lineBox">
+                <scale x="2" y="2" z="2"/>
+            </mesh>
+            <empty name="Structure 2 Branch A">
+                <position x="12" y="0" z="0"/>
+                <mesh name="S2A Box" mesh="lineBox">
+                    <scale x="1.5" y="1.5" z="1.5"/>
+                    <orientation x="-3.47645e-10" y="1.75014e-09" z="0.194832" w="0.980837"/>
+                </mesh>
+                <empty name="S2A Sub-level 1">
+                    <position x="8" y="0" z="0"/>
+                    <mesh name="S2A1 Box" mesh="lineBox"/>
+                    <empty name="S2A Deep">
+                        <position x="6" y="0" z="0"/>
+                        <mesh name="S2A Deep Box" mesh="lineBox">
+                            <scale x="0.8" y="0.8" z="0.8"/>
+                        </mesh>
+                    </empty>
+                </empty>
+            </empty>
+            <empty name="Structure 2 Branch B">
+                <position x="0" y="15" z="0"/>
+                <mesh name="S2B Box" mesh="lineBox">
+                    <scale x="1.3" y="1.3" z="1.3"/>
+                </mesh>
+                <mesh name="S2B Child 1" mesh="lineBox">
+                    <position x="5" y="0" z="0"/>
+                    <scale x="0.9" y="0.9" z="0.9"/>
+                </mesh>
+                <mesh name="S2B Child 2" mesh="lineBox">
+                    <position x="0" y="5" z="0"/>
+                    <scale x="0.9" y="0.9" z="0.9"/>
+                </mesh>
+            </empty>
+        </empty>
+        <empty name="Root Structure 3">
+            <position x="30" y="0" z="0"/>
+            <mesh name="Third Root Box" mesh="lineBox">
+                <scale x="2" y="2" z="2"/>
+            </mesh>
+            <empty name="Structure 3 Deep Tree">
+                <position x="12" y="0" z="0"/>
+                <mesh name="S3 L1 Box" mesh="lineBox">
+                    <scale x="1.5" y="1.5" z="1.5"/>
+                </mesh>
+                <empty name="Structure 3 Level 2">
+                    <position x="8" y="0" z="0"/>
+                    <mesh name="S3 L2 Box" mesh="lineBox">
+                        <scale x="1.2" y="1.2" z="1.2"/>
+                    </mesh>
+                    <empty name="Structure 3 Level 3">
+                        <position x="8" y="0" z="0"/>
+                        <mesh name="S3 L3 Box" mesh="lineBox">
+                            <scale x="0.9" y="0.9" z="0.9"/>
+                        </mesh>
+                        <empty name="Structure 3 Level 4">
+                            <position x="6" y="0" z="0"/>
+                            <mesh name="S3 L4 Box" mesh="lineBox">
+                                <scale x="0.7" y="0.7" z="0.7"/>
+                            </mesh>
+                        </empty>
+                    </empty>
+                </empty>
+            </empty>
+        </empty>
     </empty>
 </scene>
