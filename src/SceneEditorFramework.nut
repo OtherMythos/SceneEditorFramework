@@ -2,6 +2,7 @@
 
 //Gizmo meshes live with the plugin, so projects do not need to register this location themselves.
 _resources.addResourceLocation("script://../res", "FileSystem", "SceneEditor/general");
+_resources.initialiseResourceGroup("SceneEditor/general");
 
 _doFile("script://SceneEditorConstants.nut");
 
@@ -28,6 +29,12 @@ _doFile("script://IMGUI/SceneEditorIMGUIWidgets.nut");
 _doFile("script://IMGUI/SceneEditorIMGUISceneTree.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIObjectPropertyEntryMesh.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIObjectProperties.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIAxisIndicator.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIRaycastSelectionMenu.nut");
+_doFile("script://IMGUI/SceneEditorIMGUISceneTreeContextMenu.nut");
+_doFile("script://IMGUI/SceneEditorIMGUISceneRenderWindow.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIEditorState.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIEditor.nut");
 
 _doFile("script://actions/BasicCoordinatesChangeAction.nut");
 _doFile("script://actions/RenameSceneNodeAction.nut");

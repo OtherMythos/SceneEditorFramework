@@ -3,7 +3,7 @@
 //The binding does not expose ImGui's draw list, so each axis is rasterised from
 //small disabled ImGui buttons. They are borderless and closely spaced, producing
 //a continuous line without claiming the viewport's mouse interaction.
-::ExampleAxisIndicator <- class{
+::SceneEditorFramework.IMGUI.AxisIndicator <- class{
 
     AXIS_LENGTH = 24.0;
     INSET = 14.0;

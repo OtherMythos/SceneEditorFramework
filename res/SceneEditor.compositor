@@ -1,7 +1,6 @@
-//The example renders the scene into a texture rather than straight to the
-//window, so that it can be drawn inside a docked imgui window like any other
-//panel. avSetup.cfg turns off the engine's default compositor and the editor
-//builds these workspaces itself during start().
+//The editor renders each scene viewport into a texture so it can be drawn in a
+//docked ImGui window. Projects using IMGUI.Editor disable the engine's default
+//compositor; the editor builds these workspaces during start().
 
 //What every viewport draws, which is the scene followed by the gizmo.
 //
@@ -17,7 +16,7 @@
 //visibility flag 1 << n, so each of the nodes below asks for the layer it was
 //built for. The scene itself is not masked - the render queue is what keeps the
 //gizmo out of the pass which draws it.
-abstract target sceneEditorExampleSceneTarget
+abstract target sceneEditorSceneTarget
 {
     pass clear
     {
@@ -67,125 +66,125 @@ abstract target sceneEditorExampleSceneTarget
 //how many viewports can be open at once is this list.
 //@see ::SceneEditorFramework.MAX_GIZMO_LAYERS
 
-compositor_node SceneEditorExample/SceneToTextureNode0
+compositor_node SceneEditorFramework/SceneToTextureNode0
 {
     //The texture is created from script and re-created when the viewport is
     //resized, so this node has no say in its resolution.
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x01
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace0
+workspace SceneEditorFramework/SceneToTextureWorkspace0
 {
-    connect_output SceneEditorExample/SceneToTextureNode0 0
+    connect_output SceneEditorFramework/SceneToTextureNode0 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode1
+compositor_node SceneEditorFramework/SceneToTextureNode1
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x02
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace1
+workspace SceneEditorFramework/SceneToTextureWorkspace1
 {
-    connect_output SceneEditorExample/SceneToTextureNode1 0
+    connect_output SceneEditorFramework/SceneToTextureNode1 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode2
+compositor_node SceneEditorFramework/SceneToTextureNode2
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x04
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace2
+workspace SceneEditorFramework/SceneToTextureWorkspace2
 {
-    connect_output SceneEditorExample/SceneToTextureNode2 0
+    connect_output SceneEditorFramework/SceneToTextureNode2 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode3
+compositor_node SceneEditorFramework/SceneToTextureNode3
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x08
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace3
+workspace SceneEditorFramework/SceneToTextureWorkspace3
 {
-    connect_output SceneEditorExample/SceneToTextureNode3 0
+    connect_output SceneEditorFramework/SceneToTextureNode3 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode4
+compositor_node SceneEditorFramework/SceneToTextureNode4
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x10
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace4
+workspace SceneEditorFramework/SceneToTextureWorkspace4
 {
-    connect_output SceneEditorExample/SceneToTextureNode4 0
+    connect_output SceneEditorFramework/SceneToTextureNode4 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode5
+compositor_node SceneEditorFramework/SceneToTextureNode5
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x20
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace5
+workspace SceneEditorFramework/SceneToTextureWorkspace5
 {
-    connect_output SceneEditorExample/SceneToTextureNode5 0
+    connect_output SceneEditorFramework/SceneToTextureNode5 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode6
+compositor_node SceneEditorFramework/SceneToTextureNode6
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x40
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace6
+workspace SceneEditorFramework/SceneToTextureWorkspace6
 {
-    connect_output SceneEditorExample/SceneToTextureNode6 0
+    connect_output SceneEditorFramework/SceneToTextureNode6 0
 }
 
-compositor_node SceneEditorExample/SceneToTextureNode7
+compositor_node SceneEditorFramework/SceneToTextureNode7
 {
     in 0 sceneTexture
 
-    target sceneTexture : sceneEditorExampleSceneTarget
+    target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x80
     }
 }
-workspace SceneEditorExample/SceneToTextureWorkspace7
+workspace SceneEditorFramework/SceneToTextureWorkspace7
 {
-    connect_output SceneEditorExample/SceneToTextureNode7 0
+    connect_output SceneEditorFramework/SceneToTextureNode7 0
 }
 
 //Nothing draws the window itself any more: the scene goes to a texture and the
 //imgui plugin's overlay workspace only adds the gui on top of what is already
 //there. Without this the window would be left holding whatever the last frame
 //left in it, which shows up as flickering behind the docking area.
-compositor_node SceneEditorExample/ClearWindowNode
+compositor_node SceneEditorFramework/ClearWindowNode
 {
     in 0 renderWindow
 
@@ -198,7 +197,7 @@ compositor_node SceneEditorExample/ClearWindowNode
     }
 }
 
-workspace SceneEditorExample/ClearWindowWorkspace
+workspace SceneEditorFramework/ClearWindowWorkspace
 {
-    connect_output SceneEditorExample/ClearWindowNode 0
+    connect_output SceneEditorFramework/ClearWindowNode 0
 }

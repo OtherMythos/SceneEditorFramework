@@ -1,9 +1,9 @@
 //The object chooser shown by Alt-clicking a scene viewport. The ray query is
 //performed by the editor during sceneSafeUpdate; this class owns only the ImGui
 //popup and the selection made from it.
-::ExampleRaycastSelectionMenu <- class{
+::SceneEditorFramework.IMGUI.RaycastSelectionMenu <- class{
 
-    POPUP_ID = "exampleRaycastSelectionMenu"
+    POPUP_ID = "sceneEditorRaycastSelectionMenu"
 
     mBase_ = null;
     mEntryIds_ = null;
@@ -14,8 +14,7 @@
         mEntryIds_ = [];
     }
 
-    //An empty ray leaves the current selection alone and opens no menu, matching
-    //Southsea's behavior.
+    //An empty ray leaves the current selection alone and opens no menu.
     function requestForEntries(entryIds){
         if(entryIds == null || entryIds.len() == 0) return;
         mRequestedEntryIds_ = entryIds;

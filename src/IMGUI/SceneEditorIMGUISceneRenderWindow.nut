@@ -19,12 +19,9 @@
 //The camera reads the mouse only once the editor has said it may. @see
 //updateCamera
 //
-//This is loaded with _doFile from the editor's start function, alongside
-//ExampleRightClickMenu.nut.
-::ExampleSceneRenderWindow <- class{
+::SceneEditorFramework.IMGUI.SceneRenderWindow <- class{
 
-    //Cells in the framework's visibleIcon.png sheet. These are the same tool
-    //icons the Southsea render window used for its viewport overlay.
+    //Cells in the framework's visibleIcon.png sheet.
     TOOL_ICON_POSITION = 3
     TOOL_ICON_SURFACE = 4
     TOOL_ICON_SCALE = 5
@@ -102,8 +99,7 @@
     mInitialWindowStatePending_ = false;
 
     /**
-     * @param editor The example editor which owns this window and its shared
-     * scene tree.
+     * @param editor The editor which owns this window and its shared scene tree.
      * @param id A number no other render window has used, which the window's
      * imgui, texture and camera names are all built from.
      * @param layer A gizmo layer no other open render window is using, which
@@ -119,10 +115,10 @@
         mName_ = "Scene " + id;
         //imgui identifies a window by everything after the ##, and the dock
         //builder places windows by the whole string, so both halves matter.
-        mTitle_ = mName_ + "##exampleSceneViewport" + id;
+        mTitle_ = mName_ + "##sceneEditorViewport" + id;
 
         mCameraNode_ = _scene.getRootSceneNode().createChildSceneNode();
-        mCamera_ = _scene.createCamera("sceneEditorExample/camera" + id);
+        mCamera_ = _scene.createCamera(mEditor_.resourceName_("camera" + id));
         mCameraNode_.attachObject(mCamera_);
         //Created before the view is set, since it is what places the camera:
         //the angles it flies by have to be the ones the view left it at, or the
@@ -133,7 +129,7 @@
         mToolIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
-        mAxisIndicator_ = ::ExampleAxisIndicator();
+        mAxisIndicator_ = ::SceneEditorFramework.IMGUI.AxisIndicator();
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
         applyState(savedState);
@@ -160,7 +156,7 @@
     }
 
     function createTexture_(width, height){
-        mTexture_ = _graphics.createTexture("sceneEditorExample/sceneTexture" + mId_);
+        mTexture_ = _graphics.createTexture(mEditor_.resourceName_("sceneTexture" + mId_));
         mTexture_.setPixelFormat(_PFG_RGBA8_UNORM_SRGB);
         mTexture_.setResolution(width, height);
         mTexture_.scheduleTransitionTo(_GPU_RESIDENCY_RESIDENT);
@@ -168,9 +164,9 @@
         //One workspace per window, each an instance of the definition belonging
         //to the layer this window claimed - so each renders its own camera into
         //its own texture, and draws the copy of the gizmo which was sized for
-        //that camera. @see res/example.compositor
+        //that camera. @see res/SceneEditor.compositor
         mWorkspace_ = _compositor.addWorkspace([mTexture_], mCamera_,
-            "SceneEditorExample/SceneToTextureWorkspace" + mLayer_, true);
+            mEditor_.sceneWorkspaceName_(mLayer_), true);
 
         mTextureWidth_ = width;
         mTextureHeight_ = height;
@@ -352,7 +348,9 @@
 
             //Placed after the scene interaction target so the lines render on
             //top. The indicator itself is disabled and remains click-through.
-            mAxisIndicator_.draw(mCamera_, cursorX, cursorY, size[0], size[1]);
+            if(mEditor_.option_("showAxisIndicator", true)){
+                mAxisIndicator_.draw(mCamera_, cursorX, cursorY, size[0], size[1]);
+            }
             _imgui.setCursorPos(cursorX, cursorY + size[1]);
         }
 
@@ -378,21 +376,18 @@
     //it is docked - as [visible, open].
     //
     //Handing imgui somewhere to write the open state is the only way to get one;
-    //there is no window flag for it. A plugin build from before beginClosable
-    //existed has no way to draw it, and gets a window which is closed from the
-    //editor's Window menu instead.
+    //there is no window flag for it.
     function begin_(){
         local flags = _imgui.WindowFlags_NoScrollbar |
             _imgui.WindowFlags_NoScrollWithMouse;
 
-        if("beginClosable" in _imgui) return _imgui.beginClosable(mTitle_, flags);
-
-        return [_imgui.begin(mTitle_, flags), true];
+        return _imgui.beginClosable(mTitle_, flags);
     }
 
     //The active transform belongs to the shared scene tree, so every viewport
     //shows the same selected button and changing it in any one updates them all.
     function drawToolbar_(sceneCursorX, sceneCursorY){
+        if(!mEditor_.option_("showViewportToolbar", true)) return false;
         local sceneTree = mEditor_.mBase_.getActiveSceneTree();
         if(sceneTree == null) return false;
 

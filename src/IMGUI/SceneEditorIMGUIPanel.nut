@@ -4,10 +4,9 @@
     mBus_ = null;
     mVisible_ = true;
 
-    //The example editor uses these to persist both floating-window geometry
-    //and the dock leaf this panel belongs to. They are deliberately kept on
-    //the generic panel: projects can save them without reaching into ImGui
-    //while no frame is being built.
+    //The editor shell uses these to persist both floating-window geometry and
+    //the dock leaf this panel belongs to. They are deliberately kept on the
+    //generic panel so projects can save them between ImGui frames.
     mDockId_ = 0;
     mWindowPosition_ = null;
     mWindowSize_ = null;

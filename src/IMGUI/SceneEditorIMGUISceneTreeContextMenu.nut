@@ -1,30 +1,23 @@
 //The options shown when an object is right clicked, either in the scene tree or
 //in the scene itself.
 //
-//This lives in the example rather than the framework on purpose: which options
-//an editor offers for an object is the editor's business. The framework only
-//says which object was right clicked - by transmitting
-//SCENE_TREE_OPTIONS_MENU_REQUEST for the scene tree, and by answering
-//findEntryIdAtScenePosition() for the scene - and this decides what to do about
-//it.
+//The standard options shown when an object is right clicked. Editors can append
+//project-specific entries with Editor's drawSceneTreeContextMenu option.
 //
 //Everything here is drawn at the top level of the frame rather than inside a
 //panel. ImGui hashes a popup's id against the id stack it was opened in, so
 //openPopup() and beginPopup() have to be called from the same place; opening one
 //from inside the scene tree window and drawing it outside would never match.
 //
-//This is loaded with _doFile from the editor's start function rather than
-//alongside the entry file. The framework's bus events are squirrel constants,
-//which exist from the moment the plugin's scripts have run - after the entry
-//file was compiled, but before anything calls start.
-::ExampleRightClickMenu <- class{
+::SceneEditorFramework.IMGUI.SceneTreeContextMenu <- class{
 
     //Not shown to the user - a popup has no title bar - but it still has to be
     //unique, and the modal's title is displayed.
-    MENU_POPUP_ID = "exampleObjectRightClickMenu"
+    MENU_POPUP_ID = "sceneEditorObjectRightClickMenu"
     RENAME_POPUP_ID = "Rename object"
 
     mBase_ = null;
+    mEditor_ = null;
     //The entry the menu was opened for. Held rather than read back from the
     //selection so the menu keeps acting on the object which was right clicked.
     mEntryId_ = null;
@@ -37,8 +30,9 @@
     mRenameText_ = "";
     mRenameFocusPending_ = false;
 
-    constructor(baseObj){
-        mBase_ = baseObj;
+    constructor(editor){
+        mEditor_ = editor;
+        mBase_ = editor.mBase_;
 
         //A right click in the scene tree is announced on the bus, so the menu
         //has to be listening to it to be shown for one.
@@ -107,6 +101,8 @@
             if(_imgui.menuItem("Plane")) insertPrimitiveMeshChild_("plane", "Plane");
             _imgui.endMenu();
         }
+
+        mEditor_.drawSceneTreeContextMenuEntries_(entry, mEntryId_);
         _imgui.separator();
 
         if(_imgui.menuItem("Rename")){
@@ -135,7 +131,7 @@
             mRenameFocusPending_ = false;
             _imgui.setKeyboardFocusHere();
         }
-        mRenameText_ = _imgui.inputText("##exampleRenameInput", mRenameText_);
+        mRenameText_ = _imgui.inputText("##sceneEditorRenameInput", mRenameText_);
 
         //A node with no name is the framework's way of saying "use the type's
         //name", which is not something to arrive at by accident.

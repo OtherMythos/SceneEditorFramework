@@ -4,7 +4,8 @@ A framework to facilitate editing scenes in the avEngine.
 
 Features include:
  * Fully editable scene tree for avEngine scene files
- * ImGui scene-tree and object-property panels
+ * A ready-to-use docked ImGui editor with multiple scene viewports
+ * Reusable scene-tree, object-property, context-menu and viewport components
  * Scene gizmos for editing
 
 ## Loading
@@ -17,11 +18,73 @@ Add the plugin directory to the project's `Plugins` array in `avSetup.cfg`:
 
 The engine reads `avPlugin.cfg` and loads `src/SceneEditorFramework.nut`, which defines all framework
 objects in the `::SceneEditorFramework` namespace. Projects must not load that file themselves.
-The plugin automatically registers its `res` directory, which contains the gizmo meshes.
+The plugin automatically registers its `res` directory, which contains the gizmo
+meshes and viewport compositor definitions.
+
+## First-party editor
+
+`::SceneEditorFramework.IMGUI.Editor` owns the standard editor experience:
+docking, scene viewports and cameras, transform toolbar, axis indicator, scene
+tree, object properties, context menus, shortcuts, and layout persistence. A
+tool can start with only a scene path:
+
+```squirrel
+::MyEditor <- null;
+
+function start(){
+    ::MyEditor = ::SceneEditorFramework.IMGUI.Editor({
+        "scenePath": "res://res/tool.avScene"
+    });
+    ::MyEditor.start();
+}
+
+function update(){ ::MyEditor.update(); }
+function sceneSafeUpdate(){ ::MyEditor.sceneSafeUpdate(); }
+function end(){ ::MyEditor.end(); }
+```
+
+Construct the editor in `start()`, after the engine has loaded script plugins.
+The project's `avSetup.cfg` should disable `UseDefaultCompositor` and load the
+ImGui plugin before this framework, as the example does.
+
+The options table keeps common variations out of copied editor code:
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `scenePath` | required | Scene file to load and save. |
+| `statePath` | `res://.editorState.json` | Layout sidecar; use `null` to disable persistence. |
+| `createDefaultLight` | `true` | Add a directional light and ambient lighting. |
+| `initialViewportCount` | `1` | Number of viewports in a new, unsaved layout. |
+| `setupScene` | `null` | Callback receiving the editor during startup. |
+| `onStarted` / `onShutdown` | `null` | Lifecycle callbacks around the running editor. |
+| `helperFunctions` | `null` | Overrides for `SceneEditorFramework.HelperFunctions`. |
+| `enableSceneTreeContextMenu` | `true` | Enable Add, Rename and Delete on right click. |
+| `enableRaycastSelectionMenu` | `true` | Enable the Alt-click all-hits chooser. |
+| `showViewportToolbar` | `true` | Show transform tools over each viewport. |
+| `showAxisIndicator` | `true` | Show the camera-oriented XYZ indicator. |
+| `showMainMenuBar` | `true` | Show the standard File, Edit and Window menus. |
+| `drawMainMenu` | `null` | Callback for adding project menus to the main bar. |
+| `drawSceneTreeContextMenu` | `null` | Callback for adding project-specific object actions. |
+| `resourcePrefix` | `sceneEditorFramework` | Prefix for generated camera and texture names. |
+| `sceneWorkspacePrefix` | framework workspace prefix | Override viewport compositor workspace names. |
+| `clearWindowWorkspace` | framework clear workspace | Override the main-window compositor workspace. |
+
+The shell also accepts `sceneRenderWindowClass`, `sceneTreePanelClass`,
+`objectPropertiesPanelClass`, `editorStateClass`, `sceneTreeContextMenuClass`,
+and `raycastSelectionMenuClass` replacements, plus `sceneTreeWidth` and
+`objectPropertiesWidth` layout ratios. Public accessors expose the base, scene
+tree, and viewport list, while `addRenderWindow()` and `resetWindowLayout()`
+cover common host-tool actions.
+
+The individual classes under `SceneEditorFramework.IMGUI` remain public for
+tools which need a custom shell. `Base.setupIMGUIWindow()` and `Base.drawIMGUI()`
+provide the lower-level panel API.
 
 ## Example editor
 
-`example/` is a small runnable editor that loads and saves `res/example.avScene`. It demonstrates loading a scene tree, displaying the framework's ImGui scene-tree and object-property panels, and using the position/scale gizmos. Its `avImguiPlugin` distribution is bundled at `example/plugins/avImguiPlugin/`.
+`example/` is a small runnable editor that configures the first-party shell to
+load and save `res/example.avScene`. Its `avImguiPlugin` distribution is bundled
+at `example/plugins/avImguiPlugin/`.
 
 Run the avEngine with `example/avSetup.cfg`.
 
@@ -31,9 +94,6 @@ geometry, open viewports and their cameras, panel visibility, scene-tree
 expansion and selection, and the active transform tool on the next run. The
 file is local runtime state and is ignored by Git; removing it resets the
 editor to its default layout.
-
-Use `Base.setupIMGUIWindow()` to register panels and call `Base.drawIMGUI()` once
-per rendered frame after `_imgui.isFirstUpdateOfFrame()`.
 
 ## Tests
 

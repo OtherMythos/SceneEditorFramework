@@ -1,21 +1,21 @@
-//Persistence for the example editor's runtime state. Scene contents remain in
-//example.avScene; this writes the way the editor is viewing those contents to a
-//JSON sidecar beside avSetup.cfg.
-::ExampleEditorState <- class{
+//Persistence for an editor's runtime layout, viewports and selection. Scene
+//contents remain in the scene file; this writes only how they are being viewed.
+::SceneEditorFramework.IMGUI.EditorState <- class{
 
-    STATE_PATH = "res://.editorState.json";
     STATE_VERSION = 1;
     DOCK_EDGE_EPSILON = 4.0;
 
     mEditor_ = null;
+    mStatePath_ = null;
     mSavedState_ = null;
     mHasSavedState_ = false;
     mLastDisplaySize_ = null;
     mRestoredDockIdsByTitle_ = null;
     mRestoredDockIdsBySavedId_ = null;
 
-    constructor(editor){
+    constructor(editor, statePath){
         mEditor_ = editor;
+        mStatePath_ = statePath;
     }
 
     //Load before any viewport is created, since saved ids and gizmo layers are
@@ -23,13 +23,13 @@
     function load(){
         mSavedState_ = null;
         mHasSavedState_ = false;
-        if(!_system.exists(STATE_PATH)) return;
+        if(!_system.exists(mStatePath_)) return;
 
         try{
-            local state = _system.readJSONAsTable(STATE_PATH);
+            local state = _system.readJSONAsTable(mStatePath_);
             if(typeof state != "table" || !state.rawin("version") ||
                 state.rawget("version") != STATE_VERSION){
-                printf("Ignoring unsupported editor state at '%s'.", STATE_PATH);
+                printf("Ignoring unsupported editor state at '%s'.", mStatePath_);
                 return;
             }
 
@@ -38,7 +38,7 @@
         }catch(error){
             //A hand-edited or interrupted state file must never stop the scene
             //it accompanies from opening.
-            printf("Unable to load editor state at '%s': %s", STATE_PATH, error);
+            printf("Unable to load editor state at '%s': %s", mStatePath_, error);
         }
     }
 
@@ -95,10 +95,10 @@
         if(savedTree.rawin("transformCoordinateType") &&
             typeof savedTree.rawget("transformCoordinateType") == "integer"){
             local coordinateType = savedTree.rawget("transformCoordinateType");
-            if(coordinateType == mEditor_.TRANSFORM_POSITION ||
-                coordinateType == mEditor_.TRANSFORM_SCALE ||
-                coordinateType == mEditor_.TRANSFORM_ORIENTATION ||
-                coordinateType == mEditor_.TRANSFORM_RAYCAST){
+            if(coordinateType == SceneEditorFramework_BasicCoordinateType.POSITION ||
+                coordinateType == SceneEditorFramework_BasicCoordinateType.SCALE ||
+                coordinateType == SceneEditorFramework_BasicCoordinateType.ORIENTATION ||
+                coordinateType == SceneEditorFramework_BasicCoordinateType.RAYCAST){
                 tree.setObjectTransformCoordinateType(coordinateType);
             }
         }
@@ -199,9 +199,9 @@
         try{
             //Six decimal places keeps camera directions smooth while leaving
             //the sidecar readable and stable enough to inspect in a diff.
-            _system.writeJsonAsFile(STATE_PATH, state, true, 6);
+            _system.writeJsonAsFile(mStatePath_, state, true, 6);
         }catch(error){
-            printf("Unable to save editor state at '%s': %s", STATE_PATH, error);
+            printf("Unable to save editor state at '%s': %s", mStatePath_, error);
         }
     }
 
