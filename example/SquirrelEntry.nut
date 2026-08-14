@@ -506,6 +506,7 @@
 
         _doFile("res://ExampleRightClickMenu.nut");
         _doFile("res://ExampleRaycastSelectionMenu.nut");
+        _doFile("res://ExampleAxisIndicator.nut");
         _doFile("res://SceneRenderWindow.nut");
         _doFile("res://ExampleEditorState.nut");
 

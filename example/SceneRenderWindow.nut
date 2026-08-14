@@ -57,6 +57,7 @@
     mTitle_ = null;
     mEditor_ = null;
     mToolIcons_ = null;
+    mAxisIndicator_ = null;
 
     //Which gizmo layer this window has claimed, which is both the copy of the
     //transform gizmo it draws and the workspace definition which draws it.
@@ -132,6 +133,7 @@
         mToolIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
+        mAxisIndicator_ = ::ExampleAxisIndicator();
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
         applyState(savedState);
@@ -347,6 +349,11 @@
             _imgui.setCursorPos(cursorX, cursorY);
             _imgui.invisibleButton("##sceneViewport", size[0], size[1]);
             sceneItemActive = _imgui.isItemActive();
+
+            //Placed after the scene interaction target so the lines render on
+            //top. The indicator itself is disabled and remains click-through.
+            mAxisIndicator_.draw(mCamera_, cursorX, cursorY, size[0], size[1]);
+            _imgui.setCursorPos(cursorX, cursorY + size[1]);
         }
 
         //The scene is inside an imgui window, so wantCaptureMouse is true
