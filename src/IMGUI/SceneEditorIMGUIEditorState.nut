@@ -64,6 +64,7 @@
             local panels = mSavedState_.rawget("panels");
             applyPanel_(mEditor_.mSceneTreePanel_, panels, "sceneTree");
             applyPanel_(mEditor_.mObjectPropertiesPanel_, panels, "objectProperties");
+            applyPanel_(mEditor_.mFileBrowserPanel_, panels, "fileBrowser");
         }
 
         if(mSavedState_.rawin("sceneTree") &&
@@ -157,6 +158,7 @@
         //start() may have failed before the editor was fully constructed.
         if(mEditor_.mBase_ == null || mEditor_.mSceneTreePanel_ == null ||
             mEditor_.mObjectPropertiesPanel_ == null ||
+            mEditor_.mFileBrowserPanel_ == null ||
             mEditor_.mRenderWindows_ == null) return;
 
         local renderWindows = [];
@@ -185,6 +187,10 @@
                 "objectProperties": {
                     "visible": mEditor_.mObjectPropertiesPanel_.isVisible(),
                     "window": mEditor_.mObjectPropertiesPanel_.getWindowState()
+                },
+                "fileBrowser": {
+                    "visible": mEditor_.mFileBrowserPanel_.isVisible(),
+                    "window": mEditor_.mFileBrowserPanel_.getWindowState()
                 }
             },
             "sceneTree": {
@@ -213,7 +219,8 @@
         local leavesById = {};
         local windowStates = [
             mEditor_.mSceneTreePanel_.getWindowState(),
-            mEditor_.mObjectPropertiesPanel_.getWindowState()
+            mEditor_.mObjectPropertiesPanel_.getWindowState(),
+            mEditor_.mFileBrowserPanel_.getWindowState()
         ];
         foreach(state in renderWindowStates) windowStates.append(state.window);
 

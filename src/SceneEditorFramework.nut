@@ -13,6 +13,7 @@ _doFile("script://SceneEditorSceneTree.nut");
 _doFile("script://SceneEditorSceneFileParser.nut");
 _doFile("script://SceneEditorSceneFileWriter.nut");
 _doFile("script://SceneEditorBus.nut");
+_doFile("script://SceneEditorFileBrowserModel.nut");
 
 _doFile("script://SceneEditorFPSCamera.nut");
 
@@ -26,6 +27,7 @@ _doFile("script://SceneEditorGizmoOutlineLayers.nut");
 ::SceneEditorFramework.IMGUI <- {};
 _doFile("script://IMGUI/SceneEditorIMGUITextures.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIPanel.nut");
+_doFile("script://IMGUI/SceneEditorIMGUIFileBrowser.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIWidgets.nut");
 _doFile("script://IMGUI/SceneEditorIMGUISceneTree.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIObjectPropertyEntryMesh.nut");

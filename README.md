@@ -74,15 +74,19 @@ The options table keeps common variations out of copied editor code:
 | `cameraFocusDuration` | `0.3` | Seconds used to animate Shift+C framing. |
 | `drawMainMenu` | `null` | Callback for adding project menus to the main bar. |
 | `drawSceneTreeContextMenu` | `null` | Callback for adding project-specific object actions. |
+| `fileBrowserRoot` | `res://` | Filesystem root shown by the built-in file browser. |
+| `fileBrowserBackend` | `null` | Optional `listDirectory` / `isDirectory` callbacks for virtual filesystems. |
+| `fileBrowserCallbacks` | `null` | Optional `onSelectionChanged` / `onFileActivated` callbacks receiving an entry. |
 | `resourcePrefix` | `sceneEditorFramework` | Prefix for generated camera and texture names. |
 | `sceneWorkspacePrefix` | framework workspace prefix | Override viewport compositor workspace names. |
 | `clearWindowWorkspace` | framework clear workspace | Override the main-window compositor workspace. |
 
 The shell also accepts `sceneRenderWindowClass`, `sceneTreePanelClass`,
-`objectPropertiesPanelClass`, `editorStateClass`, `sceneTreeContextMenuClass`,
+`objectPropertiesPanelClass`, `fileBrowserModelClass`, `fileBrowserPanelClass`,
+`editorStateClass`, `sceneTreeContextMenuClass`,
 and `raycastSelectionMenuClass` replacements, plus `sceneTreeWidth` and
 `objectPropertiesWidth` layout ratios. Public accessors expose the base, scene
-tree, and viewport list, while `addRenderWindow()` and `resetWindowLayout()`
+tree, file browser, and viewport list, while `addRenderWindow()` and `resetWindowLayout()`
 cover common host-tool actions.
 
 The individual classes under `SceneEditorFramework.IMGUI` remain public for

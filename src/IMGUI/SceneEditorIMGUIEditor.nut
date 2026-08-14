@@ -45,6 +45,7 @@
     mClearWorkspace_ = null
     mSceneTreePanel_ = null
     mObjectPropertiesPanel_ = null
+    mFileBrowserPanel_ = null
 
     //The options offered for a right clicked object.
     mRightClickMenu_ = null
@@ -96,6 +97,7 @@
 
     PANEL_SCENE_TREE = 0
     PANEL_OBJECT_PROPERTIES = 1
+    PANEL_FILE_BROWSER = 2
     KEY_COMMAND_UNDO = 0
     KEY_COMMAND_REDO = 1
     KEY_COMMAND_TRANSFORM_POSITION = 2
@@ -140,6 +142,10 @@
 
     function getRenderWindows(){
         return mRenderWindows_;
+    }
+
+    function getFileBrowser(){
+        return mFileBrowserPanel_;
     }
 
     function addRenderWindow(savedState=null){
@@ -591,6 +597,15 @@
         mObjectPropertiesPanel_ = mBase_.setupIMGUIWindow(PANEL_OBJECT_PROPERTIES,
             option_("objectPropertiesPanelClass",
                 ::SceneEditorFramework.IMGUI.ObjectProperties));
+        local fileBrowserModelClass = option_("fileBrowserModelClass",
+            ::SceneEditorFramework.FileBrowserModel);
+        local fileBrowserModel = fileBrowserModelClass(
+            option_("fileBrowserRoot", "res://"),
+            option_("fileBrowserBackend", null));
+        mFileBrowserPanel_ = mBase_.setupIMGUIWindow(PANEL_FILE_BROWSER,
+            option_("fileBrowserPanelClass", ::SceneEditorFramework.IMGUI.FileBrowser));
+        mFileBrowserPanel_.configure(fileBrowserModel,
+            option_("fileBrowserCallbacks", null));
 
         if(mEditorState_ != null) mEditorState_.apply();
 
@@ -788,6 +803,7 @@
             _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
         }
         _imgui.dockBuilderDockWindow(mSceneTreePanel_.mWindowTitle_, mSideDockId_);
+        _imgui.dockBuilderDockWindow(mFileBrowserPanel_.mWindowTitle_, mSideDockId_);
         _imgui.dockBuilderDockWindow(mObjectPropertiesPanel_.mWindowTitle_, mPropertiesDockId_);
 
         _imgui.dockBuilderFinish(mDockId_);
@@ -798,6 +814,7 @@
     function resetWindowLayout_(){
         mSceneTreePanel_.setVisible(true);
         mObjectPropertiesPanel_.setVisible(true);
+        mFileBrowserPanel_.setVisible(true);
 
         if(mRenderWindows_.len() == 0){
             addRenderWindow_();
@@ -885,6 +902,9 @@
             }
             if(_imgui.menuItem("Object Properties", null, mObjectPropertiesPanel_.isVisible())){
                 mObjectPropertiesPanel_.toggleVisible();
+            }
+            if(_imgui.menuItem("File Browser", null, mFileBrowserPanel_.isVisible())){
+                mFileBrowserPanel_.toggleVisible();
             }
             _imgui.endMenu();
         }
