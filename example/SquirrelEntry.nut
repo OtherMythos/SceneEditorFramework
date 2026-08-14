@@ -54,6 +54,7 @@
     LGUI = 227,
     RCTRL = 228,
     RSHIFT = 229,
+    RALT = 230,
     RGUI = 231
 };
 
@@ -65,6 +66,8 @@
 
     //The options offered for a right clicked object. @see ExampleRightClickMenu
     mRightClickMenu_ = null
+    //The list of every object under an Alt-click. @see ExampleRaycastSelectionMenu
+    mRaycastSelectionMenu_ = null
     //An object right clicked in the scene, waiting for the gui to be built. The
     //pick has to happen while the scene is clean and the menu has to be opened
     //while the gui is built, which are different points in the frame.
@@ -502,6 +505,7 @@
         }
 
         _doFile("res://ExampleRightClickMenu.nut");
+        _doFile("res://ExampleRaycastSelectionMenu.nut");
         _doFile("res://SceneRenderWindow.nut");
         _doFile("res://ExampleEditorState.nut");
 
@@ -524,7 +528,9 @@
             }
 
             function basicMouseInteractionEnabled(){
-                return true;
+                //Alt+click belongs to the all-hits chooser rather than the
+                //framework's normal nearest-object selection.
+                return !::ExampleEditor.altSelectionModifierHeld_();
             }
 
             function drawIMGUIObjectPropertiesForUserEntry(userId, entry){
@@ -584,6 +590,7 @@
         //Subscribes itself to the bus, which is how a right click in the scene
         //tree reaches it.
         mRightClickMenu_ = ::ExampleRightClickMenu(mBase_);
+        mRaycastSelectionMenu_ = ::ExampleRaycastSelectionMenu(mBase_);
     }
 
     function update(){
@@ -625,6 +632,7 @@
         //picked up in the same frame, and so the popup is drawn over everything.
         applyPendingSceneMenuRequest_();
         mRightClickMenu_.draw();
+        mRaycastSelectionMenu_.draw();
     }
 
     //An object right clicked in the scene becomes the selection, the same as one
@@ -781,7 +789,27 @@
 
     function sceneSafeUpdate(){
         mBase_.sceneSafeUpdate();
+        updateSceneAltClick_();
         updateSceneRightClick_();
+    }
+
+    function altSelectionModifierHeld_(){
+        return anyKeyHeld_([KeyScancode.LALT, KeyScancode.RALT]);
+    }
+
+    //Alt+click asks which of all the objects along the cursor ray should be
+    //selected. This runs while the scene is clean; the resulting popup is drawn
+    //from update(), where ImGui calls are safe.
+    function updateSceneAltClick_(){
+        if(!altSelectionModifierHeld_() || !_input.getMousePressed(_MB_LEFT) ||
+            !sceneCursorInViewport_()) return;
+
+        local sceneTree = mBase_.getActiveSceneTree();
+        if(sceneTree == null) return;
+
+        local entries = sceneTree.findEntryIdsAtScenePosition(
+            ::SceneEditorFramework.getNormalisedSceneMousePosition());
+        mRaycastSelectionMenu_.requestForEntries(entries);
     }
 
     //Right clicking an object in the scene offers the same options right

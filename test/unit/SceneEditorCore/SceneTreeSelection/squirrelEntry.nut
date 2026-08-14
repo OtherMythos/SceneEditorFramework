@@ -90,6 +90,7 @@ function start(){
     { //A position outside the scene viewport is over nothing, rather than an
       //error. @see SceneTree.findEntryIdAtScenePosition
         _test.assertEqual(null, tree.findEntryIdAtScenePosition(null));
+        _test.assertEqual(0, tree.findEntryIdsAtScenePosition(null).len());
     }
 
     _test.endTest();

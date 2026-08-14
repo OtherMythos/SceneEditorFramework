@@ -64,6 +64,7 @@ function start(){
             editorBase.mActionStack_, editorBase.mBus_);
 
         _test.assertEqual(null, tree.findEntryIdAtScenePosition(Vec2(0.5, 0.5)));
+        _test.assertEqual(0, tree.findEntryIdsAtScenePosition(Vec2(0.5, 0.5)).len());
     }
 
     ::SceneEditorFramework.HelperFunctions = defaultHelpers;

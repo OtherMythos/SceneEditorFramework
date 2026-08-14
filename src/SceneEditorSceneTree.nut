@@ -1007,23 +1007,50 @@
      * @returns The entry id under the position, or null when it is over nothing.
      */
     function findEntryIdAtScenePosition(mousePos){
-        if(mousePos == null) return null;
+        local entries = findEntryIdsAtScenePosition(mousePos);
+        return entries.len() > 0 ? entries[0] : null;
+    }
+
+    /**
+     * Every scene entry intersected at a position, nearest first.
+     *
+     * A node can have more than one queryable object attached, so entry ids are
+     * returned only once. Objects carrying the scene query flag but not owned by
+     * this tree are ignored.
+     *
+     * Ray queries need a clean scene, so call this from sceneSafeUpdate().
+     *
+     * @param mousePos Position within the scene viewport in the 0-1 range, as
+     * ::SceneEditorFramework.getNormalisedSceneMousePosition() returns.
+     * @returns An array of entry ids, empty when there is no viewport or hit.
+     */
+    function findEntryIdsAtScenePosition(mousePos){
+        local entries = [];
+        if(mousePos == null) return entries;
 
         //The position is within whichever viewport the cursor is in, so the ray
         //has to be cast through that viewport's camera to reach what is under it.
         local camera = ::SceneEditorFramework.getActiveSceneCamera();
-        if(camera == null) return null;
+        if(camera == null) return entries;
 
         local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
-        if(result == null || result.len() <= 0) return null;
+        if(result == null) return entries;
 
-        //Objects the framework did not construct can share the query mask, so
-        //a node without an entry is a miss rather than an error.
-        local nodeId = result[0].getParentNode().getId();
-        if(!mNodesForEntry_.rawin(nodeId)) return null;
+        local found = {};
+        foreach(object in result){
+            //Objects the framework did not construct can share the query mask,
+            //so a node without an entry is skipped rather than being an error.
+            local nodeId = object.getParentNode().getId();
+            if(!mNodesForEntry_.rawin(nodeId)) continue;
 
-        return mNodesForEntry_.rawget(nodeId);
+            local entryId = mNodesForEntry_.rawget(nodeId);
+            if(found.rawin(entryId)) continue;
+            found.rawset(entryId, true);
+            entries.append(entryId);
+        }
+
+        return entries;
     }
 
     /**
