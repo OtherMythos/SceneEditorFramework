@@ -8,7 +8,7 @@
     ICON_SIZE = 76.0;
     MAX_LABEL_CHARACTERS = 18;
 
-    mWindowTitle_ = "File Browser##SceneEditorFrameworkFileBrowser";
+    mWindowTitle_ = "Resource Browser##SceneEditorFrameworkFileBrowser";
     mModel_ = null;
     mSearch_ = "";
     mPathInput_ = "";

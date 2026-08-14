@@ -793,7 +793,8 @@
 
         //Each split returns both halves: the one on the side split off, and
         //what is left of the node, which is what the next split works on.
-        local left = _imgui.dockBuilderSplitNode(mDockId_, _imgui.Dir_Left,
+        local bottom = _imgui.dockBuilderSplitNode(mDockId_, _imgui.Dir_Down, 0.25);
+        local left = _imgui.dockBuilderSplitNode(bottom[1], _imgui.Dir_Left,
             option_("sceneTreeWidth", 0.2));
         local right = _imgui.dockBuilderSplitNode(left[1], _imgui.Dir_Right,
             option_("objectPropertiesWidth", 0.25));
@@ -801,6 +802,7 @@
         mSideDockId_ = left[0];
         mPropertiesDockId_ = right[0];
         mSceneDockId_ = right[1];
+        local bottomDockId = bottom[0];
 
         //By title, which for the framework's panels and the viewports alike
         //includes the ## id suffix that keeps their titles unique. Only the
@@ -814,7 +816,7 @@
             _imgui.dockBuilderDockWindow(mRenderWindows_[0].getTitle(), mSceneDockId_);
         }
         _imgui.dockBuilderDockWindow(mSceneTreePanel_.mWindowTitle_, mSideDockId_);
-        _imgui.dockBuilderDockWindow(mFileBrowserPanel_.mWindowTitle_, mSideDockId_);
+        _imgui.dockBuilderDockWindow(mFileBrowserPanel_.mWindowTitle_, bottomDockId);
         _imgui.dockBuilderDockWindow(mObjectPropertiesPanel_.mWindowTitle_, mPropertiesDockId_);
 
         _imgui.dockBuilderFinish(mDockId_);
@@ -914,7 +916,7 @@
             if(_imgui.menuItem("Object Properties", null, mObjectPropertiesPanel_.isVisible())){
                 mObjectPropertiesPanel_.toggleVisible();
             }
-            if(_imgui.menuItem("File Browser", null, mFileBrowserPanel_.isVisible())){
+            if(_imgui.menuItem("Resource Browser", null, mFileBrowserPanel_.isVisible())){
                 mFileBrowserPanel_.toggleVisible();
             }
             _imgui.endMenu();
