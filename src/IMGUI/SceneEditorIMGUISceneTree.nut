@@ -14,6 +14,7 @@
     DRAG_THRESHOLD = 5.0;
     INHERITED_HIDDEN_TINT = 0.45;
     ANCESTOR_SELECTION_TEXT_COLOUR = [0.55, 0.75, 1.0, 1.0];
+    COLLAPSED_ANCESTOR_SELECTION_TEXT_COLOUR = [1.0, 0.60, 0.20, 1.0];
 
     mSceneTree_ = null;
     mWindowTitle_ = "Scene Tree##SceneEditorFrameworkSceneTree";
@@ -28,7 +29,7 @@
     mLastClickedEntryId_ = null;
     mLastClickTime_ = -100.0;
     //Entry ids whose descendants include a selected item. This is rebuilt
-    //before drawing so collapsed ancestors retain their hierarchy cue.
+    //before drawing so a collapsed ancestor can retain a hierarchy cue.
     mSelectedAncestorIds_ = null;
 
     //The plugin binding does not expose ImGui payloads, so a tree drag is
@@ -212,8 +213,12 @@
             local selected = mSceneTree_.isEntrySelected(entry.entryId);
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) + "##name";
 
+            //Every selected ancestor keeps the established hierarchy cue. A
+            //collapsed one is orange because it is actively hiding selection.
             local selectedAncestor = !selected &&
                 mSelectedAncestorIds_.rawin(entry.entryId);
+            local collapsedSelectedAncestor = selectedAncestor &&
+                !isExpanded_(entry.entryId);
             if(dropTarget){
                 local colour = mDropTargetValid_ ? [0.85, 0.55, 0.10, 0.85] :
                     [0.80, 0.20, 0.20, 0.85];
@@ -222,7 +227,9 @@
                 _imgui.pushStyleColor(_imgui.Col_HeaderActive, colour[0], colour[1], colour[2], colour[3]);
             }
             if(selectedAncestor){
-                local colour = ANCESTOR_SELECTION_TEXT_COLOUR;
+                local colour = collapsedSelectedAncestor ?
+                    COLLAPSED_ANCESTOR_SELECTION_TEXT_COLOUR :
+                    ANCESTOR_SELECTION_TEXT_COLOUR;
                 _imgui.pushStyleColor(_imgui.Col_Text,
                     colour[0], colour[1], colour[2], colour[3]);
             }
@@ -321,7 +328,7 @@
 
     //Walk the whole flattened tree, including collapsed groups, and mark every
     //object whose child group contains a selected entry. Doing this before the
-    //draw pass lets every ancestor use the same text colour without changing
+    //draw pass lets a collapsed ancestor use a hierarchy cue without changing
     //the scene tree's selection state.
     function rebuildSelectedAncestorIds_(){
         mSelectedAncestorIds_.clear();
