@@ -365,9 +365,9 @@ whatever order they happen to be drawn in.
     function setupDatablocks(){
         local handleColours = [
             //Regular
-            [ColourValue(1, 0, 1, 1), ColourValue(0, 1, 0, 1), ColourValue(0, 0, 1, 1)],
+            [ColourValue(0.95, 0.20, 0.20, 1), ColourValue(0.20, 0.90, 0.30, 1), ColourValue(0.25, 0.55, 1.00, 1)],
             //Highlighted
-            [ColourValue(0.6, 0, 0.6, 1), ColourValue(0, 0.6, 0, 1), ColourValue(0, 0, 0.6, 1)]
+            [ColourValue(0.57, 0.12, 0.12, 1), ColourValue(0.12, 0.54, 0.18, 1), ColourValue(0.15, 0.33, 0.60, 1)]
         ];
         local bases = [
             "SceneEditorFramework/handle",
