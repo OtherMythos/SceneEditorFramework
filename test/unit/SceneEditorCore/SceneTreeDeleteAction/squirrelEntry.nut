@@ -53,6 +53,24 @@ function start(){
     _test.assertEqual(-1, tree.mCurrentSelection);
     _test.assertEqual(-1, tree.mCurrentSelectionIdx);
 
+    //Undo restores both complete subtrees at their original hierarchy positions
+    //with their original ids. Redo removes the same entries again.
+    editorBase.mActionStack_.undo();
+    assertNames(tree, ["Parent", "First child", "Second child", "Middle",
+        "Other parent", "Only child", "Tail"]);
+    _test.assertNotEqual(null, tree.findEntryIdIndexInTree_(parent));
+    _test.assertNotEqual(null, tree.findEntryIdIndexInTree_(firstChild));
+    _test.assertNotEqual(null, tree.findEntryIdIndexInTree_(secondChild));
+    _test.assertNotEqual(null, tree.findEntryIdIndexInTree_(onlyChild));
+    assertParent(tree, firstChild, parent);
+    assertParent(tree, secondChild, parent);
+    assertParent(tree, onlyChild, otherParent);
+
+    editorBase.mActionStack_.redo();
+    assertNames(tree, ["Middle", "Other parent", "Tail"]);
+    _test.assertEqual(null, tree.findEntryIdIndexInTree_(parent));
+    _test.assertEqual(null, tree.findEntryIdIndexInTree_(onlyChild));
+
     //Only object IDs, never CHILD/TERM marker nulls, go back into the pool.
     local recycled = {};
     for(local i = 0; i < 4; i++){
@@ -89,4 +107,10 @@ function assertNames(tree, expected){
     for(local i = 0; i < expected.len(); i++){
         _test.assertEqual(expected[i], actual[i]);
     }
+}
+
+function assertParent(tree, childId, parentId){
+    local child = tree.getEntryForId(childId);
+    local parent = tree.getEntryForId(parentId);
+    _test.assertEqual(parent.node.getId(), child.node.getParent().getId());
 }
