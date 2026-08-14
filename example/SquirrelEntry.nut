@@ -41,6 +41,9 @@
 //itself when a scale gizmo is dragged, and its scripts are compiled before this
 //file - so the name has to be one that resolves at runtime.
 ::KeyScancode <- {
+    NUMBER_1 = 30,
+    NUMBER_2 = 31,
+
     Y = 28,
     Z = 29,
 
@@ -113,7 +116,9 @@
 
     KEY_COMMAND_UNDO = 0
     KEY_COMMAND_REDO = 1
-    KEY_COMMAND_MAX = 2
+    KEY_COMMAND_TRANSFORM_POSITION = 2
+    KEY_COMMAND_TRANSFORM_SCALE = 3
+    KEY_COMMAND_MAX = 4
 
     function setupLights_(){
         local light = _scene.createLight();
@@ -435,8 +440,15 @@
             mKeyCommandHeld_[i] = held;
 
             if(!pressed) continue;
-            if(i == KEY_COMMAND_UNDO) mBase_.mActionStack_.undo();
-            else mBase_.mActionStack_.redo();
+            if(i == KEY_COMMAND_UNDO){
+                mBase_.mActionStack_.undo();
+            }else if(i == KEY_COMMAND_REDO){
+                mBase_.mActionStack_.redo();
+            }else if(i == KEY_COMMAND_TRANSFORM_POSITION){
+                mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_POSITION);
+            }else{
+                mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_SCALE);
+            }
         }
     }
 
@@ -446,6 +458,9 @@
         //Ctrl+clicking a drag field in the object properties turns it into a
         //text box. Typing in one is not a request for a shortcut.
         if(_imgui.wantCaptureKeyboard()) return null;
+
+        if(_input.getRawKeyScancodeInput(KeyScancode.NUMBER_1)) return KEY_COMMAND_TRANSFORM_POSITION;
+        if(_input.getRawKeyScancodeInput(KeyScancode.NUMBER_2)) return KEY_COMMAND_TRANSFORM_SCALE;
 
         //Command as well as Control, as that is the shortcut on macOS. Both
         //sides of the keyboard, which is what a modifier scancode distinguishes.
@@ -474,7 +489,9 @@
         //At the moment I'm just using ctrl on macos as well.
         local modifier = "Ctrl";
         if(command == KEY_COMMAND_UNDO) return modifier + "+Z";
-        return modifier + "+Shift+Z";
+        if(command == KEY_COMMAND_REDO) return modifier + "+Shift+Z";
+        if(command == KEY_COMMAND_TRANSFORM_POSITION) return "1";
+        return "2";
     }
 
     function start(){
@@ -703,10 +720,10 @@
             if(_imgui.menuItem("Undo", keyCommandLabel_(KEY_COMMAND_UNDO))) mBase_.mActionStack_.undo();
             if(_imgui.menuItem("Redo", keyCommandLabel_(KEY_COMMAND_REDO))) mBase_.mActionStack_.redo();
             _imgui.separator();
-            if(_imgui.menuItem("Position")){
+            if(_imgui.menuItem("Position", keyCommandLabel_(KEY_COMMAND_TRANSFORM_POSITION))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_POSITION);
             }
-            if(_imgui.menuItem("Scale")){
+            if(_imgui.menuItem("Scale", keyCommandLabel_(KEY_COMMAND_TRANSFORM_SCALE))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_SCALE);
             }
             _imgui.endMenu();
