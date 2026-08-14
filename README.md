@@ -28,6 +28,11 @@ docking, scene viewports and cameras, transform toolbar, axis indicator, scene
 tree, object properties, context menus, shortcuts, and layout persistence. A
 tool can start with only a scene path:
 
+Viewport navigation follows Blender-style controls: hold the right mouse button
+and use WASDQE for FPS flight, drag the middle mouse button to orbit,
+Shift-middle-drag to pan, and use the mouse wheel to zoom. Switching styles
+continues from the camera's current position and direction.
+
 ```squirrel
 ::MyEditor <- null;
 

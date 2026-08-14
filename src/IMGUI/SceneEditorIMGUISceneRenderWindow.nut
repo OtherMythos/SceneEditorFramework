@@ -231,6 +231,7 @@
         local placement = viewPlacement_(view);
         mFPSCamera_.setPosition(placement[0]);
         mFPSCamera_.setDirection(placement[1]);
+        mFPSCamera_.setOrbitDistance(placement[2]);
     }
 
     /**
@@ -253,11 +254,11 @@
         switch(view){
             //Deliberately not straight down: a camera pointed along the axis it
             //measures its roll against has no way to decide which way up it is.
-            case VIEW_TOP: return [Vec3(0, 24, 0), Vec3(0, -1, -0.001)];
-            case VIEW_FRONT: return [Vec3(0, 4, 24), Vec3(0, 0, -1)];
-            case VIEW_SIDE: return [Vec3(24, 4, 0), Vec3(-1, 0, 0)];
+            case VIEW_TOP: return [Vec3(0, 24, 0), Vec3(0, -1, -0.001), 24.0];
+            case VIEW_FRONT: return [Vec3(0, 4, 24), Vec3(0, 0, -1), 24.0];
+            case VIEW_SIDE: return [Vec3(24, 4, 0), Vec3(-1, 0, 0), 24.0];
             case VIEW_PERSPECTIVE:
-            default: return [Vec3(12, 8, 15), Vec3(-12, -8, -15)];
+            default: return [Vec3(12, 8, 15), Vec3(-12, -8, -15), 20.8087];
         }
     }
 
@@ -494,6 +495,7 @@
             "view": mView_,
             "cameraPosition": [position.x, position.y, position.z],
             "cameraDirection": [direction.x, direction.y, direction.z],
+            "cameraOrbitDistance": mFPSCamera_.getOrbitDistance(),
             "window": {
                 "title": mTitle_,
                 "dockId": mDockId_,
@@ -521,6 +523,9 @@
             if(typeof d == "array" && d.len() >= 3){
                 mFPSCamera_.setDirection(Vec3(d[0], d[1], d[2]));
             }
+        }
+        if(state.rawin("cameraOrbitDistance")){
+            mFPSCamera_.setOrbitDistance(state.rawget("cameraOrbitDistance"));
         }
 
         if(!state.rawin("window") || typeof state.rawget("window") != "table") return;

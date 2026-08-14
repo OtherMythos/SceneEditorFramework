@@ -112,6 +112,47 @@ function start(){
 
         fpsCamera.setSensitivity(0.25);
         assertClose(0.25, fpsCamera.getSensitivity(), "sensitivity");
+
+        fpsCamera.setPanSensitivity(0.01);
+        assertClose(0.01, fpsCamera.getPanSensitivity(), "pan sensitivity");
+
+        fpsCamera.setZoomSensitivity(0.2);
+        assertClose(0.2, fpsCamera.getZoomSensitivity(), "zoom sensitivity");
+    }
+
+    { //Orbit changes position and direction around one fixed point. FPS and
+      //orbit share the same transform, so there is no second camera to snap to.
+        fpsCamera.setSensitivity(0.1);
+        fpsCamera.setPanSensitivity(0.002);
+        fpsCamera.setZoomSensitivity(0.15);
+        fpsCamera.setPosition(Vec3(0, 0, 0));
+        fpsCamera.setDirection(Vec3(0, 0, -1));
+        fpsCamera.setOrbitDistance(10.0);
+
+        fpsCamera.orbit(90.0, 0.0);
+        assertDirection(1, 0, 0, fpsCamera.getDirection());
+        local position = fpsCamera.getPosition();
+        assertClose(-10, position.x, "orbit position x");
+        assertClose(0, position.y, "orbit position y");
+        assertClose(-10, position.z, "orbit position z");
+
+        fpsCamera.zoom(1.0);
+        assertClose(8.5, fpsCamera.getOrbitDistance(), "wheel zoom distance");
+        position = fpsCamera.getPosition();
+        assertClose(-8.5, position.x, "zoom moves towards the orbit point");
+        assertClose(-10, position.z, "zoom retains the orbit point");
+
+        fpsCamera.pan(10.0, 0.0);
+        position = fpsCamera.getPosition();
+        assertClose(-8.5, position.x, "pan retains camera depth");
+        assertClose(-10.17, position.z, "pan follows horizontal mouse movement");
+
+        //A new FPS position establishes a new point ahead, and the next orbit
+        //starts there instead of returning to the old one.
+        fpsCamera.setPosition(Vec3(2, 3, 4));
+        fpsCamera.orbit(0.0, 10.0);
+        position = fpsCamera.getPosition();
+        _test.assertTrue(position.distance(Vec3(2, 3, 4)) > 0.001);
     }
 
     cameraNode.destroyNodeAndChildren();

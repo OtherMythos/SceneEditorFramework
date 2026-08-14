@@ -1,4 +1,4 @@
-//Flying a camera through the scene the way a first person game moves.
+//Flying and orbiting a camera through the scene.
 //
 //One of these belongs to one camera, so an editor with several viewports has one
 //per viewport and each is flown independently. It never asks which viewport the
@@ -6,12 +6,13 @@
 //whether the camera may take the mouse when update() is called, and the camera
 //says back whether it has it.
 //
-//Holding the right mouse button over a viewport is what flies it. That is what
-//makes the gesture unambiguous when there is more than one: the button is
-//pressed in exactly one viewport, and the keys move that one until it is
-//released, wherever the cursor wanders in the meantime. It also keeps the
-//movement keys out of the way of anything else which wants the keyboard, since
-//nothing is listening for them the rest of the time.
+//Holding the right mouse button over a viewport is what flies it. The middle
+//button orbits around a point in front of it, Shift-middle pans that point, and
+//the wheel moves towards or away from it. Starting a button gesture in exactly
+//one viewport makes it unambiguous when there is more than one: that viewport
+//keeps the mouse until release, wherever the cursor wanders in the meantime.
+//It also keeps the movement keys out of the way of anything else which wants
+//the keyboard, since nothing is listening for them the rest of the time.
 //
 //The mouse is read as a position rather than as a movement, because that is what
 //the engine reports, so a look is the difference between this frame's position
@@ -41,6 +42,15 @@
     DEFAULT_SENSITIVITY = 0.1
     //Units moved per update while a movement key is held.
     DEFAULT_SPEED = 0.3
+    //The orbit point starts this far in front of a camera which has not been
+    //given a more useful distance by its owner.
+    DEFAULT_ORBIT_DISTANCE = 10.0
+    //Pan is proportional to orbit distance so that the scene follows the mouse
+    //at roughly the same screen-space speed however far away it is.
+    DEFAULT_PAN_SENSITIVITY = 0.002
+    //The fraction of the current orbit distance moved by one wheel step.
+    DEFAULT_ZOOM_SENSITIVITY = 0.15
+    MIN_ORBIT_DISTANCE = 0.05
     //What the modifiers multiply that by.
     FAST_MULTIPLIER = 3.0
     FASTER_MULTIPLIER = 16.0
@@ -73,12 +83,24 @@
     mSensitivity_ = null;
     mSpeed_ = null;
 
+    //Orbiting, panning and zooming all share this point. FPS movement updates
+    //it from the new camera transform, which makes changing navigation style
+    //continuous rather than snapping to stale orbit state.
+    mOrbitTarget_ = null;
+    mOrbitDistance_ = null;
+    mPanSensitivity_ = null;
+    mZoomSensitivity_ = null;
+
     //Whether the camera currently has the mouse.
     mLooking_ = false;
+    //Right and middle drags use the same cursor capture machinery. The mode is
+    //null, "look", or "orbit"; Shift chooses pan while an orbit drag is read.
+    mNavigationMode_ = null;
     //The right button as it was last seen, so that a look begins on the frame
     //the button goes down rather than at any point it happens to be held - a
     //drag which began somewhere else and wandered in is not a look.
     mRightHeld_ = false;
+    mMiddleHeld_ = false;
     //The cursor as it was last read, which this update's movement is measured
     //against.
     mPrevMouseX_ = 0;
@@ -96,6 +118,9 @@
     //a right click apart from a right drag, which an editor needs to know
     //because a click is usually asking for a menu. @see hasMoved
     mMoved_ = false;
+    //Any captured drag movement, including middle-button navigation. This is
+    //kept separate because hasMoved() specifically disambiguates right-click.
+    mNavigationMoved_ = false;
 
     /**
      * @param camera The camera to fly. It must already be attached to a scene
@@ -108,10 +133,14 @@
 
         mSensitivity_ = DEFAULT_SENSITIVITY;
         mSpeed_ = DEFAULT_SPEED;
+        mOrbitDistance_ = DEFAULT_ORBIT_DISTANCE;
+        mPanSensitivity_ = DEFAULT_PAN_SENSITIVITY;
+        mZoomSensitivity_ = DEFAULT_ZOOM_SENSITIVITY;
 
         //Start from wherever the camera was already pointed, so that placing it
         //and then handing it over does not turn it to face somewhere else.
         readDirectionFromCamera_();
+        syncOrbitTarget_();
     }
 
     /**
@@ -122,14 +151,15 @@
      * not looking is unaffected.
      */
     function cancel(){
-        if(!mLooking_) return;
+        if(mNavigationMode_ == null) return;
 
         mLooking_ = false;
+        mNavigationMode_ = null;
         _window.showCursor(true);
     }
 
     /**
-     * Fly the camera for one update.
+     * Navigate the camera for one update.
      *
      * Call this once per update rather than once per rendered frame: movement is
      * per update, which is what makes the distance travelled the same however
@@ -148,26 +178,50 @@
         }
 
         local right = _input.getMouseButton(_MB_RIGHT);
-        local pressed = right && !mRightHeld_;
+        local rightPressed = right && !mRightHeld_;
         mRightHeld_ = right;
+        local middle = _input.getMouseButton(_MB_MIDDLE);
+        local middlePressed = middle && !mMiddleHeld_;
+        mMiddleHeld_ = middle;
 
-        if(mLooking_){
-            if(!right) endLook_();
-        }else if(pressed && interactable){
-            beginLook_();
+        if(mNavigationMode_ == "look"){
+            if(!right) endNavigation_();
+        }else if(mNavigationMode_ == "orbit"){
+            if(!middle) endNavigation_();
+        }else if(interactable){
+            if(rightPressed) beginNavigation_("look");
+            else if(middlePressed) beginNavigation_("orbit");
         }
 
-        if(!mLooking_) return false;
+        //The wheel belongs only to the hovered viewport, except during a drag
+        //which this camera already owns. It is deliberately independent of FPS
+        //and orbit mode: both arrive at exactly the same camera transform.
+        if(interactable || mNavigationMode_ != null){
+            local wheel = _input.getMouseWheelValue();
+            if(wheel != 0) zoom(wheel);
+        }
 
-        updateLook_();
-        updateMovement_();
+        if(mNavigationMode_ == null) return false;
+
+        if(mNavigationMode_ == "look"){
+            updateLook_();
+            updateMovement_();
+        }else{
+            updateOrbit_();
+        }
 
         return true;
     }
 
-    function beginLook_(){
-        mLooking_ = true;
+    function beginNavigation_(mode){
+        mNavigationMode_ = mode;
+        mLooking_ = mode == "look";
         mMoved_ = false;
+        mNavigationMoved_ = false;
+
+        //Rebuilding this from the current transform is what transfers any FPS
+        //movement or look immediately into an orbit around the point ahead.
+        syncOrbitTarget_();
 
         mAnchorX_ = _input.getMouseX();
         mAnchorY_ = _input.getMouseY();
@@ -182,14 +236,15 @@
         _window.showCursor(false);
     }
 
-    function endLook_(){
+    function endNavigation_(){
         mLooking_ = false;
+        mNavigationMode_ = null;
 
         //Left where the look began rather than wherever the turns took it. Only
         //when there were turns: a button which went down and straight back up
         //never moved the cursor, and putting it back would be a jump away from
         //whatever the user has just clicked on.
-        if(mMoved_) _window.warpMouseInWindow(mAnchorX_, mAnchorY_);
+        if(mNavigationMoved_) _window.warpMouseInWindow(mAnchorX_, mAnchorY_);
         _window.showCursor(true);
     }
 
@@ -205,13 +260,9 @@
     }
 
     function updateLook_(){
-        local mouseX = _input.getMouseX();
-        local mouseY = _input.getMouseY();
-
-        local movedX = mouseX - mPrevMouseX_;
-        local movedY = mouseY - mPrevMouseY_;
-        mPrevMouseX_ = mouseX;
-        mPrevMouseY_ = mouseY;
+        local movement = readMouseMovement_();
+        local movedX = movement[0];
+        local movedY = movement[1];
 
         if(movedX != 0 || movedY != 0){
             mMoved_ = true;
@@ -220,12 +271,38 @@
             //other way up.
             setYawPitch(mYaw_ + movedX * mSensitivity_, mPitch_ - movedY * mSensitivity_);
         }
+    }
+
+    function updateOrbit_(){
+        local movement = readMouseMovement_();
+        local movedX = movement[0];
+        local movedY = movement[1];
+        if(movedX == 0 && movedY == 0) return;
+
+        if(anyKeyHeld_(::SceneEditorFramework.FPSCameraKeys.FAST)){
+            pan(movedX, movedY);
+        }else{
+            orbit(movedX * mSensitivity_, -movedY * mSensitivity_);
+        }
+    }
+
+    //Read one frame of relative movement and keep a captured cursor away from
+    //the edge. Both FPS look and middle-button navigation use the same stream.
+    function readMouseMovement_(){
+        local mouseX = _input.getMouseX();
+        local mouseY = _input.getMouseY();
+
+        local movedX = mouseX - mPrevMouseX_;
+        local movedY = mouseY - mPrevMouseY_;
+        if(movedX != 0 || movedY != 0) mNavigationMoved_ = true;
+        mPrevMouseX_ = mouseX;
+        mPrevMouseY_ = mouseY;
 
         //A cursor which has reached the edge of the screen stops reporting
         //movement, which stops the turn, so it is put back before it gets there.
         //Only then, so that the position the look is measured against is
         //interfered with as rarely as possible.
-        if(!cursorNearWindowEdge_(mouseX, mouseY)) return;
+        if(!cursorNearWindowEdge_(mouseX, mouseY)) return [movedX, movedY];
 
         _window.warpMouseInWindow(mReturnX_, mReturnY_);
         //The warp is a jump rather than a movement of the mouse, so the next
@@ -233,6 +310,8 @@
         //camera by the width of the window.
         mPrevMouseX_ = mReturnX_;
         mPrevMouseY_ = mReturnY_;
+
+        return [movedX, movedY];
     }
 
     function cursorNearWindowEdge_(x, y){
@@ -246,7 +325,7 @@
         if(direction == null) return;
 
         mMoved_ = true;
-        mCameraNode_.setPosition(mCameraNode_.getPositionVec3() + direction * currentSpeed_());
+        setPosition(mCameraNode_.getPositionVec3() + direction * currentSpeed_());
     }
 
     //Which way the keys being held add up to, as a unit vector, or null when
@@ -315,6 +394,14 @@
         mCamera_.setDirection(directionVector_());
     }
 
+    function syncOrbitTarget_(){
+        mOrbitTarget_ = getPosition() + directionVector_() * mOrbitDistance_;
+    }
+
+    function applyOrbitPosition_(){
+        mCameraNode_.setPosition(mOrbitTarget_ - directionVector_() * mOrbitDistance_);
+    }
+
     //Take the angles from wherever the camera is already pointed. A camera looks
     //down its own negative z, so that is the direction its orientation turns
     //into the one it is facing.
@@ -361,10 +448,56 @@
         if(mPitch_ < -PITCH_LIMIT) mPitch_ = -PITCH_LIMIT;
 
         applyDirection_();
+        syncOrbitTarget_();
     }
 
     function setPosition(position){
         mCameraNode_.setPosition(position);
+        syncOrbitTarget_();
+    }
+
+    /** Orbit around the current target by yaw and pitch deltas in degrees. */
+    function orbit(yawDelta, pitchDelta){
+        local target = mOrbitTarget_;
+        setYawPitch(mYaw_ + yawDelta, mPitch_ + pitchDelta);
+        mOrbitTarget_ = target;
+        applyOrbitPosition_();
+    }
+
+    /**
+     * Pan in screen pixels. Positive x drags the scene right and positive y
+     * drags it down, matching Blender's grab-style middle-mouse pan.
+     */
+    function pan(horizontal, vertical){
+        local front = directionVector_();
+        local right = front.cross(Vec3(0, 1, 0));
+        if(right.length() < MOVEMENT_EPSILON) return;
+        right.normalise();
+        local up = right.cross(front);
+        up.normalise();
+
+        local scale = mOrbitDistance_ * mPanSensitivity_;
+        local movement = right * (-horizontal * scale) + up * (vertical * scale);
+        mOrbitTarget_ += movement;
+        mCameraNode_.setPosition(getPosition() + movement);
+    }
+
+    /** Move along the view direction while retaining the current orbit point. */
+    function zoom(amount){
+        local distance = mOrbitDistance_ * (1.0 - amount * mZoomSensitivity_);
+        if(distance < MIN_ORBIT_DISTANCE) distance = MIN_ORBIT_DISTANCE;
+        mOrbitDistance_ = distance;
+        applyOrbitPosition_();
+    }
+
+    function setOrbitDistance(distance){
+        mOrbitDistance_ = distance;
+        if(mOrbitDistance_ < MIN_ORBIT_DISTANCE) mOrbitDistance_ = MIN_ORBIT_DISTANCE;
+        syncOrbitTarget_();
+    }
+
+    function getOrbitDistance(){
+        return mOrbitDistance_;
     }
 
     function getPosition(){
@@ -399,12 +532,28 @@
         return mSpeed_;
     }
 
+    function setPanSensitivity(sensitivity){
+        mPanSensitivity_ = sensitivity;
+    }
+
+    function getPanSensitivity(){
+        return mPanSensitivity_;
+    }
+
+    function setZoomSensitivity(sensitivity){
+        mZoomSensitivity_ = sensitivity;
+    }
+
+    function getZoomSensitivity(){
+        return mZoomSensitivity_;
+    }
+
     function getCamera(){
         return mCamera_;
     }
 
     /**
-     * Whether the camera has the mouse. @see update
+     * Whether the camera is currently using FPS look. @see update
      */
     function isLooking(){
         return mLooking_;
