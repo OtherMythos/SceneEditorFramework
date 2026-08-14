@@ -431,6 +431,12 @@
     function updateDrag_(){
         if(mPotentialDragEntryId_ == null) return;
 
+        // Escape cancels both a pending and an active drag before it can be dropped.
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.ESCAPE)){
+            cancelDrag_();
+            return;
+        }
+
         local mouseDown = _input.getMouseButton(_MB_LEFT);
         if(!mDragging_ && mouseDown){
             local mouse = getMousePosition_();

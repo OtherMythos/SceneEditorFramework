@@ -73,6 +73,7 @@ enum SceneEditorFramework_BasicCoordinateType{
 //means modifier-aware selection does not depend on an editor defining its own
 //KeyScancode table.
 enum SceneEditorFramework_KeyScancode{
+    ESCAPE = 41,
     NUMBER_1 = 30,
     NUMBER_2 = 31,
     NUMBER_3 = 32,
