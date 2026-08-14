@@ -12,6 +12,7 @@
     SELECTABLE_SPACING_HEIGHT = 4.0;
     DOUBLE_CLICK_TIME = 0.35;
     DRAG_THRESHOLD = 5.0;
+    INHERITED_HIDDEN_TINT = 0.45;
 
     mSceneTree_ = null;
     mWindowTitle_ = "Scene Tree##SceneEditorFrameworkSceneTree";
@@ -91,14 +92,14 @@
             return;
         }
 
-        drawEntryGroup_(0, 0);
+        drawEntryGroup_(0, 0, false);
         _imgui.endChild();
         _imgui.popStyleVar();
     }
 
     //Entries are stored as objects interleaved with CHILD and TERM markers.
     //Return the index immediately after this sibling group.
-    function drawEntryGroup_(startIndex, depth){
+    function drawEntryGroup_(startIndex, depth, ancestorHidden){
         local entries = mSceneTree_.mEntries_;
         local index = startIndex;
         while(index < entries.len()){
@@ -113,11 +114,12 @@
 
             local hasChildren = index + 1 < entries.len() &&
                 entries[index + 1].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD;
-            drawEntry_(entry, depth, hasChildren);
+            drawEntry_(entry, depth, hasChildren, ancestorHidden);
 
             if(hasChildren){
                 if(isExpanded_(entry.entryId)){
-                    index = drawEntryGroup_(index + 2, depth + 1);
+                    index = drawEntryGroup_(index + 2, depth + 1,
+                        ancestorHidden || !entry.visible);
                 }else{
                     index = skipEntries_(index + 1);
                 }
@@ -129,7 +131,7 @@
         return index;
     }
 
-    function drawEntry_(entry, depth, hasChildren){
+    function drawEntry_(entry, depth, hasChildren, ancestorHidden){
         local startX = _imgui.getCursorPosX();
         local startY = _imgui.getCursorPosY();
         local screenPos = _imgui.getCursorScreenPos();
@@ -182,8 +184,14 @@
         _imgui.pushStyleColor(_imgui.Col_Button, 0.0, 0.0, 0.0, 0.0);
         _imgui.pushStyleColor(_imgui.Col_ButtonHovered, 0.4, 0.4, 0.4, 1.0);
         _imgui.pushStyleColor(_imgui.Col_ButtonActive, 0.6, 0.6, 0.6, 1.0);
+        //The sprite still reflects this entry's own visibility. A tint conveys
+        //that a hidden ancestor is what makes an otherwise-visible child disappear.
+        local visibilityTint = ancestorHidden ?
+            ColourValue(INHERITED_HIDDEN_TINT, INHERITED_HIDDEN_TINT,
+                INHERITED_HIDDEN_TINT, 1.0) : ColourValue(1, 1, 1, 1);
         local visibilityClicked = _imgui.imageButton("##visibility", mVisibilityIcons_, iconWidth, iconHeight,
-            visibilityUv0, 0.0, visibilityUv0 + ICON_CELL_WIDTH, 1.0, ColourValue(1, 1, 1, 0));
+            visibilityUv0, 0.0, visibilityUv0 + ICON_CELL_WIDTH, 1.0,
+            ColourValue(1, 1, 1, 0), visibilityTint);
         _imgui.popStyleColor(3);
         if(visibilityClicked){
             mSceneTree_.setEntryVisibility(entry.entryId, !entry.visible);
