@@ -91,6 +91,9 @@
     //Whether the cursor was over the window when it was last drawn.
     mHovered_ = false;
     mVisible_ = true;
+    //Independent of window visibility: a viewport can keep showing its scene
+    //without drawing its editor overlays or interacting with transform gizmos.
+    mShowGizmos_ = true;
     //Set when the window has asked to be closed, and acted on by the editor.
     mCloseRequested_ = false;
 
@@ -428,8 +431,43 @@
         _imgui.sameLine();
         hovered = drawToolButton_(sceneTree, SceneEditorFramework_BasicCoordinateType.ORIENTATION,
             TOOL_ICON_ORIENTATION, "Rotate") || hovered;
+        _imgui.sameLine();
+        hovered = drawViewOptionsButton_() || hovered;
 
         _imgui.popStyleVar();
+        return hovered;
+    }
+
+    //Matches the local View control in Southsea: settings belong to this
+    //viewport, so the button that changes them lives in the viewport too.
+    function drawViewOptionsButton_(){
+        local popupId = "##viewportViewOptions" + mId_;
+        //Image buttons measure as their image plus frame padding. Derive that
+        //same outer height from ImGui's current font and frame metrics, rather
+        //than assuming a particular theme's padding.
+        local textHeight = _imgui.calcTextSize("View")[1];
+        local buttonHeight = ICON_HEIGHT * _imgui.getGlobalScale() +
+            _imgui.getFrameHeight() - textHeight;
+        local buttonPos = _imgui.getCursorScreenPos();
+        local popupOpen = _imgui.isPopupOpen(popupId);
+        if(_imgui.button("View##viewportViewButton" + mId_, 0, buttonHeight)){
+            _imgui.openPopup(popupId);
+            popupOpen = true;
+        }
+        local hovered = _imgui.isItemHovered();
+        //Only set the next popup position while it is open. Otherwise ImGui
+        //would apply it to the next unrelated window submitted this frame.
+        if(popupOpen){
+            _imgui.setNextWindowPos(buttonPos[0], buttonPos[1] + buttonHeight,
+                _imgui.Cond_Always);
+        }
+        if(_imgui.beginPopup(popupId)){
+            if(_imgui.menuItem("Show Gizmos", null, showsGizmos())){
+                toggleGizmos();
+            }
+            hovered = _imgui.isWindowHovered() || hovered;
+            _imgui.endPopup();
+        }
         return hovered;
     }
 
@@ -514,6 +552,7 @@
             "id": mId_,
             "layer": mLayer_,
             "visible": mVisible_,
+            "showGizmos": mShowGizmos_,
             "view": mView_,
             "cameraPosition": [position.x, position.y, position.z],
             "cameraDirection": [direction.x, direction.y, direction.z],
@@ -533,6 +572,7 @@
         if(state == null || typeof state != "table") return;
 
         if(state.rawin("visible")) mVisible_ = state.rawget("visible");
+        if(state.rawin("showGizmos")) mShowGizmos_ = state.rawget("showGizmos");
         if(state.rawin("view")) setView(state.rawget("view"));
         if(state.rawin("cameraPosition")){
             local p = state.rawget("cameraPosition");
@@ -599,6 +639,14 @@
 
     function toggleVisible(){
         mVisible_ = !mVisible_;
+    }
+
+    function showsGizmos(){
+        return mShowGizmos_;
+    }
+
+    function toggleGizmos(){
+        mShowGizmos_ = !mShowGizmos_;
     }
 
     function requestClose(){

@@ -450,7 +450,10 @@
     function gizmoLayerCameras_(){
         local cameras = array(::SceneEditorFramework.MAX_GIZMO_LAYERS, null);
         foreach(window in mRenderWindows_){
-            cameras[window.getLayer()] = window.getCamera();
+            //A hidden gizmo layer has no copy for SceneEditorGizmoLayers to
+            //size, render, or pick. The viewport's regular scene camera stays
+            //alive; only its editor overlays are absent.
+            if(window.showsGizmos()) cameras[window.getLayer()] = window.getCamera();
         }
 
         return cameras;
@@ -461,6 +464,7 @@
     //to the gizmo the user can actually see under the cursor.
     function activeGizmoLayer_(){
         if(mFocusedRenderWindow_ == null) return null;
+        if(!mFocusedRenderWindow_.showsGizmos()) return null;
         return mFocusedRenderWindow_.getLayer();
     }
 

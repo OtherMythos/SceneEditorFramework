@@ -71,8 +71,8 @@
         bus.subscribeObject(this);
 
         setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
-        mOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(mParentNode_, mBus_);
-        mChildrenOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
+        mOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineLayers(mParentNode_, mBus_);
+        mChildrenOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineLayers(
             mParentNode_, mBus_);
         mMoveHandles_.setVisible(false);
     }
@@ -88,6 +88,8 @@
         //Also what notices a viewport being opened or closed, since that is a
         //copy of the gizmo appearing or going away.
         mMoveHandles_.update();
+        mOutlineBox_.update();
+        mChildrenOutlineBox_.update();
 
         if(mCurrentSelectionDeferred == -1){
             setCurrentSelection(null);

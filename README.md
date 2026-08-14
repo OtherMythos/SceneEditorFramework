@@ -32,7 +32,9 @@ Viewport navigation follows Blender-style controls: hold the right mouse button
 and use WASDQE for FPS flight, drag the middle mouse button to orbit,
 Shift-middle-drag to pan, and use the mouse wheel to zoom. Switching styles
 continues from the camera's current position and direction. Shift+C smoothly
-frames the currently selected object in the focused viewport.
+frames the currently selected object in the focused viewport. Each viewport's
+View button controls its own gizmos, including selection outlines, independently;
+that choice is restored with the viewport's layout state.
 
 ```squirrel
 ::MyEditor <- null;

@@ -21,6 +21,7 @@ _doFile("script://SceneEditorGizmoObjectHandles.nut");
 _doFile("script://SceneEditorGizmoRotationHandles.nut");
 _doFile("script://SceneEditorGizmoLayers.nut");
 _doFile("script://SceneEditorGizmoOutlineBox.nut");
+_doFile("script://SceneEditorGizmoOutlineLayers.nut");
 
 ::SceneEditorFramework.IMGUI <- {};
 _doFile("script://IMGUI/SceneEditorIMGUITextures.nut");

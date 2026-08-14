@@ -9,15 +9,20 @@
     AABB_EXPANSION = 0.05;
 
     mBus_ = null;
+    //Null retains the old, scene-wide outline for direct users of this class.
+    //A layer makes this a per-viewport overlay, rendered with that viewport's
+    //other gizmos.
+    mLayer_ = null;
     mCornerNodes_ = null;
     mArmNodes_ = null;
     mCentre_ = null;
     mHalfSize_ = null;
 
-    constructor(parent, bus){
+    constructor(parent, bus, layer=null){
         base.constructor(parent);
 
         mBus_ = bus;
+        mLayer_ = layer;
         mCentre_ = Vec3();
         mHalfSize_ = Vec3();
         setup_(mParentNode_);
@@ -41,7 +46,12 @@
             for(local axis = 0; axis < 3; axis++){
                 local armNode = cornerNode.createChildSceneNode();
                 local item = _scene.createItem("line");
-                item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.SCENE);
+                if(mLayer_ == null){
+                    item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.SCENE);
+                }else{
+                    item.setRenderQueueGroup(SceneEditorFramework_RenderQueue.GIZMO);
+                    item.setVisibilityFlags(1 << mLayer_);
+                }
                 item.setQueryFlags(0);
                 item.setDatablock("SceneEditorFramework/selectionOutline");
                 armNode.attachObject(item);
