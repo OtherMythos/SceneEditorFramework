@@ -678,6 +678,11 @@
         //Before the framework's update, so that the gizmos it sizes by their
         //distance from the camera are sized for where the camera is now.
         updateRenderWindowCameras_(deltaSeconds);
+        //This call does not begin an ImGui frame. The plugin applies Dear
+        //ImGui's global NoMouse configuration before NewFrame determines
+        //hovered widgets, so a hidden FPS/orbit cursor cannot interact with any
+        //window—including custom panels—wherever its absolute position moves.
+        _imgui.setMouseInputEnabled(mFlyingRenderWindow_ == null);
 
         mBase_.update();
         if(!_imgui.isFirstUpdateOfFrame()) return;
@@ -902,7 +907,7 @@
     function updateSceneAltClick_(){
         if(mRaycastSelectionMenu_ == null || !altSelectionModifierHeld_() ||
             !_input.getMousePressed(_MB_LEFT) ||
-            !sceneCursorInViewport_()) return;
+            !sceneEditorInteractable_()) return;
 
         local sceneTree = mBase_.getActiveSceneTree();
         if(sceneTree == null) return;
@@ -953,6 +958,9 @@
     }
 
     function end(){
+        //The flag belongs to the process-wide ImGui context rather than this
+        //editor, so never leave it disabled when the editor shuts down.
+        _imgui.setMouseInputEnabled(true);
         local onShutdown = option_("onShutdown", null);
         if(onShutdown != null) onShutdown(this);
         if(mEditorState_ != null) mEditorState_.save();
