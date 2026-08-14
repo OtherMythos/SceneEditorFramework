@@ -13,6 +13,7 @@
     DOUBLE_CLICK_TIME = 0.35;
     DRAG_THRESHOLD = 5.0;
     INHERITED_HIDDEN_TINT = 0.45;
+    ANCESTOR_SELECTION_TEXT_COLOUR = [0.55, 0.75, 1.0, 1.0];
 
     mSceneTree_ = null;
     mWindowTitle_ = "Scene Tree##SceneEditorFrameworkSceneTree";
@@ -26,6 +27,9 @@
     mRenameFocusPending_ = false;
     mLastClickedEntryId_ = null;
     mLastClickTime_ = -100.0;
+    //Entry ids whose descendants include a selected item. This is rebuilt
+    //before drawing so collapsed ancestors retain their hierarchy cue.
+    mSelectedAncestorIds_ = null;
 
     //The plugin binding does not expose ImGui payloads, so a tree drag is
     //tracked from the selectable which captured the left mouse button.
@@ -44,6 +48,7 @@
         base.constructor(baseObj, bus);
         mSceneTree_ = baseObj.getActiveSceneTree();
         mExpandedEntries_ = {};
+        mSelectedAncestorIds_ = {};
 
         mObjectIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.OBJECT_ICONS
@@ -82,6 +87,8 @@
     }
 
     function drawEntries_(){
+        rebuildSelectedAncestorIds_();
+
         //The child padding is removed so the row highlight and root
         //arrow begin at the hierarchy's left edge.
         _imgui.pushStyleVar(_imgui.StyleVar_WindowPadding, 0.0, 0.0);
@@ -205,6 +212,8 @@
             local selected = mSceneTree_.isEntrySelected(entry.entryId);
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) + "##name";
 
+            local selectedAncestor = !selected &&
+                mSelectedAncestorIds_.rawin(entry.entryId);
             if(dropTarget){
                 local colour = mDropTargetValid_ ? [0.85, 0.55, 0.10, 0.85] :
                     [0.80, 0.20, 0.20, 0.85];
@@ -212,7 +221,13 @@
                 _imgui.pushStyleColor(_imgui.Col_HeaderHovered, colour[0], colour[1], colour[2], colour[3]);
                 _imgui.pushStyleColor(_imgui.Col_HeaderActive, colour[0], colour[1], colour[2], colour[3]);
             }
+            if(selectedAncestor){
+                local colour = ANCESTOR_SELECTION_TEXT_COLOUR;
+                _imgui.pushStyleColor(_imgui.Col_Text,
+                    colour[0], colour[1], colour[2], colour[3]);
+            }
             _imgui.selectable(label, selected, 0, nameWidth, selectableHeight);
+            if(selectedAncestor) _imgui.popStyleColor();
             if(dropTarget) _imgui.popStyleColor(3);
             if(dropTarget){
                 local targetName = ::SceneEditorFramework.getNameForSceneEntry(entry);
@@ -302,6 +317,52 @@
         }
         local uv0 = cell * ICON_CELL_WIDTH;
         _imgui.image(mObjectIcons_, iconWidth, iconHeight, uv0, 0.0, uv0 + ICON_CELL_WIDTH, 1.0);
+    }
+
+    //Walk the whole flattened tree, including collapsed groups, and mark every
+    //object whose child group contains a selected entry. Doing this before the
+    //draw pass lets every ancestor use the same text colour without changing
+    //the scene tree's selection state.
+    function rebuildSelectedAncestorIds_(){
+        mSelectedAncestorIds_.clear();
+        findSelectedEntriesInGroup_(0);
+    }
+
+    //Return the index after this group and whether it contains a selected item.
+    function findSelectedEntriesInGroup_(startIndex){
+        local entries = mSceneTree_.mEntries_;
+        local index = startIndex;
+        local containsSelection = false;
+        while(index < entries.len()){
+            local entry = entries[index];
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
+                return { "nextIndex": index + 1, "containsSelection": containsSelection };
+            }
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                index++;
+                continue;
+            }
+
+            local hasChildren = index + 1 < entries.len() &&
+                entries[index + 1].nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD;
+            local childContainsSelection = false;
+            if(hasChildren){
+                local childResult = findSelectedEntriesInGroup_(index + 2);
+                childContainsSelection = childResult.containsSelection;
+                index = childResult.nextIndex;
+                if(childContainsSelection){
+                    mSelectedAncestorIds_.rawset(entry.entryId, true);
+                }
+            }else{
+                index++;
+            }
+
+            if(mSceneTree_.isEntrySelected(entry.entryId) || childContainsSelection){
+                containsSelection = true;
+            }
+        }
+
+        return { "nextIndex": index, "containsSelection": containsSelection };
     }
 
     function isExpanded_(entryId){
