@@ -113,6 +113,8 @@
     PANEL_OBJECT_PROPERTIES = 1
     TRANSFORM_POSITION = 0
     TRANSFORM_SCALE = 1
+    TRANSFORM_ORIENTATION = 2
+    TRANSFORM_RAYCAST = 3
 
     KEY_COMMAND_UNDO = 0
     KEY_COMMAND_REDO = 1
@@ -193,7 +195,7 @@
         if(id >= mNextRenderWindowId_) mNextRenderWindowId_ = id + 1;
         else mNextRenderWindowId_++;
 
-        local window = ::ExampleSceneRenderWindow(id, layer, mRenderWindows_.len(), savedState);
+        local window = ::ExampleSceneRenderWindow(this, id, layer, mRenderWindows_.len(), savedState);
 
         mRenderWindows_.append(window);
         return window;

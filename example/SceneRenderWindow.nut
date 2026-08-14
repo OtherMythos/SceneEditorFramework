@@ -23,6 +23,16 @@
 //ExampleRightClickMenu.nut.
 ::ExampleSceneRenderWindow <- class{
 
+    //Cells in the framework's visibleIcon.png sheet. These are the same tool
+    //icons the Southsea render window used for its viewport overlay.
+    TOOL_ICON_POSITION = 3
+    TOOL_ICON_SURFACE = 4
+    TOOL_ICON_SCALE = 5
+    TOOL_ICON_ORIENTATION = 6
+    ICON_WIDTH = 14.0
+    ICON_HEIGHT = 12.0
+    ICON_CELL_WIDTH = 0.1
+
     //Views a window can be set to. A new window opens on the next one along, so
     //that opening a second viewport shows something the first one does not.
     VIEW_PERSPECTIVE = 0
@@ -45,6 +55,8 @@
     mId_ = null;
     mName_ = null;
     mTitle_ = null;
+    mEditor_ = null;
+    mToolIcons_ = null;
 
     //Which gizmo layer this window has claimed, which is both the copy of the
     //transform gizmo it draws and the workspace definition which draws it.
@@ -89,6 +101,8 @@
     mInitialWindowStatePending_ = false;
 
     /**
+     * @param editor The example editor which owns this window and its shared
+     * scene tree.
      * @param id A number no other render window has used, which the window's
      * imgui, texture and camera names are all built from.
      * @param layer A gizmo layer no other open render window is using, which
@@ -97,7 +111,8 @@
      * @param viewIndex Which view the window opens on. Wrapped, so the editor
      * can pass a plain count of the windows it has open.
      */
-    constructor(id, layer, viewIndex, savedState=null){
+    constructor(editor, id, layer, viewIndex, savedState=null){
+        mEditor_ = editor;
         mId_ = id;
         mLayer_ = layer;
         mName_ = "Scene " + id;
@@ -113,6 +128,10 @@
         //first turn would snap the view somewhere else.
         mFPSCamera_ = ::SceneEditorFramework.FPSCamera(mCamera_);
         setView(viewIndex % VIEW_MAX);
+
+        mToolIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
+            ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
+        );
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
         applyState(savedState);
@@ -244,16 +263,6 @@
         }
     }
 
-    function viewName_(view){
-        switch(view){
-            case VIEW_TOP: return "Top";
-            case VIEW_FRONT: return "Front";
-            case VIEW_SIDE: return "Side";
-            case VIEW_PERSPECTIVE:
-            default: return "Perspective";
-        }
-    }
-
     /**
      * Draw the window and the scene inside it.
      *
@@ -299,10 +308,9 @@
             return;
         }
 
-        drawMenuBar_();
-
-        //Read before anything is drawn: the cursor sits at the top left of the
-        //content region until something moves it.
+        //ImGui's initial cursor is the real content origin. Its y coordinate
+        //already includes the title/tab bar, so forcing it to (0, 0) puts the
+        //scene behind that bar and makes every mouse coordinate appear offset.
         local cursorX = _imgui.getCursorPosX();
         local cursorY = _imgui.getCursorPosY();
         local pos = _imgui.getCursorScreenPos();
@@ -313,12 +321,18 @@
         //from the invisible button below - which is the item imgui hands such a
         //drag to, and holds until the button comes back up.
         local sceneItemActive = false;
+        local toolbarHovered = false;
 
         if(size[0] > 0 && size[1] > 0){
             //Drawn at the panel's size rather than the texture's, so a resize
             //shows a stretched scene for the few frames before the texture
             //catches up rather than a gap.
             _imgui.image(mTexture_, size[0], size[1]);
+
+            //Drawn after the image but before its invisible interaction target.
+            //The toolbar therefore appears over the scene and claims the ImGui
+            //hover id first, preventing the target below from swallowing clicks.
+            toolbarHovered = drawToolbar_(cursorX, cursorY);
 
             //An invisible button over the image, so that dragging in the scene
             //is a drag on an item rather than on the window's empty space -
@@ -346,7 +360,9 @@
         //properties - is one the cursor may well cross this window during.
         //Whatever grabbed the mouse keeps it until it is released, so the window
         //is only hovered while something is active if that something is its own.
-        if(!sceneItemActive && _imgui.isAnyItemActive()) mHovered_ = false;
+        if(toolbarHovered || (!sceneItemActive && _imgui.isAnyItemActive())){
+            mHovered_ = false;
+        }
 
         _imgui.end();
     }
@@ -360,24 +376,55 @@
     //editor's Window menu instead.
     function begin_(){
         local flags = _imgui.WindowFlags_NoScrollbar |
-            _imgui.WindowFlags_NoScrollWithMouse | _imgui.WindowFlags_MenuBar;
+            _imgui.WindowFlags_NoScrollWithMouse;
 
         if("beginClosable" in _imgui) return _imgui.beginClosable(mTitle_, flags);
 
         return [_imgui.begin(mTitle_, flags), true];
     }
 
-    function drawMenuBar_(){
-        if(!_imgui.beginMenuBar()) return;
+    //The active transform belongs to the shared scene tree, so every viewport
+    //shows the same selected button and changing it in any one updates them all.
+    function drawToolbar_(sceneCursorX, sceneCursorY){
+        local sceneTree = mEditor_.mBase_.getActiveSceneTree();
+        if(sceneTree == null) return false;
 
-        if(_imgui.beginMenu("View")){
-            for(local i = 0; i < VIEW_MAX; i++){
-                if(_imgui.menuItem(viewName_(i), null, mView_ == i)) setView(i);
-            }
-            _imgui.endMenu();
+        local scale = _imgui.getGlobalScale();
+        local inset = 10.0 * scale;
+        _imgui.setCursorPos(sceneCursorX + inset, sceneCursorY + inset);
+
+        _imgui.pushStyleVar(_imgui.StyleVar_ItemSpacing, 4.0 * scale, 4.0 * scale);
+
+        local hovered = drawToolButton_(sceneTree, SceneEditorFramework_BasicCoordinateType.POSITION,
+            TOOL_ICON_POSITION, "Position");
+        _imgui.sameLine();
+        hovered = drawToolButton_(sceneTree, SceneEditorFramework_BasicCoordinateType.SCALE,
+            TOOL_ICON_SCALE, "Scale") || hovered;
+
+        _imgui.popStyleVar();
+        return hovered;
+    }
+
+    function drawToolButton_(sceneTree, coordinateType, iconCell, tooltip){
+        local active = sceneTree.mCurrentObjectTransformCoordinateType_ == coordinateType;
+        if(active){
+            //The binding does not expose the current ButtonActive colour. This
+            //is ImGui's standard selected blue and makes the persistent tool
+            //state visible without changing the icon itself.
+            _imgui.pushStyleColor(_imgui.Col_Button, 0.20, 0.47, 0.78, 1.0);
         }
 
-        _imgui.endMenuBar();
+        local scale = _imgui.getGlobalScale();
+        local uv0 = iconCell * ICON_CELL_WIDTH;
+        local pressed = _imgui.imageButton("##transformTool" + coordinateType,
+            mToolIcons_, ICON_WIDTH * scale, ICON_HEIGHT * scale,
+            uv0, 0.0, uv0 + ICON_CELL_WIDTH, 1.0);
+
+        if(active) _imgui.popStyleColor();
+        local hovered = _imgui.isItemHovered();
+        if(hovered) _imgui.setTooltip(tooltip);
+        if(pressed) sceneTree.setObjectTransformCoordinateType(coordinateType);
+        return hovered;
     }
 
     //Nothing is showing the scene, so there is no viewport to map the mouse into

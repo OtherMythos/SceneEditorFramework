@@ -96,7 +96,9 @@
             typeof savedTree.rawget("transformCoordinateType") == "integer"){
             local coordinateType = savedTree.rawget("transformCoordinateType");
             if(coordinateType == mEditor_.TRANSFORM_POSITION ||
-                coordinateType == mEditor_.TRANSFORM_SCALE){
+                coordinateType == mEditor_.TRANSFORM_SCALE ||
+                coordinateType == mEditor_.TRANSFORM_ORIENTATION ||
+                coordinateType == mEditor_.TRANSFORM_RAYCAST){
                 tree.setObjectTransformCoordinateType(coordinateType);
             }
         }
