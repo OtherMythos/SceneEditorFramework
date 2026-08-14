@@ -19,6 +19,7 @@
     //Return { texture, uv0=[x,y], uv1=[x,y] } for an entry, or null to use
     //the atlas icon. A future asynchronous thumbnail cache plugs in here.
     mPreviewProvider_ = null;
+    mKindFilter_ = null;
     mIconTexture_ = null;
 
     constructor(baseObj, bus){
@@ -40,9 +41,17 @@
         if(options.rawin("previewProvider")){
             mPreviewProvider_ = options.rawget("previewProvider");
         }
+        if(options.rawin("kindFilter")) mKindFilter_ = options.rawget("kindFilter");
     }
 
     function getModel(){ return mModel_; }
+
+    function setKindFilter(kind){
+        mKindFilter_ = kind;
+        if(mModel_ != null) mModel_.select(null);
+    }
+
+    function getKindFilter(){ return mKindFilter_; }
 
     function draw(){
         if(!mVisible_ || mModel_ == null) return;
@@ -119,6 +128,7 @@
             return;
         }
         foreach(entry in mModel_.getEntries()){
+            if(mKindFilter_ != null && !entry.isDirectory && entry.kind != mKindFilter_) continue;
             if(filter.len() > 0 && entry.name.tolower().find(filter) == null) continue;
             if(visibleIndex % columns != 0) _imgui.sameLine();
             drawTile_(entry, tileWidth, tileHeight, guiScale);
@@ -148,6 +158,9 @@
                 preview.texture, iconSize, iconSize,
                 preview.uv0[0], preview.uv0[1], preview.uv1[0], preview.uv1[1]);
             local iconHovered = _imgui.isItemHovered();
+            if(_imgui.isItemClicked()){
+                ::SceneEditorFramework.IMGUI.ResourceDragDrop.beginCandidate(entry);
+            }
             drawLabel_(entry.name, tileWidth, guiScale);
             if(iconHovered) _imgui.setTooltip(entry.path);
             if(clicked) handleEntryClick_(entry);

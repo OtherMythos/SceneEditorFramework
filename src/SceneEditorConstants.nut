@@ -51,6 +51,7 @@ enum SceneEditorFramework_Action{
     CHANGE_SCENE_NODE_VISIBILITY,
     TREE_REARRANGE,
     OBJECT_INSERTION,
+    CHANGE_MESH_RESOURCE,
 
     MAX
 };

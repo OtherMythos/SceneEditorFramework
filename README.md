@@ -95,6 +95,11 @@ Its `previewProvider` callback receives an entry and may return a table containi
 folder, texture, mesh, script, or generic-file icon, allowing thumbnail loading
 to be added asynchronously without changing the browser panel.
 
+Resource fields use `IMGUI.ResourceButton`. Clicking one opens a filtered modal
+browser; resources can also be dragged from the main file browser and dropped
+on a compatible button. The built-in mesh property uses this widget, and mesh
+replacement is recorded as an undoable editor action.
+
 The individual classes under `SceneEditorFramework.IMGUI` remain public for
 tools which need a custom shell. `Base.setupIMGUIWindow()` and `Base.drawIMGUI()`
 provide the lower-level panel API.

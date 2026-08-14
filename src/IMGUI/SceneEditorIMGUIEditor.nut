@@ -46,6 +46,7 @@
     mSceneTreePanel_ = null
     mObjectPropertiesPanel_ = null
     mFileBrowserPanel_ = null
+    mResourcePickerPopup_ = null
 
     //The options offered for a right clicked object.
     mRightClickMenu_ = null
@@ -606,6 +607,12 @@
             option_("fileBrowserPanelClass", ::SceneEditorFramework.IMGUI.FileBrowser));
         mFileBrowserPanel_.configure(fileBrowserModel,
             option_("fileBrowserCallbacks", null));
+        mResourcePickerPopup_ = ::SceneEditorFramework.IMGUI.ResourcePickerPopup(
+            mBase_, mBase_.mBus_, option_("fileBrowserRoot", "res://"),
+            option_("fileBrowserBackend", null), fileBrowserModelClass);
+        if("setResourcePicker" in mObjectPropertiesPanel_){
+            mObjectPropertiesPanel_.setResourcePicker(mResourcePickerPopup_);
+        }
 
         if(mEditorState_ != null) mEditorState_.apply();
 
@@ -733,7 +740,11 @@
         //scene update are told where the cursor is now rather than where it was
         //a frame ago.
         updateFocusedRenderWindow_();
+        ::SceneEditorFramework.IMGUI.ResourceDragDrop.update();
         mBase_.drawIMGUI();
+        mResourcePickerPopup_.draw();
+        ::SceneEditorFramework.IMGUI.ResourceDragDrop.drawFeedback();
+        ::SceneEditorFramework.IMGUI.ResourceDragDrop.finishFrame();
 
         //Last, so a request made by the scene tree while it was drawn above is
         //picked up in the same frame, and so the popup is drawn over everything.
@@ -985,6 +996,7 @@
         //The flag belongs to the process-wide ImGui context rather than this
         //editor, so never leave it disabled when the editor shuts down.
         _imgui.setMouseInputEnabled(true);
+        ::SceneEditorFramework.IMGUI.ResourceDragDrop.clear();
         local onShutdown = option_("onShutdown", null);
         if(onShutdown != null) onShutdown(this);
         if(mEditorState_ != null) mEditorState_.save();

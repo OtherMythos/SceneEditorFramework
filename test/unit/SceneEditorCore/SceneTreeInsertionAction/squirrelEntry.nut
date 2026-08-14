@@ -75,6 +75,21 @@ function start(){
     //outline rather than the ordinary selected-object outline.
     local nestedMesh = tree.insertPrimitiveMeshChild(existingChild, "cube",
         "Nested cube");
+
+    //Changing a mesh resource rebuilds its renderable and remains undoable.
+    //14 is CHANGE_MESH_RESOURCE; plugin enums are loaded after this test is compiled.
+    local meshActionClass = ::SceneEditorFramework.Actions[14];
+    local meshAction = meshActionClass(tree, editorBase.mBus_, nestedMesh,
+        "cube", "sphere");
+    editorBase.pushAction(meshAction);
+    meshAction.performAction();
+    _test.assertEqual("sphere", tree.getEntryForId(nestedMesh).data.meshName);
+    _test.assertEqual(1, tree.getEntryForId(nestedMesh).node.getNumAttachedObjects());
+    editorBase.mActionStack_.undo();
+    _test.assertEqual("cube", tree.getEntryForId(nestedMesh).data.meshName);
+    editorBase.mActionStack_.redo();
+    _test.assertEqual("sphere", tree.getEntryForId(nestedMesh).data.meshName);
+
     tree.getEntryForId(nestedMesh).setPosition(Vec3(3, 0, 0));
     tree.setSingleSelection(parent);
     local childrenBounds = tree.getChildrenAABB_(

@@ -9,6 +9,7 @@
     mEditStates_ = null;
     mObjectIcons_ = null;
     mVisibilityIcons_ = null;
+    mResourcePicker_ = null;
 
     constructor(baseObj, bus){
         base.constructor(baseObj, bus);
@@ -19,6 +20,10 @@
         mVisibilityIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
+    }
+
+    function setResourcePicker(picker){
+        mResourcePicker_ = picker;
     }
 
     function draw(){
@@ -168,7 +173,8 @@
 
     function drawEntryData_(entry){
         if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.MESH){
-            ::SceneEditorFramework.IMGUI.ObjectPropertyEntryMesh.draw(entry);
+            ::SceneEditorFramework.IMGUI.ObjectPropertyEntryMesh.draw(
+                entry, mBaseObj_, mBus_, mResourcePicker_);
             return;
         }
 
