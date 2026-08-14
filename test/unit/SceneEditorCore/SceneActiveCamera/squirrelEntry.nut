@@ -97,8 +97,8 @@ function start(){
         _test.assertEqual(3, outline.mCornerNodes_[0].getNumChildren());
         //Corners sit just outside the AABB, which prevents depth fighting with
         //a selected cube or any other mesh which exactly matches its bounds.
-        assertVec3(Vec3(-4.02, -2.01, -1.005), outline.mCornerNodes_[0].getPositionVec3());
-        assertVec3(Vec3(4.02, 2.01, 1.005), outline.mCornerNodes_[7].getPositionVec3());
+        assertVec3(Vec3(-4.2, -2.1, -1.05), outline.mCornerNodes_[0].getPositionVec3());
+        assertVec3(Vec3(4.2, 2.1, 1.05), outline.mCornerNodes_[7].getPositionVec3());
         _test.assertEqual(0.25, outline.mArmNodes_[0][0].getScale().y);
         _test.assertEqual(0.25, outline.mArmNodes_[7][2].getScale().y);
         outline.shutdown();
