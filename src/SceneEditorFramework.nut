@@ -21,13 +21,6 @@ _doFile("script://SceneEditorGizmoRotationHandles.nut");
 _doFile("script://SceneEditorGizmoLayers.nut");
 _doFile("script://SceneEditorGizmoOutlineBox.nut");
 
-_doFile("script://GUI/SceneEditorGUIPanel.nut");
-_doFile("script://GUI/SceneEditorGUISceneTree.nut");
-_doFile("script://GUI/SceneEditorGUIObjectProperties.nut");
-
-//The immediate-mode implementation deliberately lives alongside the legacy
-//engine GUI panels above. Projects can opt into it without changing an
-//existing EditorGUIFramework integration.
 ::SceneEditorFramework.IMGUI <- {};
 _doFile("script://IMGUI/SceneEditorIMGUITextures.nut");
 _doFile("script://IMGUI/SceneEditorIMGUIPanel.nut");

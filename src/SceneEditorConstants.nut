@@ -1,10 +1,4 @@
 
-enum SceneEditorFramework_GUIObjectPropertiesWidgets{
-    POSITION,
-    SCALE,
-    ORIENTATION
-};
-
 enum SceneEditorFramework_SceneTreeEntryType{
     NONE,
 
@@ -17,16 +11,6 @@ enum SceneEditorFramework_SceneTreeEntryType{
     USER1,
     USER2,
     USER3,
-};
-
-enum SceneEditorFramework_GUIPanelId{
-    SCENE_TREE,
-    OBJECT_PROPERTIES,
-
-    USER_CUSTOM_1 = 1000,
-    USER_CUSTOM_2 = 1001,
-    USER_CUSTOM_3 = 1002,
-
 };
 
 enum SceneEditorFramework_BusEvents{
@@ -85,9 +69,9 @@ enum SceneEditorFramework_BasicCoordinateType{
     RAYCAST
 }
 
-//Raw SDL scancodes used by both scene-tree front ends. Keeping these in the
-//framework means modifier-aware selection does not depend on an editor defining
-//its own KeyScancode table.
+//Raw SDL scancodes used by the scene-tree panel. Keeping these in the framework
+//means modifier-aware selection does not depend on an editor defining its own
+//KeyScancode table.
 enum SceneEditorFramework_KeyScancode{
     LCTRL = 224,
     LSHIFT = 225,

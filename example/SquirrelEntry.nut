@@ -506,10 +506,6 @@
     }
 
     function start(){
-        if(!("_imgui" in getroottable())){
-            throw "The example requires the AvImguiPlugin. See example/plugins/README.md.";
-        }
-
         _doFile("res://ExampleRightClickMenu.nut");
         _doFile("res://ExampleRaycastSelectionMenu.nut");
         _doFile("res://ExampleAxisIndicator.nut");

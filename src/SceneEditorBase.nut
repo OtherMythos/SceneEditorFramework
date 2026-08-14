@@ -214,7 +214,7 @@ whatever order they happen to be drawn in.
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
-    mActiveGUI_ = null;
+    mActiveIMGUIPanels_ = null;
     mBus_ = null;
     mEditorHelperFunctions_ = null;
     mActionStack_ = null;
@@ -222,7 +222,7 @@ whatever order they happen to be drawn in.
     mCurrentFilePath_ = null;
 
     constructor(){
-        mActiveGUI_ = {};
+        mActiveIMGUIPanels_ = {};
         mBus_ = ::SceneEditorFramework.SceneEditorBus();
         mActionStack_ = ::SceneEditorFramework.ActionStack();
         setupDatablocks();
@@ -273,9 +273,6 @@ whatever order they happen to be drawn in.
             mActiveTree_.update();
         }
 
-        foreach(i in mActiveGUI_){
-            i.update();
-        }
     }
 
     function getActiveSceneTree(){
@@ -290,75 +287,30 @@ whatever order they happen to be drawn in.
         mActionStack_.pushAction_(action);
     }
 
-    function setupGUIWindow(winType, window){
-        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
-
-        //local newInstance = ::SceneEditorFramework.GUIPanel;
-        local guiInstance = null;
-        switch(winType){
-            case SceneEditorFramework_GUIPanelId.SCENE_TREE:{
-                assert(mActiveTree_);
-                guiInstance = ::SceneEditorFramework.GUISceneTree(window, mActiveTree_, this, mBus_);
-                break;
-            }
-            case SceneEditorFramework_GUIPanelId.OBJECT_PROPERTIES:{
-                guiInstance = ::SceneEditorFramework.GUIObjectProperties(window, this, mBus_);
-                break;
-            }
-        }
-
-        setupGUIWindowForInstance(winType, guiInstance);
-    }
-
-    function setupGUIWindowForClass(winType, window, guiClass){
-        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
-        local guiInstance = guiClass(window, this, mBus_);
-
-        setupGUIWindowForInstance(winType, guiInstance);
-
-        return guiInstance;
-    }
-
-    /**
-     * Register an immediate-mode panel. Unlike setupGUIWindow(), it does not
-     * receive a retained engine GUI window; the panel creates its ImGui window
-     * while drawIMGUI() is called each frame.
-     */
+    /** Register a panel which is drawn by drawIMGUI() each frame. */
     function setupIMGUIWindow(winType, guiClass){
-        if(mActiveGUI_.rawin(winType)) throw "GUI window type already registered.";
+        if(mActiveIMGUIPanels_.rawin(winType)) throw "ImGui window type already registered.";
 
         local guiInstance = guiClass(this, mBus_);
-        setupGUIWindowForInstance(winType, guiInstance);
+        mActiveIMGUIPanels_.rawset(winType, guiInstance);
+        guiInstance.setup();
 
         return guiInstance;
     }
 
-    function setupGUIWindowForInstance(winType, instance){
-        mActiveGUI_.rawset(winType, instance);
-        instance.setup();
-    }
-
-    function closeGUIWindow(winType){
-        if(!mActiveGUI_.rawin(winType)) return;
-        mActiveGUI_[winType].shutdown();
-        mActiveGUI_.rawdelete(winType);
-    }
-
-    function resizeGUIWindow(winType, newSize){
-        if(!mActiveGUI_.rawin(winType)) return;
-        mActiveGUI_[winType].resize(newSize);
+    function closeIMGUIWindow(winType){
+        if(!mActiveIMGUIPanels_.rawin(winType)) return;
+        mActiveIMGUIPanels_[winType].shutdown();
+        mActiveIMGUIPanels_.rawdelete(winType);
     }
 
     /**
-     * Draw every registered immediate-mode panel. Call this once after the
-     * application has checked _imgui.isFirstUpdateOfFrame(). Retained GUI
-     * panels continue to be updated by update().
+     * Draw every registered panel. Call this once after the application has
+     * checked _imgui.isFirstUpdateOfFrame().
      */
     function drawIMGUI(){
-        foreach(i in mActiveGUI_){
-            if("draw" in i){
-                i.draw();
-            }
+        foreach(i in mActiveIMGUIPanels_){
+            i.draw();
         }
     }
 
@@ -403,9 +355,6 @@ whatever order they happen to be drawn in.
         if(!mActiveTree_) return;
 
         //Determine the mouse position and whether to pass that over.
-        //The active UI implementation owns this decision. This used to reach
-        //into the legacy guiFrameworkBase directly, which prevented a project
-        //from using the framework with any other UI backend.
         local mousePositionValid = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
         local mouseTarget = null;
         if(mousePositionValid){

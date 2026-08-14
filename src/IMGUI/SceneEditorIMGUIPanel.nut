@@ -26,14 +26,6 @@
     function shutdown(){
     }
 
-    //Kept for parity with the retained GUI panels. Immediate-mode panels have
-    //no resize work because ImGui owns their layout.
-    function resize(newSize){
-    }
-
-    function update(){
-    }
-
     function setVisible(visible){
         mVisible_ = visible;
     }
