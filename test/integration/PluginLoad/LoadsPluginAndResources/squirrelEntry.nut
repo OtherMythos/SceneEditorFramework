@@ -7,6 +7,7 @@ function start(){
     _test.assertEqual("SceneEditor/general", _resources.findGroupContainingResource("arrow.obj"));
     _test.assertEqual("SceneEditor/general", _resources.findGroupContainingResource("scaleHandle.obj"));
     _test.assertEqual("SceneEditor/general", _resources.findGroupContainingResource("rotationRing.obj"));
+    _test.assertEqual("SceneEditor/general", _resources.findGroupContainingResource("planeHandle.obj"));
 
     _test.endTest();
 }

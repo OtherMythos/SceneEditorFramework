@@ -344,6 +344,24 @@ whatever order they happen to be drawn in.
             }
         }
 
+        //The movement-plane handles represent the pair of axes they allow the
+        //user to move on: YZ is cyan, XZ magenta and XY yellow.
+        local planeColours = [
+            [ColourValue(0.20, 0.75, 0.95, 1), ColourValue(0.85, 0.30, 0.95, 1), ColourValue(0.95, 0.80, 0.15, 1)],
+            [ColourValue(0.12, 0.45, 0.57, 1), ColourValue(0.51, 0.18, 0.57, 1), ColourValue(0.57, 0.48, 0.09, 1)]
+        ];
+        local planeBases = [
+            "SceneEditorFramework/planeHandle",
+            "SceneEditorFramework/planeHandleHighlight"
+        ];
+        foreach(cc, colours in planeColours){
+            foreach(axis, colour in colours){
+                local datablock = _hlms.unlit.createDatablock(
+                    planeBases[cc] + axis, null, macroblock);
+                datablock.setColour(colour);
+            }
+        }
+
         //The selection brackets belong to the scene rather than the transform
         //gizmo, so leave their ordinary depth settings alone and only tint them.
         local outline = _hlms.unlit.createDatablock(

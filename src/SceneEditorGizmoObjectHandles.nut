@@ -40,14 +40,20 @@
         local orientationVals = [
             Quat(-PI/2, Vec3(0, 0, 1)),
             Quat(),
-            Quat(PI/2, Vec3(1, 0, 0))
+            Quat(PI/2, Vec3(1, 0, 0)),
+
+            //The plane mesh is in XY. These put its positive quadrant beside
+            //the matching pair of axis arms: YZ, XZ and XY respectively.
+            Quat(-PI/2, Vec3(0, 1, 0)),
+            Quat(PI/2, Vec3(1, 0, 0)),
+            Quat()
         ];
         local NUM_HANDLES = getNumHandles_();
         mPositionHandles_ = array(NUM_HANDLES);
         mPositionNodes_ = array(NUM_HANDLES);
         for(local i = 0; i < NUM_HANDLES; i++){
             local newNode = parent.createChildSceneNode();
-            local item = _scene.createItem(getObjectForHandle_());
+            local item = _scene.createItem(getObjectForHandle_(i));
             //Its own render queue, so that a compositor can draw the gizmo apart
             //from the scene, and its own visibility flag, so that only the
             //viewport this copy belongs to draws it.
@@ -60,7 +66,7 @@
             local scaleSize = getScaleObjectForHandle_()
             newNode.setScale(scaleSize, scaleSize, scaleSize);
 
-            local targetDatablock = _hlms.getDatablock("SceneEditorFramework/handle"+i);
+            local targetDatablock = _hlms.getDatablock(datablockName_(i));
             item.setDatablock(targetDatablock);
             newNode.setOrientation(orientationVals[i]);
 
@@ -106,15 +112,8 @@
             if(point != false){
                 local worldPoint = ray.getPoint(point);
                 local oldPos = mParentNode_.getPositionVec3();
-                if(mHighlightAxis_ == 0){
-                    worldPoint = Vec3(worldPoint.x, oldPos.y, oldPos.z);
-                }
-                else if(mHighlightAxis_ == 1){
-                    worldPoint = Vec3(oldPos.x, worldPoint.y, oldPos.z);
-                }
-                else if(mHighlightAxis_ == 2){
-                    worldPoint = Vec3(oldPos.x, oldPos.y, worldPoint.z);
-                }
+                worldPoint = constrainMovement_(worldPoint, oldPos,
+                    mHighlightAxis_);
 
                 if(mMovementOffset_ == null){
                     mMovementOffset_ = oldPos - worldPoint;
@@ -181,13 +180,7 @@
     function beginActionState(starting){
         if(mPerformingAction_ != starting && mHighlightAxis_ != null){
             if(starting){
-                if(mHighlightAxis_ != null){
-                    if(mHighlightAxis_ == 1){
-                        mTestingPlane_ = Plane(Vec3(0, 0, 1), mParentNode_.getPositionVec3().z);
-                    }else{
-                        mTestingPlane_ = Plane(Vec3(0, 1, 0), mParentNode_.getPositionVec3().y);
-                    }
-                }
+                mTestingPlane_ = movementPlane_(mHighlightAxis_);
             }else{
                 mTestingPlane_ = null;
             }
@@ -211,7 +204,7 @@
             }else{
                 //Just perform a highlight
                 clearHighlight();
-                mPositionHandles_[axis].setDatablock("SceneEditorFramework/handleHighlight"+axis);
+                mPositionHandles_[axis].setDatablock(datablockName_(axis, true));
                 mHighlightAxis_ = axis;
             }
         }else{
@@ -231,7 +224,8 @@
     function clearHighlight(){
         if(mHighlightAxis_ == null) return;
 
-        mPositionHandles_[mHighlightAxis_].setDatablock("SceneEditorFramework/handle"+mHighlightAxis_);
+        mPositionHandles_[mHighlightAxis_].setDatablock(
+            datablockName_(mHighlightAxis_));
         mHighlightAxis_ = null;
     }
 
@@ -253,6 +247,10 @@
 
     function getNumHandles_(){
         switch(mHandleType_){
+            case SceneEditorFramework_BasicCoordinateType.POSITION:{
+                //Three arms followed by the YZ, XZ and XY plane handles.
+                return 6;
+            }
             case SceneEditorFramework_BasicCoordinateType.RAYCAST:{
                 return 1;
             }
@@ -262,7 +260,9 @@
         }
     }
 
-    function getObjectForHandle_(){
+    function getObjectForHandle_(handle){
+        if(isPlaneHandle_(handle)) return "planeHandle.obj";
+
         switch(mHandleType_){
             case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 return "scaleHandle.obj";
@@ -287,6 +287,44 @@
                 return 1.0;
             }
         }
+    }
+
+    function isPlaneHandle_(handle){
+        return mHandleType_ == SceneEditorFramework_BasicCoordinateType.POSITION &&
+            handle >= 3;
+    }
+
+    function datablockName_(handle, highlighted = false){
+        local datablockBase = isPlaneHandle_(handle) ?
+            "SceneEditorFramework/planeHandle" :
+            "SceneEditorFramework/handle";
+        local index = isPlaneHandle_(handle) ? handle - 3 : handle;
+        return datablockBase + (highlighted ? "Highlight" : "") + index;
+    }
+
+    //Keep the coordinate which is perpendicular to the selected plane fixed.
+    //The first three handles are single-axis drags, and the final three are
+    //the YZ, XZ and XY plane handles in that order.
+    function constrainMovement_(point, reference, handle){
+        if(handle == 0) return Vec3(point.x, reference.y, reference.z);
+        if(handle == 1) return Vec3(reference.x, point.y, reference.z);
+        if(handle == 2) return Vec3(reference.x, reference.y, point.z);
+        if(handle == 3) return Vec3(reference.x, point.y, point.z);
+        if(handle == 4) return Vec3(point.x, reference.y, point.z);
+        return Vec3(point.x, point.y, reference.z);
+    }
+
+    function movementPlane_(handle){
+        local centre = mParentNode_.getPositionVec3();
+
+        //Plane-handle drags raycast directly against the selected world plane.
+        if(handle == 3) return Plane(Vec3(1, 0, 0), centre.x);
+        if(handle == 4) return Plane(Vec3(0, 1, 0), centre.y);
+        if(handle == 5) return Plane(Vec3(0, 0, 1), centre.z);
+
+        //Keep the established axis-drag planes for the existing handles.
+        if(handle == 1) return Plane(Vec3(0, 0, 1), centre.z);
+        return Plane(Vec3(0, 1, 0), centre.y);
     }
 
 };

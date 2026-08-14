@@ -88,6 +88,23 @@ function start(){
             Vec3(10, 10, 10), Vec3(0, 0, -1))));
         rotationHandles.shutdown();
 
+        //The position gizmo has its usual three axis arms plus one plane handle
+        //for each pair of axes. The plane constraints preserve only the axis
+        //perpendicular to that plane.
+        local positionHandles = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(
+            _scene.getRootSceneNode().createChildSceneNode(), 0,
+            editorBase.mBus_, 0);
+        _test.assertEqual(6, positionHandles.mPositionHandles_.len());
+        local point = Vec3(1, 2, 3);
+        local reference = Vec3(10, 20, 30);
+        assertVec3(Vec3(10, 2, 3),
+            positionHandles.constrainMovement_(point, reference, 3));
+        assertVec3(Vec3(1, 20, 3),
+            positionHandles.constrainMovement_(point, reference, 4));
+        assertVec3(Vec3(1, 2, 30),
+            positionHandles.constrainMovement_(point, reference, 5));
+        positionHandles.shutdown();
+
         //The selection outline uses eight independently positioned corner
         //brackets. Its arms remain uniformly sized for non-uniform bounds.
         local outline = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
