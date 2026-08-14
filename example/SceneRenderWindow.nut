@@ -407,6 +407,9 @@
         _imgui.sameLine();
         hovered = drawToolButton_(sceneTree, SceneEditorFramework_BasicCoordinateType.SCALE,
             TOOL_ICON_SCALE, "Scale") || hovered;
+        _imgui.sameLine();
+        hovered = drawToolButton_(sceneTree, SceneEditorFramework_BasicCoordinateType.ORIENTATION,
+            TOOL_ICON_ORIENTATION, "Rotate") || hovered;
 
         _imgui.popStyleVar();
         return hovered;

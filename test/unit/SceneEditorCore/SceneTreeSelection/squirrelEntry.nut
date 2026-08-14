@@ -73,6 +73,29 @@ function start(){
         _test.assertEqual(0, tree.getSelectedCount());
     }
 
+    { //A rotation gizmo drag applies its world-axis delta to a nested object
+      //and records the completed orientation change for undo.
+        local parentEntry = tree.getEntryForId(firstId);
+        local childEntry = tree.getEntryForId(firstChildId);
+        parentEntry.setOrientation(Quat(PI / 2, Vec3(0, 0, 1)));
+        tree.notifySelectionChanged(firstChildId);
+
+        local worldDelta = Quat(PI / 2, Vec3(1, 0, 0));
+        local oldDirection = childEntry.node.getDerivedOrientation() * Vec3(0, 1, 0);
+        //The test script is compiled before plugin enums exist, so these are
+        //the values of BEGAN, SELECTED_ORIENTATION_CHANGE, ENDED and ORIENTATION.
+        editorBase.mBus_.transmitEvent(4, 2);
+        editorBase.mBus_.transmitEvent(8, worldDelta);
+        editorBase.mBus_.transmitEvent(5, 2);
+
+        local newDirection = childEntry.node.getDerivedOrientation() * Vec3(0, 1, 0);
+        assertVecClose(worldDelta * oldDirection, newDirection);
+
+        editorBase.mActionStack_.undo();
+        local restoredDirection = childEntry.node.getDerivedOrientation() * Vec3(0, 1, 0);
+        assertVecClose(oldDirection, restoredDirection);
+    }
+
     { //Deleting a multi-selection removes every selected entry and clears the
       //selection, so nothing is left naming a deleted entry.
         tree.notifySelectionChanged(secondId);
@@ -115,4 +138,8 @@ function arrayContains(values, target){
         if(value == target) return true;
     }
     return false;
+}
+
+function assertVecClose(expected, found){
+    _test.assertTrue(expected.distance(found) <= 0.001);
 }

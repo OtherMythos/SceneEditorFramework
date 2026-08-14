@@ -748,6 +748,11 @@
             setSelectedNodeScale(mCurrentPopulateAction_.mOld_ - data*0.2);
             setOutlineBox(mCurrentSelectionIdx);
         }
+        else if(event == SceneEditorFramework_BusEvents.SELECTED_ORIENTATION_CHANGE){
+            assert(mCurrentPopulateAction_ != null);
+            setSelectedNodeOrientationFromWorldDelta_(data);
+            setOutlineBox(mCurrentSelectionIdx);
+        }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
             mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
@@ -792,6 +797,18 @@
             assert(false);
         }
         return endValue;
+    }
+
+    //A ring rotates around a world axis. Convert that world-space delta into
+    //the selected entry's local space so nested objects rotate correctly too.
+    function setSelectedNodeOrientationFromWorldDelta_(worldDelta){
+        if(mCurrentSelectionIdx == -1) return;
+
+        local entry = mEntries_[mCurrentSelectionIdx];
+        local parentOrientation = entry.node.getParent().getDerivedOrientation();
+        local localDelta = parentOrientation.inverse() * worldDelta * parentOrientation;
+        entry.setOrientation(localDelta * mCurrentPopulateAction_.mOld_);
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, entry);
     }
 
     function deleteCurrentSelection(){
@@ -1071,7 +1088,8 @@
         }
 
         local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
-        local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.GIZMO_HANDLE);
+        local result = mMoveHandles_.usesObjectQuery() ?
+            _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.GIZMO_HANDLE) : null;
         local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);
 
         if(interactedWithGizmo && _input.getMouseButton(_MB_LEFT)){

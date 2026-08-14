@@ -65,6 +65,28 @@ function start(){
 
         _test.assertEqual(null, tree.findEntryIdAtScenePosition(Vec2(0.5, 0.5)));
         _test.assertEqual(0, tree.findEntryIdsAtScenePosition(Vec2(0.5, 0.5)).len());
+
+        //Constructing a rotation gizmo loads the torus mesh and builds one
+        //queryable ring for each axis. Two is the plugin's ORIENTATION enum;
+        //the test was compiled before plugin enums were available by name.
+        local rotationHandles = ::SceneEditorFramework.SceneEditorGizmoRotationHandles(
+            _scene.getRootSceneNode().createChildSceneNode(), 2,
+            editorBase.mBus_, 0);
+        _test.assertEqual(3, rotationHandles.mHandles_.len());
+
+        //Each ring is selected by proximity to its circular path, independently
+        //of the overlapping mesh AABBs. Aim along each ring's normal at a point
+        //which belongs only to that circle.
+        local ringOffset = 2.15 / sqrt(2.0);
+        _test.assertEqual(0, rotationHandles.pickAxisForRay_(Ray(
+            Vec3(10, ringOffset, ringOffset), Vec3(-1, 0, 0))));
+        _test.assertEqual(1, rotationHandles.pickAxisForRay_(Ray(
+            Vec3(ringOffset, 10, ringOffset), Vec3(0, -1, 0))));
+        _test.assertEqual(2, rotationHandles.pickAxisForRay_(Ray(
+            Vec3(ringOffset, ringOffset, 10), Vec3(0, 0, -1))));
+        _test.assertEqual(null, rotationHandles.pickAxisForRay_(Ray(
+            Vec3(10, 10, 10), Vec3(0, 0, -1))));
+        rotationHandles.shutdown();
     }
 
     ::SceneEditorFramework.HelperFunctions = defaultHelpers;

@@ -17,6 +17,7 @@ _doFile("script://SceneEditorFPSCamera.nut");
 
 _doFile("script://SceneEditorGizmo.nut");
 _doFile("script://SceneEditorGizmoObjectHandles.nut");
+_doFile("script://SceneEditorGizmoRotationHandles.nut");
 _doFile("script://SceneEditorGizmoLayers.nut");
 _doFile("script://SceneEditorGizmoOutlineBox.nut");
 

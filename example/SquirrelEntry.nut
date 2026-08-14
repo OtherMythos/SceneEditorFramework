@@ -43,6 +43,7 @@
 ::KeyScancode <- {
     NUMBER_1 = 30,
     NUMBER_2 = 31,
+    NUMBER_3 = 32,
 
     Y = 28,
     Z = 29,
@@ -123,7 +124,8 @@
     KEY_COMMAND_REDO = 1
     KEY_COMMAND_TRANSFORM_POSITION = 2
     KEY_COMMAND_TRANSFORM_SCALE = 3
-    KEY_COMMAND_MAX = 4
+    KEY_COMMAND_TRANSFORM_ORIENTATION = 4
+    KEY_COMMAND_MAX = 5
 
     function setupLights_(){
         local light = _scene.createLight();
@@ -451,8 +453,10 @@
                 mBase_.mActionStack_.redo();
             }else if(i == KEY_COMMAND_TRANSFORM_POSITION){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_POSITION);
-            }else{
+            }else if(i == KEY_COMMAND_TRANSFORM_SCALE){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_SCALE);
+            }else{
+                mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_ORIENTATION);
             }
         }
     }
@@ -466,6 +470,7 @@
 
         if(_input.getRawKeyScancodeInput(KeyScancode.NUMBER_1)) return KEY_COMMAND_TRANSFORM_POSITION;
         if(_input.getRawKeyScancodeInput(KeyScancode.NUMBER_2)) return KEY_COMMAND_TRANSFORM_SCALE;
+        if(_input.getRawKeyScancodeInput(KeyScancode.NUMBER_3)) return KEY_COMMAND_TRANSFORM_ORIENTATION;
 
         //Command as well as Control, as that is the shortcut on macOS. Both
         //sides of the keyboard, which is what a modifier scancode distinguishes.
@@ -496,7 +501,8 @@
         if(command == KEY_COMMAND_UNDO) return modifier + "+Z";
         if(command == KEY_COMMAND_REDO) return modifier + "+Shift+Z";
         if(command == KEY_COMMAND_TRANSFORM_POSITION) return "1";
-        return "2";
+        if(command == KEY_COMMAND_TRANSFORM_SCALE) return "2";
+        return "3";
     }
 
     function start(){
@@ -736,6 +742,9 @@
             }
             if(_imgui.menuItem("Scale", keyCommandLabel_(KEY_COMMAND_TRANSFORM_SCALE))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_SCALE);
+            }
+            if(_imgui.menuItem("Rotate", keyCommandLabel_(KEY_COMMAND_TRANSFORM_ORIENTATION))){
+                mBase_.getActiveSceneTree().setObjectTransformCoordinateType(::ExampleEditor.TRANSFORM_ORIENTATION);
             }
             _imgui.endMenu();
         }

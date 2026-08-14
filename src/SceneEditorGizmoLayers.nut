@@ -117,10 +117,20 @@
      * it is when there is no gizmo for it to be over.
      */
     function notifyNewQueryResults(results){
+        //An analytic picker has no hidden render object for the engine query to
+        //filter out, so visibility must be enforced here explicitly.
+        if(!mVisible_) return true;
+
         local active = getActiveHandles_();
         if(active == null) return true;
 
         return active.notifyNewQueryResults(results);
+    }
+
+    //Rotation rings pick against their circular paths. Their AABBs overlap and
+    //must not be allowed to choose an arbitrary axis before that test runs.
+    function usesObjectQuery(){
+        return mHandleType_ != SceneEditorFramework_BasicCoordinateType.ORIENTATION;
     }
 
     //Create a copy of the gizmo for each layer a viewport has claimed, and give
@@ -133,8 +143,10 @@
             local camera = i < cameras.len() ? cameras[i] : null;
 
             if(camera != null && mLayers_[i] == null){
-                local handles = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(
-                    mParentNode_, mHandleType_, mBus_, i);
+                local HandleClass = mHandleType_ == SceneEditorFramework_BasicCoordinateType.ORIENTATION ?
+                    ::SceneEditorFramework.SceneEditorGizmoRotationHandles :
+                    ::SceneEditorFramework.SceneEditorGizmoObjectHandles;
+                local handles = HandleClass(mParentNode_, mHandleType_, mBus_, i);
                 handles.setVisible(mVisible_);
                 if(mPosition_ != null) handles.positionGizmo(mPosition_);
 
