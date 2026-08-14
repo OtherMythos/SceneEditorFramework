@@ -6,6 +6,8 @@
     mBrowser_ = null;
     mOpenPending_ = false;
     mOnSelected_ = null;
+    mPopupSize_ = null;
+    mPopupPos_ = null;
 
     constructor(baseObj, bus, rootPath, backend=null, modelClass=null){
         if(modelClass == null) modelClass = ::SceneEditorFramework.FileBrowserModel;
@@ -26,11 +28,19 @@
 
     function draw(){
         if(mOpenPending_){
-            _imgui.setNextWindowSize(720, 680, _imgui.Cond_Appearing);
+            local size = mPopupSize_ != null ? mPopupSize_ : [720, 680];
+            _imgui.setNextWindowSize(size[0], size[1], _imgui.Cond_Always);
+            if(mPopupPos_ != null){
+                _imgui.setNextWindowPos(mPopupPos_[0], mPopupPos_[1], _imgui.Cond_Always);
+            }
             _imgui.openPopup(POPUP_TITLE);
             mOpenPending_ = false;
         }
-        if(!_imgui.beginPopupModal(POPUP_TITLE)) return;
+        local open = _imgui.beginPopupModal(POPUP_TITLE);
+        if(!open) return;
+
+        mPopupSize_ = _imgui.getWindowSize();
+        mPopupPos_ = _imgui.getWindowPos();
 
         local available = _imgui.getContentRegionAvail();
         if(_imgui.beginChild("##resourcePickerBrowser", 0, available[1] - 42.0, 0)){

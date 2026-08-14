@@ -96,7 +96,7 @@
     }
 
     function drawBreadcrumbs_(){
-        if(_imgui.smallButton(mModel_.getRootPath() + "##fileBrowserRoot")){
+        if(_imgui.button(mModel_.getRootPath() + "##fileBrowserRoot")){
             mModel_.goToDepth(0);
             pathChanged_();
         }
@@ -105,7 +105,7 @@
             _imgui.sameLine();
             _imgui.textDisabled("/");
             _imgui.sameLine();
-            if(_imgui.smallButton(segments[i] + "##fileBrowserCrumb" + i)){
+            if(_imgui.button(segments[i] + "##fileBrowserCrumb" + i)){
                 mModel_.goToDepth(i + 1);
                 pathChanged_();
             }
