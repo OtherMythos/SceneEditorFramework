@@ -7,6 +7,7 @@
 
     static OBJECT_ICONS = "objectIcons.png";
     static VISIBLE_ICONS = "visibleIcon.png";
+    static FILE_BROWSER_ICONS = "fileBrowserIcons.png";
 
     static mTextures_ = {};
 

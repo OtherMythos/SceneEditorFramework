@@ -76,7 +76,7 @@ The options table keeps common variations out of copied editor code:
 | `drawSceneTreeContextMenu` | `null` | Callback for adding project-specific object actions. |
 | `fileBrowserRoot` | `res://` | Filesystem root shown by the built-in file browser. |
 | `fileBrowserBackend` | `null` | Optional `listDirectory` / `isDirectory` callbacks for virtual filesystems. |
-| `fileBrowserCallbacks` | `null` | Optional `onSelectionChanged` / `onFileActivated` callbacks receiving an entry. |
+| `fileBrowserCallbacks` | `null` | Optional selection, activation, and preview-provider callbacks. |
 | `resourcePrefix` | `sceneEditorFramework` | Prefix for generated camera and texture names. |
 | `sceneWorkspacePrefix` | framework workspace prefix | Override viewport compositor workspace names. |
 | `clearWindowWorkspace` | framework clear workspace | Override the main-window compositor workspace. |
@@ -88,6 +88,12 @@ and `raycastSelectionMenuClass` replacements, plus `sceneTreeWidth` and
 `objectPropertiesWidth` layout ratios. Public accessors expose the base, scene
 tree, file browser, and viewport list, while `addRenderWindow()` and `resetWindowLayout()`
 cover common host-tool actions.
+
+The file browser presents directories and resources as a responsive icon grid.
+Its `previewProvider` callback receives an entry and may return a table containing
+`texture` and optional `uv0` / `uv1` arrays. Returning `null` uses the built-in
+folder, texture, mesh, script, or generic-file icon, allowing thumbnail loading
+to be added asynchronously without changing the browser panel.
 
 The individual classes under `SceneEditorFramework.IMGUI` remain public for
 tools which need a custom shell. `Base.setupIMGUIWindow()` and `Base.drawIMGUI()`

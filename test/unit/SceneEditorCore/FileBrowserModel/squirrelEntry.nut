@@ -58,6 +58,24 @@ function start(){
     _test.assertTrue(filesystemModel.enter(fixtureDirectory));
     _test.assertNotEqual(null, findEntry(filesystemModel, "inside.txt"));
 
+    local typedContents = {
+        "virtual://typed": [
+            { name = "preview.png", isDirectory = false },
+            { name = "character.mesh", isDirectory = false },
+            { name = "logic.nut", isDirectory = false },
+            { name = "notes.txt", isDirectory = false },
+            { name = "textures", isDirectory = true }
+        ]
+    };
+    local typedModel = ::SceneEditorFramework.FileBrowserModel("virtual://typed", {
+        listDirectory = function(path){ return typedContents.rawget(path); }
+    });
+    _test.assertEqual("texture", findEntry(typedModel, "preview.png").kind);
+    _test.assertEqual("mesh", findEntry(typedModel, "character.mesh").kind);
+    _test.assertEqual("script", findEntry(typedModel, "logic.nut").kind);
+    _test.assertEqual("file", findEntry(typedModel, "notes.txt").kind);
+    _test.assertEqual("directory", findEntry(typedModel, "textures").kind);
+
     _test.endTest();
 }
 

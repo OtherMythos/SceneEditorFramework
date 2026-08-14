@@ -64,7 +64,8 @@
                 mEntries_.append({
                     "name": name,
                     "path": path,
-                    "isDirectory": directory
+                    "isDirectory": directory,
+                    "kind": kindForEntry_(name, directory)
                 });
             }
             mEntries_.sort(function(a, b){
@@ -187,5 +188,41 @@
             if(entry.path == path) return entry;
         }
         return null;
+    }
+
+    //The broad resource families represented by the browser icon atlas. This
+    //is deliberately presentation-neutral metadata: a later thumbnail service
+    //can still use the same entry and replace its generic icon.
+    function kindForEntry_(name, directory){
+        if(directory) return "directory";
+        local extension = extensionForName_(name);
+        if(arrayContains_(["png", "jpg", "jpeg", "bmp", "tga", "dds",
+            "gif", "webp", "svg"], extension)) return "texture";
+        if(arrayContains_(["mesh", "mesh2", "obj", "fbx", "gltf", "glb",
+            "dae", "blend", "voxmesh"], extension)) return "mesh";
+        if(arrayContains_(["nut", "json", "cfg", "xml", "material",
+            "compositor", "program", "hlms", "glsl", "metal", "hlsl",
+            "avscene"], extension)) return "script";
+        return "file";
+    }
+
+    function extensionForName_(name){
+        local start = 0;
+        local lastSeparator = null;
+        while(start < name.len()){
+            local separator = name.find(".", start);
+            if(separator == null) break;
+            lastSeparator = separator;
+            start = separator + 1;
+        }
+        if(lastSeparator == null || lastSeparator == name.len() - 1) return "";
+        return name.slice(lastSeparator + 1).tolower();
+    }
+
+    function arrayContains_(values, target){
+        foreach(value in values){
+            if(value == target) return true;
+        }
+        return false;
     }
 };
