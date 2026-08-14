@@ -391,6 +391,12 @@ whatever order they happen to be drawn in.
                 datablock.setColour(y);
             }
         }
+
+        //The selection brackets belong to the scene rather than the transform
+        //gizmo, so leave their ordinary depth settings alone and only tint them.
+        local outline = _hlms.unlit.createDatablock(
+            "SceneEditorFramework/selectionOutline", null);
+        outline.setColour(ColourValue(0.55, 0.55, 0.55, 1));
     }
 
     function sceneSafeUpdate(){

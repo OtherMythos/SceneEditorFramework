@@ -87,10 +87,37 @@ function start(){
         _test.assertEqual(null, rotationHandles.pickAxisForRay_(Ray(
             Vec3(10, 10, 10), Vec3(0, 0, -1))));
         rotationHandles.shutdown();
+
+        //The selection outline uses eight independently positioned corner
+        //brackets. Its arms remain uniformly sized for non-uniform bounds.
+        local outline = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
+            _scene.getRootSceneNode().createChildSceneNode(), editorBase.mBus_);
+        outline.setBounds(Vec3(10, 20, 30), Vec3(4, 2, 1));
+        _test.assertEqual(8, outline.mCornerNodes_.len());
+        _test.assertEqual(3, outline.mCornerNodes_[0].getNumChildren());
+        //Corners sit just outside the AABB, which prevents depth fighting with
+        //a selected cube or any other mesh which exactly matches its bounds.
+        assertVec3(Vec3(-4.02, -2.01, -1.005), outline.mCornerNodes_[0].getPositionVec3());
+        assertVec3(Vec3(4.02, 2.01, 1.005), outline.mCornerNodes_[7].getPositionVec3());
+        _test.assertEqual(0.25, outline.mArmNodes_[0][0].getScale().y);
+        _test.assertEqual(0.25, outline.mArmNodes_[7][2].getScale().y);
+        outline.shutdown();
     }
 
     ::SceneEditorFramework.HelperFunctions = defaultHelpers;
     cameraNode.destroyNodeAndChildren();
 
     _test.endTest();
+}
+
+function assertVec3(expected, found){
+    assertClose(expected.x, found.x);
+    assertClose(expected.y, found.y);
+    assertClose(expected.z, found.z);
+}
+
+function assertClose(expected, found){
+    local difference = expected - found;
+    if(difference < 0) difference = -difference;
+    _test.assertTrue(difference <= 0.001);
 }
