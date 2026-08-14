@@ -1,4 +1,5 @@
 ::SceneEditorFramework <- {};
+::SceneEditorFramework.FloorGridDatablock <- null;
 
 //Gizmo meshes live with the plugin, so projects do not need to register this location themselves.
 _resources.addResourceLocation("script://../res", "FileSystem", "SceneEditor/general");
@@ -17,6 +18,7 @@ _doFile("script://SceneEditorBus.nut");
 _doFile("script://SceneEditorFPSCamera.nut");
 
 _doFile("script://SceneEditorGizmo.nut");
+_doFile("script://SceneEditorGizmoFloorGrid.nut");
 _doFile("script://SceneEditorGizmoObjectHandles.nut");
 _doFile("script://SceneEditorGizmoRotationHandles.nut");
 _doFile("script://SceneEditorGizmoLayers.nut");

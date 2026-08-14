@@ -98,6 +98,10 @@ enum SceneEditorFramework_RenderQueue{
     //Objects the scene tree builds, and the outline box drawn around the
     //selected one. Part of the scene, and drawn with it.
     SCENE = 30,
+    //Camera-dependent editor floor geometry. It is drawn after the scene while
+    //keeping the scene depth buffer, so either the grid or an object can hide
+    //the other according to which is actually in front.
+    FLOOR_GRID = 98,
     //The transform gizmo, which is not part of the scene: it is drawn over it.
     //A project's compositor is expected to give this queue a pass of its own.
     //@see ::SceneEditorFramework.gizmoPassClearsDepth

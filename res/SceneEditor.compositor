@@ -2,7 +2,7 @@
 //docked ImGui window. Projects using IMGUI.Editor disable the engine's default
 //compositor; the editor builds these workspaces during start().
 
-//What every viewport draws, which is the scene followed by the gizmo.
+//What every viewport draws: scene, depth-aware floor grid, then gizmo.
 //
 //The gizmo is drawn apart from the scene for two reasons. It has to be on top of
 //the scene, and clearing the depth buffer before it is what puts it there -
@@ -23,13 +23,36 @@ abstract target sceneEditorSceneTarget
         colour_value 0.156 0.184 0.215 1
     }
 
-    //The scene. 99 is the framework's gizmo render queue, and rq_last is
-    //exclusive, so this is everything except the gizmo.
+    //The scene. The grid and transform gizmo have dedicated passes below;
+    //rq_last is exclusive, so neither is included here.
     //@see SceneEditorFramework_RenderQueue
     pass render_scene
     {
         rq_first 0
+        rq_last 98
+    }
+
+    //This viewport's adaptive floor grid. Preserve the colour and depth the
+    //scene wrote: the depth test then lets a scene object hide a grid line in
+    //front of it, and lets a nearer grid line cover an object below the floor.
+    pass render_scene
+    {
+        load
+        {
+            colour  load
+            depth   load
+            stencil load
+        }
+        store
+        {
+            colour  store_or_resolve
+            depth   store
+            stencil store
+        }
+
+        rq_first 98
         rq_last 99
+        visibility_mask $gizmoLayerMask
     }
 
     //This viewport's copy of the gizmo, over the scene which has just been

@@ -68,6 +68,9 @@
     //Flies the camera above. Each window has its own, so each is flown
     //separately and only the one the cursor is in moves.
     mFPSCamera_ = null;
+    //The grid is camera-dependent just like the transform gizmo, so every
+    //viewport owns the copy carried by its gizmo layer.
+    mFloorGrid_ = null;
 
     //The texture the scene is rendered into, and the workspace which does it.
     mTexture_ = null;
@@ -130,6 +133,9 @@
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
         mAxisIndicator_ = ::SceneEditorFramework.IMGUI.AxisIndicator();
+        mFloorGrid_ = ::SceneEditorFramework.SceneEditorGizmoFloorGrid(
+            _scene.getRootSceneNode(), mCamera_, mLayer_,
+            mEditor_.resourceName_("floorGrid" + id));
 
         createTexture_(INITIAL_WIDTH, INITIAL_HEIGHT);
         applyState(savedState);
@@ -140,6 +146,11 @@
      */
     function shutdown(){
         destroyTexture_();
+
+        if(mFloorGrid_ != null){
+            mFloorGrid_.shutdown();
+            mFloorGrid_ = null;
+        }
 
         //A window can be closed part way through a flight, and the cursor it
         //hid has to come back whether or not the camera it was flying survives.
@@ -244,7 +255,11 @@
      * is released however far the cursor wanders in the meantime.
      */
     function updateCamera(interactable){
-        return mFPSCamera_.update(interactable);
+        local taken = mFPSCamera_.update(interactable);
+        if(mFloorGrid_ != null){
+            mFloorGrid_.update(mTextureWidth_, mTextureHeight_);
+        }
+        return taken;
     }
 
     //Where each view puts the camera, as a position and the direction it faces

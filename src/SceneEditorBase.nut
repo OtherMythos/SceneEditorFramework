@@ -211,6 +211,31 @@ whatever order they happen to be drawn in.
     return false;
 }
 
+//The first-party editor creates viewport grids before it creates Base, while
+//projects using Base directly create the materials from Base's constructor.
+//Both paths meet here so the shared grid datablock is made exactly once.
+::SceneEditorFramework.ensureFloorGridDatablock <- function(){
+    if(::SceneEditorFramework.FloorGridDatablock != null){
+        return ::SceneEditorFramework.FloorGridDatablock;
+    }
+
+    local gridBlend = _hlms.getBlendblock({
+        "src_blend_factor": _HLMS_SBF_SOURCE_ALPHA,
+        "dst_blend_factor": _HLMS_SBF_ONE_MINUS_SOURCE_ALPHA
+    });
+    local gridMacro = _hlms.getMacroblock({
+        "depthCheck": true,
+        "depthWrite": false,
+        "cullMode": _CULL_NONE
+    });
+    local grid = _hlms.unlit.createDatablock(
+        "SceneEditorFramework/floorGrid", gridBlend, gridMacro);
+    grid.setUseColour(true);
+    grid.setColour(ColourValue(1, 1, 1, 1));
+    ::SceneEditorFramework.FloorGridDatablock = grid;
+    return grid;
+}
+
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
@@ -367,6 +392,12 @@ whatever order they happen to be drawn in.
         local outline = _hlms.unlit.createDatablock(
             "SceneEditorFramework/selectionOutline", null);
         outline.setColour(ColourValue(0.55, 0.55, 0.55, 1));
+
+        //The floor grid is translucent editor geometry, but unlike the
+        //transform handles it tests against the scene's depth buffer. Its
+        //quads are two-sided so the same grid also works when a camera is below
+        //the floor plane.
+        ::SceneEditorFramework.ensureFloorGridDatablock();
     }
 
     function sceneSafeUpdate(){
