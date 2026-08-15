@@ -23,6 +23,13 @@
     mCurrentSelectionIdx = -1;
     mCurrentSelectionDeferred = null;
 
+    //The hits of the previous scene click, and which of them it selected.
+    //Tapping the same spot again finds the same objects, and stepping along
+    //this list is what gives an object behind a larger one a way of being
+    //picked without a modifier.
+    mQueryCycleEntryIds_ = null;
+    mQueryCycleIndex_ = 0;
+
     mIdPool_ = null;
 
     IdPool = class{
@@ -1125,6 +1132,13 @@
 
         local ray = camera.getCameraToViewportRay(mousePos.x, mousePos.y);
         local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
+        return entryIdsForQueryResult_(result);
+    }
+
+    //Turn the objects a scene query found into the entry ids they belong to,
+    //nearest first and each id only once.
+    function entryIdsForQueryResult_(result){
+        local entries = [];
         if(result == null) return entries;
 
         local found = {};
@@ -1165,21 +1179,59 @@
             _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.GIZMO_HANDLE) : null;
         local interactedWithGizmo = mMoveHandles_.notifyNewQueryResults(result);
 
-        if(interactedWithGizmo && _input.getMouseButton(_MB_LEFT)){
-            local result = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
-            if(result != null){
-                if(result.len() > 0){
-                    //Otherwise take the first item and highlight it.
-                    local targetId = result[0].getParentNode().getId();
-                    print("highlighting " + targetId);
-                    local entryId = mNodesForEntry_.rawget(targetId);
-
-                    mCurrentSelectionDeferred = entryId;
-                }
-            }else{
-                mCurrentSelectionDeferred = -1;
-            }
+        //Only the press selects. A tap is what asks for an object, and cycling
+        //through what is under the cursor would otherwise run for every frame
+        //the button stayed down.
+        if(interactedWithGizmo && _input.getMousePressed(_MB_LEFT)){
+            local sceneResult = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
+            local entryIds = entryIdsForQueryResult_(sceneResult);
+            local picked = pickEntryFromQuery_(entryIds);
+            mCurrentSelectionDeferred = picked == null ? -1 : picked;
         }
+    }
+
+    /**
+     * Choose which of the objects under the cursor a click selects.
+     *
+     * The nearest is taken normally. Tapping again without moving finds the
+     * same objects in the same order, and each of those taps steps one further
+     * along the list, so an object hidden behind a larger one can be reached by
+     * tapping rather than by having to be picked out of a menu.
+     *
+     * @param entryIds The entry ids under the cursor, nearest first.
+     * @returns The entry id to select, or null when nothing was hit.
+     */
+    function pickEntryFromQuery_(entryIds){
+        if(entryIds.len() == 0){
+            mQueryCycleEntryIds_ = null;
+            return null;
+        }
+
+        local index = 0;
+        if(queryContinuesCycle_(entryIds)){
+            index = (mQueryCycleIndex_ + 1) % entryIds.len();
+        }
+
+        mQueryCycleEntryIds_ = entryIds;
+        mQueryCycleIndex_ = index;
+        return entryIds[index];
+    }
+
+    //A tap continues the previous one when it found exactly the same objects in
+    //the same order, and what that tap selected is still what is selected. A
+    //selection made anywhere else in the meantime starts the cycle again, so a
+    //click always selects what is actually in front.
+    function queryContinuesCycle_(entryIds){
+        if(mQueryCycleEntryIds_ == null) return false;
+        if(mQueryCycleEntryIds_.len() != entryIds.len()) return false;
+        if(mCurrentSelection != mQueryCycleEntryIds_[mQueryCycleIndex_]) return false;
+        if(getSelectedCount() != 1) return false;
+
+        foreach(c, entryId in entryIds){
+            if(mQueryCycleEntryIds_[c] != entryId) return false;
+        }
+
+        return true;
     }
 
 }
