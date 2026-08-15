@@ -12,9 +12,8 @@
 ::SceneEditorFramework.IMGUI.SceneTreeContextMenu <- class{
 
     //Not shown to the user - a popup has no title bar - but it still has to be
-    //unique, and the modal's title is displayed.
+    //unique.
     MENU_POPUP_ID = "sceneEditorObjectRightClickMenu"
-    RENAME_POPUP_ID = "Rename object"
 
     mBase_ = null;
     mEditor_ = null;
@@ -24,11 +23,6 @@
     //Set when something has asked for the menu, and consumed by draw(), which is
     //the only place allowed to open the popup.
     mRequestedEntryId_ = null;
-    //Rename is asked for from inside the menu popup, and its modal has to be
-    //opened after that popup has been closed off.
-    mRenameRequested_ = false;
-    mRenameText_ = "";
-    mRenameFocusPending_ = false;
 
     constructor(editor){
         mEditor_ = editor;
@@ -70,7 +64,6 @@
         }
 
         drawMenu_();
-        drawRenamePopup_();
     }
 
     function drawMenu_(){
@@ -106,49 +99,21 @@
         _imgui.separator();
 
         if(_imgui.menuItem("Rename")){
-            mRenameText_ = ::SceneEditorFramework.getNameForSceneEntry(entry);
-            mRenameRequested_ = true;
+            requestRename_();
         }
         if(_imgui.menuItem("Delete")){
             deleteEntry_();
         }
 
         _imgui.endPopup();
-
-        //Out here, where the id stack is the one the rename modal is drawn in.
-        if(mRenameRequested_){
-            mRenameRequested_ = false;
-            mRenameFocusPending_ = true;
-            _imgui.openPopup(RENAME_POPUP_ID);
-        }
     }
 
-    function drawRenamePopup_(){
-        if(!_imgui.beginPopupModal(RENAME_POPUP_ID, _imgui.WindowFlags_AlwaysAutoResize)) return;
-
-        _imgui.text("Enter new node name");
-        if(mRenameFocusPending_){
-            mRenameFocusPending_ = false;
-            _imgui.setKeyboardFocusHere();
-        }
-        mRenameText_ = _imgui.inputText("##sceneEditorRenameInput", mRenameText_);
-
-        //A node with no name is the framework's way of saying "use the type's
-        //name", which is not something to arrive at by accident.
-        local nameValid = mRenameText_.len() > 0;
-        _imgui.beginDisabled(!nameValid);
-        if(_imgui.button("Accept")){
-            renameEntry_(mRenameText_);
-            _imgui.closeCurrentPopup();
-        }
-        _imgui.endDisabled();
-
-        _imgui.sameLine();
-        if(_imgui.button("Close")){
-            _imgui.closeCurrentPopup();
-        }
-
-        _imgui.endPopup();
+    //The rename itself is performed inline in the scene tree, exactly as a
+    //double click on a row does, so the panel is asked to begin editing.
+    function requestRename_(){
+        if(!selectEntry_()) return;
+        mBase_.mBus_.transmitEvent(
+            SceneEditorFramework_BusEvents.SCENE_TREE_RENAME_REQUEST, mEntryId_);
     }
 
     function insertEmptyChild_(){
@@ -172,11 +137,6 @@
         if(!selectEntry_()) return;
         mBase_.getActiveSceneTree().deleteCurrentSelection();
         mEntryId_ = null;
-    }
-
-    function renameEntry_(newName){
-        if(!selectEntry_()) return;
-        mBase_.getActiveSceneTree().renameCurrentSelection(newName);
     }
 
     //Both operations the framework offers work on whatever is selected, so the

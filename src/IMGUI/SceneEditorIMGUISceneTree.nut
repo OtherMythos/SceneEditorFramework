@@ -57,6 +57,50 @@
         mVisibilityIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
+
+        //A rename can be asked for from outside the panel, for instance by the
+        //right click menu, which is drawn elsewhere in the frame.
+        bus.subscribeObject(this);
+    }
+
+    function shutdown(){
+        mBus_.unsubscribeObject(this);
+        base.shutdown();
+    }
+
+    function notifyBusEvent(event, data){
+        if(event == SceneEditorFramework_BusEvents.SCENE_TREE_RENAME_REQUEST){
+            beginRename(data);
+        }
+    }
+
+    /**
+     * Begin editing an entry's name inline, as a double click on its row does.
+     * Ancestors are expanded so the row being edited is actually on screen.
+     */
+    function beginRename(entryId){
+        local index = mSceneTree_.findEntryIdIndexInTree_(entryId);
+        if(index == null) return;
+
+        expandAncestorsOfEntry_(index);
+        //The menu can be opened from the scene itself, where the hierarchy is
+        //not necessarily on screen to be typed into.
+        setVisible(true);
+        mRenamingEntryId_ = entryId;
+        mRenameText_ = ::SceneEditorFramework.getNameForSceneEntry(mSceneTree_.mEntries_[index]);
+        mRenameFocusPending_ = true;
+        //A rename begun by a click elsewhere must not be read as the second
+        //half of a double click on this row later on.
+        mLastClickedEntryId_ = null;
+    }
+
+    function expandAncestorsOfEntry_(index){
+        local parentIndex = mSceneTree_.getIndexOfParentForEntry_(index);
+        while(parentIndex != null){
+            local parent = mSceneTree_.mEntries_[parentIndex];
+            mExpandedEntries_.rawset(parent.entryId, true);
+            parentIndex = mSceneTree_.getIndexOfParentForEntry_(parentIndex);
+        }
     }
 
     function draw(){

@@ -906,7 +906,7 @@
      * Rename one entry without requiring the caller to change selection first.
      * This is what allows an inline tree editor to commit the name it is
      * editing, while keeping the action stack and undo behaviour consistent
-     * with the context-menu rename.
+     * with renameCurrentSelection.
      */
     function renameEntry(entryId, newName){
         local idx = findEntryIdIndexInTree_(entryId);
