@@ -104,6 +104,14 @@
     }
 
     function draw(){
+        //Escape abandons an in-progress rename, leaving the original name in
+        //place. ImGui reverts the input's own text, so only this panel's
+        //editing state has to be dropped.
+        if(mRenamingEntryId_ != null &&
+            _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.ESCAPE)){
+            cancelRename_();
+        }
+
         if(!mVisible_) return;
 
         applyInitialWindowState_();

@@ -31,6 +31,14 @@
 
         if(!_imgui.beginPopup(POPUP_ID)) return;
 
+        //Escape dismisses the list without choosing anything, the same as
+        //clicking away from it.
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.ESCAPE)){
+            _imgui.closeCurrentPopup();
+            _imgui.endPopup();
+            return;
+        }
+
         _imgui.textDisabled("Objects under cursor");
         _imgui.separator();
 
