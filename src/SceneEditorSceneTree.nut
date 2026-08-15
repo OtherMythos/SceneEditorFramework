@@ -22,6 +22,9 @@
     mCurrentSelection = -1;
     mCurrentSelectionIdx = -1;
     mCurrentSelectionDeferred = null;
+    //Whether the deferred selection joins the current one rather than replacing
+    //it, which is what a shift click in the scene asks for.
+    mCurrentSelectionDeferredAdditive_ = false;
 
     //The hits of the previous scene click, and which of them it selected.
     //Tapping the same spot again finds the same objects, and stepping along
@@ -101,10 +104,14 @@
         if(mCurrentSelectionDeferred == -1){
             setCurrentSelection(null);
         }else if(mCurrentSelectionDeferred != null){
-            local idx = findEntryIdIndexInTree_(mCurrentSelectionDeferred);
-            setCurrentSelection(mCurrentSelectionDeferred);
+            if(mCurrentSelectionDeferredAdditive_){
+                toggleEntrySelection(mCurrentSelectionDeferred);
+            }else{
+                setCurrentSelection(mCurrentSelectionDeferred);
+            }
         }
         mCurrentSelectionDeferred = null;
+        mCurrentSelectionDeferredAdditive_ = false;
 
         //After the selection above, so a gizmo which has just been put on
         //another object is sized for where it now is.
@@ -389,6 +396,36 @@
 
     function setSingleSelection(entryId){
         setCurrentSelection(entryId);
+    }
+
+    /**
+     * Add an entry to the selection, or take it back out when it is already in
+     * it, leaving the rest of the selection alone.
+     *
+     * A scene has no ordering for a click to select a range along, so this is
+     * what a shift click in a viewport does, while the tree's shift click
+     * continues to select a range.
+     */
+    function toggleEntrySelection(entryId){
+        if(entryId == null || findEntryIdIndexInTree_(entryId) == null) return;
+
+        if(!isEntrySelected(entryId)){
+            mSelectedIds_.rawset(entryId, true);
+            mMostRecentSelection_ = entryId;
+            setPrimarySelection_(entryId);
+            return;
+        }
+
+        mSelectedIds_.rawdelete(entryId);
+        if(mMostRecentSelection_ == entryId) mMostRecentSelection_ = null;
+
+        //The primary selection is what the gizmo and the properties panel act
+        //on, so one of the entries which is still selected has to take it over.
+        //Reassigning it even when it has not changed is what tells those panels
+        //the selection is now a different size.
+        local primary = mCurrentSelection == entryId ?
+            getFirstSelection() : mCurrentSelection;
+        setPrimarySelection_(primary == -1 ? null : primary);
     }
 
     function setSelectionById(entryId){
@@ -694,12 +731,37 @@
             mOutlineBox_.setVisible(true);
         }
 
-        local childrenAabb = getChildrenAABB_(mCurrentSelectionIdx);
-        if(childrenAabb == null) return;
+        //The second outline encloses everything the selection covers: the other
+        //selected entries as well as the descendants which move with them. One
+        //childless entry has nothing to add to the box above, so nothing is
+        //drawn for it.
+        local encompassingAabb = getSelectionAABB_();
+        if(encompassingAabb == null) return;
 
-        mChildrenOutlineBox_.setBounds(childrenAabb.getCentre(),
-            childrenAabb.getHalfSize());
+        mChildrenOutlineBox_.setBounds(encompassingAabb.getCentre(),
+            encompassingAabb.getHalfSize());
         mChildrenOutlineBox_.setVisible(true);
+    }
+
+    //Merged bounds of every selected entry and its descendants. Null when the
+    //selection is a single entry with nothing below it, whose own outline
+    //already says everything this one would.
+    function getSelectionAABB_(){
+        local selectedIds = getSelectedIds();
+        if(selectedIds.len() <= 1) return getChildrenAABB_(mCurrentSelectionIdx);
+
+        local result = null;
+        foreach(entryId in selectedIds){
+            local bounds = getEntryAABB(entryId);
+            if(bounds == null) continue;
+
+            if(result == null){
+                result = bounds;
+            }else{
+                result.merge(bounds);
+            }
+        }
+        return result;
     }
 
     //The flattened tree puts a CHILD marker immediately after an entry which
@@ -1185,9 +1247,29 @@
         if(interactedWithGizmo && _input.getMousePressed(_MB_LEFT)){
             local sceneResult = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
             local entryIds = entryIdsForQueryResult_(sceneResult);
-            local picked = pickEntryFromQuery_(entryIds);
-            mCurrentSelectionDeferred = picked == null ? -1 : picked;
+            //Shift adds the object under the cursor to the selection. The
+            //nearest one is taken: cycling needs the click to keep selecting
+            //the same single object, which a growing selection is not.
+            if(shiftSelectionModifierHeld_()){
+                //Shift clicking nothing is not a request to lose the selection
+                //which was being built up.
+                if(entryIds.len() > 0){
+                    mCurrentSelectionDeferred = entryIds[0];
+                    mCurrentSelectionDeferredAdditive_ = true;
+                    //An addition leaves more than one entry selected, so the
+                    //next plain click starts a new cycle at the nearest object.
+                    mQueryCycleEntryIds_ = null;
+                }
+            }else{
+                local picked = pickEntryFromQuery_(entryIds);
+                mCurrentSelectionDeferred = picked == null ? -1 : picked;
+            }
         }
+    }
+
+    function shiftSelectionModifierHeld_(){
+        return _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.LSHIFT) ||
+            _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.RSHIFT);
     }
 
     /**

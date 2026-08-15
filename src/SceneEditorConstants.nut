@@ -17,7 +17,6 @@ enum SceneEditorFramework_BusEvents{
     NONE,
     SCENE_TREE_SELECTION_CHANGED,
     SCENE_TREE_OPTIONS_MENU_REQUEST,
-    SCENE_TREE_RENAME_REQUEST,
     SCENE_TREE_CONTENTS_CHANGED,
     HANDLES_GIZMO_INTERACTION_BEGAN,
     HANDLES_GIZMO_INTERACTION_ENDED,
@@ -34,6 +33,11 @@ enum SceneEditorFramework_BusEvents{
     OBJECT_VISIBILITY_CHANGE,
 
     REQUEST_SAVE,
+
+    //New events are added here rather than beside the ones they belong with:
+    //an event is transmitted by its value, so inserting one renumbers every
+    //event after it.
+    SCENE_TREE_RENAME_REQUEST,
 };
 
 enum SceneEditorFramework_Action{

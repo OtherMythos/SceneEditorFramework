@@ -73,6 +73,33 @@ function start(){
         _test.assertEqual(0, tree.getSelectedCount());
     }
 
+    { //Tapping the same spot in the scene steps through the objects along the
+      //ray, so one behind another can be reached by clicking again rather than
+      //only through the Alt-click chooser. @see SceneTree.pickEntryFromQuery_
+        local hits = [firstId, secondId, thirdId];
+        local order = [firstId, secondId, thirdId, firstId];
+        foreach(expected in order){
+            local picked = tree.pickEntryFromQuery_(hits);
+            _test.assertEqual(expected, picked);
+            //What the click goes on to do with the entry it picked.
+            tree.setCurrentSelection(picked);
+        }
+
+        //A different set of objects means the cursor is somewhere else, so the
+        //nearest is taken rather than the next along the previous ray.
+        local moved = [secondId, thirdId];
+        _test.assertEqual(secondId, tree.pickEntryFromQuery_(moved));
+        tree.setCurrentSelection(secondId);
+
+        //So does selecting something else in between, in the tree say: a click
+        //always selects what is actually in front of it.
+        tree.setCurrentSelection(thirdId);
+        _test.assertEqual(secondId, tree.pickEntryFromQuery_(moved));
+
+        //Clicking where there is nothing selects nothing.
+        _test.assertEqual(null, tree.pickEntryFromQuery_([]));
+    }
+
     { //A rotation gizmo drag applies its world-axis delta to a nested object
       //and records the completed orientation change for undo.
         local parentEntry = tree.getEntryForId(firstId);
@@ -110,6 +137,42 @@ function start(){
         _test.assertEqual(0, tree.getSelectedCount());
     }
 
+    { //A shift click in the scene adds the object to the selection, and the
+      //whole selection is outlined by one box around everything in it rather
+      //than the outline staying on the object which was selected first.
+      //@see SceneTree.toggleEntrySelection
+        local leftCube = tree.insertPrimitiveMeshChild(firstId, "cube", "Left cube");
+        local rightCube = tree.insertPrimitiveMeshChild(firstId, "cube", "Right cube");
+        tree.getEntryForId(leftCube).setPosition(Vec3(-4, 0, 0));
+        tree.getEntryForId(rightCube).setPosition(Vec3(4, 0, 0));
+
+        //One object with nothing below it is entirely described by its own
+        //outline, so there is no second box to draw.
+        tree.notifySelectionChanged(leftCube);
+        _test.assertFalse(tree.mChildrenOutlineBox_.mVisible_);
+
+        tree.toggleEntrySelection(rightCube);
+        _test.assertEqual(2, tree.getSelectedCount());
+        _test.assertTrue(tree.isEntrySelected(leftCube));
+        _test.assertEqual(rightCube, tree.mCurrentSelection);
+        _test.assertTrue(tree.mChildrenOutlineBox_.mVisible_);
+        //Big enough to hold both cubes, which sit 8 apart. Their parent is
+        //rotated by an earlier case, so which axis they are apart on is not
+        //assumed here.
+        local outlineCentre = tree.mChildrenOutlineBox_.mCentre_;
+        local outlineHalfSize = tree.mChildrenOutlineBox_.mHalfSize_;
+        assertBoxContains(outlineCentre, outlineHalfSize, tree.getEntryAABB(leftCube));
+        assertBoxContains(outlineCentre, outlineHalfSize, tree.getEntryAABB(rightCube));
+        _test.assertTrue(largestExtent(outlineHalfSize) >= 4.0);
+
+        //Shift clicking a selected object takes it back out, handing the
+        //gizmo and the outline to what is still selected.
+        tree.toggleEntrySelection(rightCube);
+        _test.assertEqual(1, tree.getSelectedCount());
+        _test.assertEqual(leftCube, tree.mCurrentSelection);
+        _test.assertFalse(tree.mChildrenOutlineBox_.mVisible_);
+    }
+
     { //A position outside the scene viewport is over nothing, rather than an
       //error. @see SceneTree.findEntryIdAtScenePosition
         _test.assertEqual(null, tree.findEntryIdAtScenePosition(null));
@@ -138,6 +201,22 @@ function arrayContains(values, target){
         if(value == target) return true;
     }
     return false;
+}
+
+//Every corner of the bounds lies inside the box the outline was given.
+function assertBoxContains(centre, halfSize, bounds){
+    local boundsCentre = bounds.getCentre();
+    local boundsHalfSize = bounds.getHalfSize();
+    _test.assertTrue(fabs(boundsCentre.x - centre.x) + boundsHalfSize.x <= halfSize.x + 0.001);
+    _test.assertTrue(fabs(boundsCentre.y - centre.y) + boundsHalfSize.y <= halfSize.y + 0.001);
+    _test.assertTrue(fabs(boundsCentre.z - centre.z) + boundsHalfSize.z <= halfSize.z + 0.001);
+}
+
+function largestExtent(halfSize){
+    local largest = halfSize.x;
+    if(halfSize.y > largest) largest = halfSize.y;
+    if(halfSize.z > largest) largest = halfSize.z;
+    return largest;
 }
 
 function assertVecClose(expected, found){
