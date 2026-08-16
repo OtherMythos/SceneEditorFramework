@@ -132,3 +132,14 @@ enum SceneEditorFramework_QueryFlag{
 //whether it was compiled before the framework's scripts ran or after.
 //@see ::SceneEditorFramework.getGizmoLayerCameras
 ::SceneEditorFramework.MAX_GIZMO_LAYERS <- 8;
+
+//The compositor pass identifier of the scene pass belonging to gizmo layer n, as
+//declared in res/SceneEditor.compositor.
+//
+//A pass identifier is how a shader setting is aimed at one pass rather than at
+//the whole frame, which is what lets one viewport draw the scene differently from
+//the one docked beside it. @see SceneEditorFramework.ObjectColourView
+//
+//Ogre leaves the identifier at 0 unless a pass names one, and the engine's own
+//Rect2d passes take 100 and 101, so the framework starts well clear of both.
+::SceneEditorFramework.SCENE_PASS_IDENTIFIER_BASE <- 200;

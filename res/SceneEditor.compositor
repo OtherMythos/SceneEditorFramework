@@ -16,6 +16,13 @@
 //visibility flag 1 << n, so each of the nodes below asks for the layer it was
 //built for. The scene itself is not masked - the render queue is what keeps the
 //gizmo out of the pass which draws it.
+//
+//$scenePassIdentifier names the scene pass itself, and is what lets a viewport be
+//given a shader setting the viewport docked beside it does not have: a per-pass
+//shader property is keyed by this number. Each node below declares its own, from
+//SceneEditorFramework.SCENE_PASS_IDENTIFIER_BASE upwards by layer, so the two
+//lists have to stay in step.
+//@see SceneEditorFramework.ObjectColourView
 abstract target sceneEditorSceneTarget
 {
     pass clear
@@ -28,6 +35,8 @@ abstract target sceneEditorSceneTarget
     //@see SceneEditorFramework_RenderQueue
     pass render_scene
     {
+        identifier $scenePassIdentifier
+
         rq_first 0
         rq_last 99
     }
@@ -75,6 +84,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode0
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x01
+        set $scenePassIdentifier 200
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace0
@@ -89,6 +99,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode1
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x02
+        set $scenePassIdentifier 201
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace1
@@ -103,6 +114,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode2
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x04
+        set $scenePassIdentifier 202
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace2
@@ -117,6 +129,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode3
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x08
+        set $scenePassIdentifier 203
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace3
@@ -131,6 +144,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode4
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x10
+        set $scenePassIdentifier 204
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace4
@@ -145,6 +159,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode5
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x20
+        set $scenePassIdentifier 205
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace5
@@ -159,6 +174,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode6
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x40
+        set $scenePassIdentifier 206
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace6
@@ -173,6 +189,7 @@ compositor_node SceneEditorFramework/SceneToTextureNode7
     target sceneTexture : sceneEditorSceneTarget
     {
         set $gizmoLayerMask 0x80
+        set $scenePassIdentifier 207
     }
 }
 workspace SceneEditorFramework/SceneToTextureWorkspace7

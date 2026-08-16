@@ -1,0 +1,45 @@
+//Scene editor object colour view - pixel stage.
+//
+//Replaces the lit result with a flat, unlit colour, so that a scene full of
+//similarly coloured objects can be read as separate objects while one of them is
+//being edited. Nothing else about the shader changes: this runs after the normal
+//body and simply overwrites what it produced.
+//
+//The hue comes from the vertex stage, which is where the per-object data lives -
+//see objectColour_piece_vs.any, including why it is not the draw id.
+//
+//Saturation and brightness are fixed here rather than being fed in. The view is
+//either on or off; a colour tuned to be read at a glance is the only one it needs.
+//
+//NOTE: never write the property/piece directive tokens themselves in a comment in
+//this file - the Hlms parser matches them before comments are stripped, so a
+//mention in prose opens a block which never closes.
+@property( !hlms_shadowcaster && avSEObjectColour )
+
+@piece( custom_VStoPS )
+	FLAT_INTERPOLANT( float avSEObjectHue, @counter(texcoord) );
+@end
+
+@piece( custom_ps_posExecution )
+	//Hue to RGB, the usual branchless form: three ramps 1/3 of a turn apart.
+	float3 avSEK = fract( float3( inPs.avSEObjectHue, inPs.avSEObjectHue, inPs.avSEObjectHue ) +
+						  float3( 1.0, 0.66666667, 0.33333333 ) );
+	float3 avSEColour = clamp( abs( avSEK * 6.0 - 3.0 ) - 1.0, 0.0, 1.0 );
+
+	//Short of fully saturated and of full brightness, so the hues read as object
+	//colours rather than as a test pattern.
+	avSEColour = lerp( float3( 1.0, 1.0, 1.0 ), avSEColour, 0.85 ) * 0.9;
+
+	//The colours above are sRGB - that is what this file's constants mean. The
+	//viewport renders into an sRGB texture, so whatever is written here is
+	//gamma-encoded on the way in, and writing sRGB straight out would come back
+	//washed out. Converting to linear first round-trips to the colour chosen.
+	float3 avSELo = avSEColour / 12.92;
+	float3 avSEHi = pow( ( avSEColour + 0.055 ) / 1.055, float3( 2.4, 2.4, 2.4 ) );
+	avSEColour = lerp( avSELo, avSEHi,
+					   step( float3( 0.04045, 0.04045, 0.04045 ), avSEColour ) );
+
+	outPs_colour0 = midf4_c( avSEColour.x, avSEColour.y, avSEColour.z, 1.0 );
+@end
+
+@end

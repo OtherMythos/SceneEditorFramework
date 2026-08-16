@@ -1,0 +1,69 @@
+//Scene editor object colour view - vertex stage.
+//
+//Works out the hue the pixel stage paints the object in, and sends it down flat.
+//
+//Compiled in only when the framework has asked for it on the pass being rendered
+//(SceneEditorObjectColourView.nut sets the property against that pass's
+//compositor identifier), so a viewport with the view off pays nothing at all -
+//not the interpolant, not the fetches below.
+//
+//WHY NOT THE DRAW ID. The obvious per-object number in an Hlms shader is
+//inVs_drawId, and it is not stable: Ogre builds it from the renderable's position
+//in the render queue, and RenderQueue::addRenderable folds the object's quantised
+//distance to the camera into the sort key, so the ids renumber as the camera
+//moves. Frustum culling shifts them again by changing which objects are submitted
+//at all, so no sort mode would fix it either. The draw id is an index into this
+//frame's buffers, not an identity.
+//
+//What IS per-object and camera independent is the object's own transform, which
+//is what sits in worldMatBuf at that index - so the colour is hashed from that
+//instead. Two consequences worth knowing: objects sharing an identical transform
+//share a colour, and moving an object changes its colour, which in an editor
+//reads as the thing being dragged announcing itself.
+//
+//NOTE: never write the property/piece directive tokens themselves in a comment in
+//this file - the Hlms parser matches them before comments are stripped, so a
+//mention in prose opens a block which never closes.
+@property( !hlms_shadowcaster && avSEObjectColour )
+
+@piece( custom_VStoPS )
+	//Flat: the hue belongs to the object, and interpolating it across a triangle
+	//would give the pixel stage hues which belong to no object at all.
+	FLAT_INTERPOLANT( float avSEObjectHue, @counter(texcoord) );
+@end
+
+//posExecution, not preExecution: this only reads buffers the entry point already
+//has and writes an interpolant, so it has no reason to run before the body.
+@piece( custom_vs_posExecution )
+	@property( hlms_skeleton || hlms_pose )
+		//A skinned or pose mesh uploads no world matrix - its vertices are placed
+		//by the bone or pose data instead - so the object is identified by the
+		//start of that block, which is per-object and camera independent in the
+		//same way. It does move with an animation; nothing in an editor is
+		//normally playing one.
+		uint avSEIndex = worldMaterialIdx[inVs_drawId].x >> 9u;
+	@else
+		//Where UNPACK_MAT4x3 would read this object's world matrix from. Read as
+		//three plain float4s rather than through the macro because the matrix type
+		//it returns indexes differently per backend, while readOnlyFetch - which
+		//is what the engine's own SkeletonTransform uses on this same buffer -
+		//does not.
+		uint avSEIndex = ( inVs_drawId << 1u ) << 2u;
+	@end
+
+	float4 avSERow0 = readOnlyFetch( worldMatBuf, int( avSEIndex ) );
+	float4 avSERow1 = readOnlyFetch( worldMatBuf, int( avSEIndex + 1u ) );
+	float4 avSERow2 = readOnlyFetch( worldMatBuf, int( avSEIndex + 2u ) );
+
+	//All twelve components, so that objects which differ only in scale or
+	//orientation still separate. The irrational-looking constants are the usual
+	//fract(sin(x)) hash: the point is only that nearby transforms land on hues
+	//nowhere near each other.
+	float avSEKey = dot( avSERow0, float4( 12.9898, 78.233, 37.719, 4.1414 ) ) +
+					dot( avSERow1, float4( 93.9898, 27.135, 61.831, 8.2828 ) ) +
+					dot( avSERow2, float4( 45.164, 51.207, 19.373, 3.1416 ) );
+
+	outVs.avSEObjectHue = fract( sin( avSEKey ) * 43758.5453 );
+@end
+
+@end

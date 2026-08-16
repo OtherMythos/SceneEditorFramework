@@ -15,6 +15,8 @@ _doFile("script://SceneEditorSceneFileWriter.nut");
 _doFile("script://SceneEditorBus.nut");
 _doFile("script://SceneEditorFileBrowserModel.nut");
 
+_doFile("script://SceneEditorObjectColourView.nut");
+
 _doFile("script://SceneEditorFPSCamera.nut");
 
 _doFile("script://SceneEditorGizmo.nut");

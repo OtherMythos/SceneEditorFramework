@@ -94,6 +94,10 @@
     //Independent of window visibility: a viewport can keep showing its scene
     //without drawing its editor overlays or interacting with transform gizmos.
     mShowGizmos_ = true;
+    //The flat per-object colouring this viewport can be switched into, which is a
+    //setting on its scene pass and so affects no other viewport.
+    //@see SceneEditorFramework.ObjectColourView
+    mObjectColourView_ = null;
     //Set when the window has asked to be closed, and acted on by the editor.
     mCloseRequested_ = false;
 
@@ -134,6 +138,14 @@
         mFPSCamera_ = ::SceneEditorFramework.FPSCamera(mCamera_);
         setView(viewIndex % VIEW_MAX);
 
+        //Aimed at the scene pass of the layer this window claimed, which is what
+        //keeps the setting to this viewport. Constructed before the saved state is
+        //applied below, both so that state can switch it on and so that a layer
+        //handed on from a closed window starts from this window's setting rather
+        //than from the one it was left in. @see SceneEditorFramework.ObjectColourView
+        mObjectColourView_ = ::SceneEditorFramework.ObjectColourView(
+            ::SceneEditorFramework.SCENE_PASS_IDENTIFIER_BASE + mLayer_);
+
         mToolIcons_ = ::SceneEditorFramework.IMGUI.Textures.get(
             ::SceneEditorFramework.IMGUI.Textures.VISIBLE_ICONS
         );
@@ -148,6 +160,11 @@
      */
     function shutdown(){
         destroyTexture_();
+
+        //The pass property outlives the window - it belongs to the Hlms, not to
+        //anything destroyed here - so hand the layer back with its scene pass in
+        //the state an unused one should be in.
+        mObjectColourView_.setEnabled(false);
 
         //A window can be closed part way through a flight, and the cursor it
         //hid has to come back whether or not the camera it was flying survives.
@@ -438,6 +455,19 @@
         return hovered;
     }
 
+    //Whether everything behind the View button is as a viewport opens: gizmos
+    //shown, object colours off. Anything else is a viewport which is not showing
+    //what its neighbours are, which is what the button is tinted to announce.
+    //
+    //Deliberately one question rather than a flag kept alongside the settings, so
+    //that an option added to the popup later cannot be added without deciding
+    //what its default is.
+    function viewOptionsAtDefaults_(){
+        if(!mShowGizmos_) return false;
+        if(mObjectColourView_.isEnabled()) return false;
+        return true;
+    }
+
     //Matches the local View control in Southsea: settings belong to this
     //viewport, so the button that changes them lives in the viewport too.
     function drawViewOptionsButton_(){
@@ -450,7 +480,19 @@
             _imgui.getFrameHeight() - textHeight;
         local buttonPos = _imgui.getCursorScreenPos();
         local popupOpen = _imgui.isPopupOpen(popupId);
-        if(_imgui.button("View##viewportViewButton" + mId_, 0, buttonHeight)){
+
+        //A viewport showing the scene differently from the way it opens says so
+        //on the button, so that a forgotten setting is visible without opening
+        //the popup to look for it. Orange rather than the blue the transform
+        //tools use for the active tool: an active tool is the normal state of the
+        //toolbar, while this is the viewport saying it is not showing what its
+        //neighbours are, and the two should not be mistaken for each other.
+        local highlight = !viewOptionsAtDefaults_();
+        if(highlight) _imgui.pushStyleColor(_imgui.Col_Button, 0.85, 0.47, 0.12, 1.0);
+        local pressed = _imgui.button("View##viewportViewButton" + mId_, 0, buttonHeight);
+        if(highlight) _imgui.popStyleColor();
+
+        if(pressed){
             _imgui.openPopup(popupId);
             popupOpen = true;
         }
@@ -464,6 +506,18 @@
         if(_imgui.beginPopup(popupId)){
             if(_imgui.menuItem("Show Gizmos", null, showsGizmos())){
                 toggleGizmos();
+            }
+            if(mEditor_.option_("enableObjectColourView", true)){
+                if(_imgui.menuItem("Object Colours", null, showsObjectColours())){
+                    toggleObjectColours();
+                }
+                //The pieces which read the pass property are part of the framework
+                //but are only compiled in if the project asked for them, so say so
+                //rather than leaving an entry which appears to do nothing.
+                //@see README.md
+                if(!mObjectColourView_.isAvailable()){
+                    _imgui.textDisabled("Object colours unavailable.");
+                }
             }
             hovered = _imgui.isWindowHovered() || hovered;
             _imgui.endPopup();
@@ -553,6 +607,7 @@
             "layer": mLayer_,
             "visible": mVisible_,
             "showGizmos": mShowGizmos_,
+            "objectColours": mObjectColourView_.isEnabled(),
             "view": mView_,
             "cameraPosition": [position.x, position.y, position.z],
             "cameraDirection": [direction.x, direction.y, direction.z],
@@ -573,6 +628,9 @@
 
         if(state.rawin("visible")) mVisible_ = state.rawget("visible");
         if(state.rawin("showGizmos")) mShowGizmos_ = state.rawget("showGizmos");
+        if(state.rawin("objectColours") && typeof state.rawget("objectColours") == "bool"){
+            mObjectColourView_.setEnabled(state.rawget("objectColours"));
+        }
         if(state.rawin("view")) setView(state.rawget("view"));
         if(state.rawin("cameraPosition")){
             local p = state.rawget("cameraPosition");
@@ -647,6 +705,14 @@
 
     function toggleGizmos(){
         mShowGizmos_ = !mShowGizmos_;
+    }
+
+    function showsObjectColours(){
+        return mObjectColourView_.isEnabled();
+    }
+
+    function toggleObjectColours(){
+        mObjectColourView_.toggleEnabled();
     }
 
     function requestClose(){
