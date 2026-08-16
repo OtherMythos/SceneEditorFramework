@@ -1,0 +1,33 @@
+<scene>
+    <empty name="Group">
+        <mesh name="Left" mesh="cube">
+            <position x="-2" y="4" z="3"/>
+        </mesh>
+        <mesh name="Right" mesh="cube">
+            <position x="2" y="6" z="3"/>
+            <mesh name="RightChild" mesh="cube">
+                <position x="0" y="1" z="0"/>
+            </mesh>
+        </mesh>
+    </empty>
+    <empty name="Scaled">
+        <scale x="2" y="2" z="2"/>
+        <empty name="Inner">
+            <mesh name="InnerLeft" mesh="cube">
+                <position x="-3" y="0" z="0"/>
+            </mesh>
+            <mesh name="InnerRight" mesh="cube">
+                <position x="1" y="0" z="0"/>
+            </mesh>
+        </empty>
+    </empty>
+    <empty name="Empties">
+        <empty name="EmptyA"/>
+        <empty name="EmptyB">
+            <position x="4" y="2" z="6"/>
+        </empty>
+    </empty>
+    <mesh name="Lonely" mesh="cube">
+        <position x="1" y="1" z="1"/>
+    </mesh>
+</scene>

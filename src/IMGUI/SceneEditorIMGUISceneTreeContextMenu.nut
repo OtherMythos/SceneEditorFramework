@@ -113,6 +113,9 @@
         if(_imgui.menuItem("Reparent with empty")){
             reparentWithEmpty_();
         }
+        if(_imgui.menuItem("Centre on contents")){
+            centreOnContents_();
+        }
 
         _imgui.separator();
 
@@ -170,6 +173,14 @@
     function reparentWithEmpty_(){
         if(!selectEntry_()) return;
         mBase_.getActiveSceneTree().reparentSelectionWithEmpty("Empty");
+    }
+
+    //Acts only on the object the menu was opened for, unlike the operations
+    //around it: what this moves is that object and what hangs below it, and the
+    //rest of a selection has nothing to do with either.
+    function centreOnContents_(){
+        if(!selectEntry_()) return;
+        mBase_.getActiveSceneTree().centreEntryOnContents(mEntryId_);
     }
 
     //Copying acts on the whole selection, as reparenting does: the right

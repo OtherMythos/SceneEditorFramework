@@ -58,6 +58,7 @@ enum SceneEditorFramework_Action{
     OBJECT_INSERTION,
     CHANGE_MESH_RESOURCE,
     OBJECT_PASTE,
+    MULTIPLE_POSITIONS_CHANGE,
 
     MAX
 };

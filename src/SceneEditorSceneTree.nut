@@ -739,6 +739,152 @@
         return entry.entryId;
     }
 
+    /**
+     * Move an entry onto the middle of what hangs below it, without any of that
+     * moving in the world.
+     *
+     * A group whose objects were placed before it was made sits at the origin
+     * with everything below it holding a position which describes where it is in
+     * the scene rather than where it is in the group. This puts the entry in the
+     * middle of what it contains and takes that offset back out of each of its
+     * direct children, so the group can be moved, and reads, as one object while
+     * looking exactly as it did.
+     *
+     * Descendants below those children are already described against them, so
+     * they need no change of their own.
+     *
+     * @returns true when the entry was moved.
+     */
+    function centreEntryOnContents(entryId){
+        local index = findEntryIdIndexInTree_(entryId);
+        if(index == null || !isObjectEntry_(mEntries_[index])) return false;
+
+        local childIndices = getDirectChildIndices_(index);
+        if(childIndices.len() == 0) return false;
+
+        local centre = getContentsCentre_(index);
+        if(centre == null) return false;
+
+        //Where each child is in the world, read before anything has moved: that
+        //is what it has to be put back to once its parent has moved out from
+        //under it.
+        local childPositions = [];
+        foreach(childIndex in childIndices){
+            childPositions.append(mEntries_[childIndex].node.getDerivedPositionVec3());
+        }
+
+        //A position describes an object's place in its parent, and a parent can
+        //be rotated and scaled, so the local positions this ends up with are
+        //read back from nodes which have been put where they are wanted rather
+        //than worked out here. Everything is put back afterwards, leaving the
+        //action to be what moves the objects.
+        local entry = mEntries_[index];
+        local entryPosition = entry.position.copy();
+        entry.node.setDerivedPosition(centre);
+        local entryCentred = entry.node.getPositionVec3();
+
+        local changes = [{
+            "id": entryId,
+            "old": entryPosition,
+            "new": entryCentred
+        }];
+        foreach(childNumber, childIndex in childIndices){
+            local child = mEntries_[childIndex];
+            local childPosition = child.position.copy();
+            child.node.setDerivedPosition(childPositions[childNumber]);
+
+            changes.append({
+                "id": child.entryId,
+                "old": childPosition,
+                "new": child.node.getPositionVec3()
+            });
+        }
+
+        foreach(change in changes){
+            getEntryForId(change.id).setPosition(change.old);
+        }
+        //An entry which is already in the middle of its contents has nothing to
+        //move, and an edit which changes nothing is not worth an undo step.
+        if(positionsEqual_(entryPosition, entryCentred)) return false;
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_POSITIONS_CHANGE];
+        local action = A(this, mBus_, changes);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return true;
+    }
+
+    //The middle of what hangs below an entry, in world space. What the user sees
+    //is the descendants' renderables, so their bounds are what is centred on. A
+    //group of empties shows nothing to take bounds from, and there the middle of
+    //the descendants' own positions stands in for them.
+    function getContentsCentre_(entryIndex){
+        local bounds = getChildrenAABB_(entryIndex);
+        if(bounds != null) return bounds.getCentre();
+
+        local descendants = getDescendantIndices_(entryIndex);
+        if(descendants.len() == 0) return null;
+
+        local minimum = null;
+        local maximum = null;
+        foreach(descendantIndex in descendants){
+            local position = mEntries_[descendantIndex].node.getDerivedPositionVec3();
+            if(minimum == null){
+                minimum = position.copy();
+                maximum = position.copy();
+                continue;
+            }
+
+            if(position.x < minimum.x) minimum.x = position.x;
+            if(position.y < minimum.y) minimum.y = position.y;
+            if(position.z < minimum.z) minimum.z = position.z;
+            if(position.x > maximum.x) maximum.x = position.x;
+            if(position.y > maximum.y) maximum.y = position.y;
+            if(position.z > maximum.z) maximum.z = position.z;
+        }
+
+        return Vec3(
+            (minimum.x + maximum.x) * 0.5,
+            (minimum.y + maximum.y) * 0.5,
+            (minimum.z + maximum.z) * 0.5
+        );
+    }
+
+    //The entries directly below one, without the descendants of those.
+    function getDirectChildIndices_(entryIndex){
+        return getDescendantIndices_(entryIndex, true);
+    }
+
+    function getDescendantIndices_(entryIndex, directOnly=false){
+        local result = [];
+        if(!entryHasChildrenInEntries_(mEntries_, entryIndex)) return result;
+
+        local childMarker = entryIndex + 1;
+        local endIndex = getTerminatorForChildInEntries_(mEntries_, childMarker);
+        if(endIndex == -1) return result;
+
+        local depth = 0;
+        for(local index = childMarker + 1; index < endIndex - 1; index++){
+            local entry = mEntries_[index];
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                depth++;
+                continue;
+            }
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
+                depth--;
+                continue;
+            }
+            if(directOnly && depth != 0) continue;
+
+            result.append(index);
+        }
+        return result;
+    }
+
+    function positionsEqual_(first, second){
+        return first.x == second.x && first.y == second.y && first.z == second.z;
+    }
+
     //The most recent selection is what the empty stands in for. It is not
     //always one of the entries which move - it can have been reduced away as a
     //descendant of another selected entry - in which case the first of them in
@@ -1077,6 +1223,11 @@
     }
 
     function positionMoveHandles(){
+        //An object can be moved while nothing is selected - an edit which moves
+        //more than one object moves those it was not asked for - and then there
+        //is no gizmo on show to be put anywhere.
+        if(mCurrentSelectionIdx == -1) return;
+
         local e = mEntries_[mCurrentSelectionIdx];
         local derived = e.getPositionDerived();
 
