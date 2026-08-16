@@ -106,7 +106,9 @@
     KEY_COMMAND_TRANSFORM_ORIENTATION = 4
     KEY_COMMAND_FRAME_SELECTION = 5
     KEY_COMMAND_DELETE_SELECTION = 6
-    KEY_COMMAND_MAX = 7
+    KEY_COMMAND_COPY_SELECTION = 7
+    KEY_COMMAND_PASTE = 8
+    KEY_COMMAND_MAX = 9
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -505,6 +507,10 @@
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.ORIENTATION);
             }else if(i == KEY_COMMAND_FRAME_SELECTION){
                 frameSelection_();
+            }else if(i == KEY_COMMAND_COPY_SELECTION){
+                copySelection_();
+            }else if(i == KEY_COMMAND_PASTE){
+                pasteClipboard_();
             }else{
                 deleteSelection_();
             }
@@ -522,6 +528,28 @@
 
         tree.deleteCurrentSelection();
         return true;
+    }
+
+    //Take a copy of whatever is selected. As with deletion, a shortcut pressed
+    //with nothing selected is nothing to act on rather than a mistake, and it
+    //leaves the previous copy in the clipboard.
+    function copySelection_(){
+        local tree = activeSceneTree_();
+        if(tree == null) return false;
+        return mBase_.getClipboard().copyFromTree(tree);
+    }
+
+    //Paste beside the selection, or at the end of the scene when nothing is
+    //selected. The pasted objects become the selection, so a paste can be
+    //dragged or transformed straight away.
+    function pasteClipboard_(){
+        local tree = activeSceneTree_();
+        if(tree == null) return false;
+        return tree.pasteFromClipboard(mBase_.getClipboard()) != null;
+    }
+
+    function activeSceneTree_(){
+        return mBase_ == null ? null : mBase_.getActiveSceneTree();
     }
 
     function frameSelection_(){
@@ -561,6 +589,9 @@
         if(!anyKeyHeld_([SceneEditorFramework_KeyScancode.LCTRL, SceneEditorFramework_KeyScancode.RCTRL,
             SceneEditorFramework_KeyScancode.LGUI, SceneEditorFramework_KeyScancode.RGUI])) return null;
 
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_COPY_SELECTION;
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.V)) return KEY_COMMAND_PASTE;
+
         //Ctrl+Y is the other redo shortcut on Windows.
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Y)) return KEY_COMMAND_REDO;
         if(!_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Z)) return null;
@@ -587,6 +618,8 @@
         if(command == KEY_COMMAND_TRANSFORM_SCALE) return "2";
         if(command == KEY_COMMAND_FRAME_SELECTION) return "Shift+C";
         if(command == KEY_COMMAND_DELETE_SELECTION) return "Del";
+        if(command == KEY_COMMAND_COPY_SELECTION) return modifier + "+C";
+        if(command == KEY_COMMAND_PASTE) return modifier + "+V";
         return "3";
     }
 
@@ -878,6 +911,8 @@
             if(_imgui.menuItem("Undo", keyCommandLabel_(KEY_COMMAND_UNDO))) mBase_.mActionStack_.undo();
             if(_imgui.menuItem("Redo", keyCommandLabel_(KEY_COMMAND_REDO))) mBase_.mActionStack_.redo();
             _imgui.separator();
+            if(_imgui.menuItem("Copy", keyCommandLabel_(KEY_COMMAND_COPY_SELECTION))) copySelection_();
+            if(_imgui.menuItem("Paste", keyCommandLabel_(KEY_COMMAND_PASTE))) pasteClipboard_();
             if(_imgui.menuItem("Delete", keyCommandLabel_(KEY_COMMAND_DELETE_SELECTION))) deleteSelection_();
             _imgui.separator();
             if(_imgui.menuItem("Position", keyCommandLabel_(KEY_COMMAND_TRANSFORM_POSITION))){

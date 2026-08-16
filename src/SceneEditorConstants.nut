@@ -57,6 +57,7 @@ enum SceneEditorFramework_Action{
     TREE_REARRANGE,
     OBJECT_INSERTION,
     CHANGE_MESH_RESOURCE,
+    OBJECT_PASTE,
 
     MAX
 };
@@ -83,6 +84,7 @@ enum SceneEditorFramework_KeyScancode{
     BACKSPACE = 42,
     DELETE = 76,
     C = 6,
+    V = 25,
     NUMBER_1 = 30,
     NUMBER_2 = 31,
     NUMBER_3 = 32,

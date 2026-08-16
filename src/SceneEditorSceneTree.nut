@@ -428,6 +428,25 @@
         setPrimarySelection_(primary == -1 ? null : primary);
     }
 
+    /**
+     * Select exactly the entries named, in one step.
+     *
+     * An action which creates several entries at once - a paste - has a
+     * selection to hand back rather than one entry, and building it here means
+     * the panels are told about it once rather than once per entry.
+     */
+    function setSelectionToIds(entryIds){
+        mSelectedIds_.clear();
+        mMostRecentSelection_ = null;
+        foreach(entryId in entryIds){
+            if(findEntryIdIndexInTree_(entryId) == null) continue;
+            mSelectedIds_.rawset(entryId, true);
+            mMostRecentSelection_ = entryId;
+        }
+
+        setPrimarySelection_(mMostRecentSelection_);
+    }
+
     function setSelectionById(entryId){
         if(findEntryIdIndexInTree_(entryId) == null) return;
         setCurrentSelection(entryId);
@@ -523,7 +542,7 @@
         entry.data = data;
         entry.name = name;
 
-        local insertedEntries = buildEntriesWithInsertion_(targetIndex, insertionType, entry);
+        local insertedEntries = buildEntriesWithInsertion_(targetIndex, insertionType, [entry]);
         local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_INSERTION];
         local action = A(this, mEntries_, insertedEntries, entry.entryId);
         mActionStack_.pushAction_(action);
@@ -531,9 +550,12 @@
         return entry.entryId;
     }
 
-    function buildEntriesWithInsertion_(targetIndex, insertionType, entry){
+    //Place an already built run of entries relative to one target. The run is a
+    //layout of its own - a pasted object brings its descendants with it - so
+    //everything here works on the whole of it rather than on a single entry.
+    function buildEntriesWithInsertion_(targetIndex, insertionType, newEntries){
         local insertIndex = targetIndex;
-        local inserted = [entry];
+        local inserted = newEntries;
 
         if(insertionType == SceneEditorFramework_ObjectInsertionType.BELOW){
             insertIndex = getEntrySectionEndInEntries_(mEntries_, targetIndex);
@@ -541,13 +563,101 @@
             if(entryHasChildrenInEntries_(mEntries_, targetIndex)){
                 insertIndex = getTerminatorForChildInEntries_(mEntries_, targetIndex + 1) - 1;
             }else{
-                inserted = [::SceneEditorFramework.FileParser.CHILD_ENTRY, entry,
-                    ::SceneEditorFramework.FileParser.TERM_ENTRY];
+                inserted = [::SceneEditorFramework.FileParser.CHILD_ENTRY];
+                foreach(entry in newEntries) inserted.append(entry);
+                inserted.append(::SceneEditorFramework.FileParser.TERM_ENTRY);
                 insertIndex = targetIndex + 1;
             }
         }
 
         return insertEntriesAt_(mEntries_, insertIndex, inserted);
+    }
+
+    /**
+     * Copy the current selection into a clipboard.
+     *
+     * @returns true when something was copied.
+     * @see SceneEditorFramework.SceneTreeClipboard
+     */
+    function copySelectionToClipboard(clipboard){
+        if(clipboard == null) return false;
+        return clipboard.copyFromTree(this);
+    }
+
+    /**
+     * Insert a clipboard's contents into this tree as one undoable action.
+     *
+     * The clipboard holds descriptions rather than objects, so this is where
+     * they become entries: each one is instantiated with an id of this tree's
+     * own, which is what allows the same clipboard to be pasted repeatedly and
+     * into a tree other than the one it was copied from.
+     *
+     * The paste lands below the target by default, so copying an object and
+     * pasting it leaves the duplicate beside the original rather than inside it.
+     * Without a target - nothing is selected, or the selection has since gone
+     * away - it goes at the end of the scene's top level.
+     *
+     * @returns The ids of the pasted objects which are not below another pasted
+     * one, or null when there was nothing to paste.
+     */
+    function pasteFromClipboard(clipboard, targetId=null,
+        insertionType=SceneEditorFramework_ObjectInsertionType.BELOW){
+        if(clipboard == null || !clipboard.hasEntries()) return null;
+        if(targetId == null && mCurrentSelection != -1) targetId = mCurrentSelection;
+
+        return pasteEntries_(clipboard.getEntries(), targetId, insertionType);
+    }
+
+    function pasteEntries_(sourceEntries, targetId, insertionType){
+        if(sourceEntries == null || sourceEntries.len() == 0) return null;
+        if(
+            insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
+        ) return null;
+
+        //A target which is not an object entry, or which is no longer in the
+        //tree, leaves the paste to go in at the top level.
+        local targetIndex = targetId == null ? null : findEntryIdIndexInTree_(targetId);
+        if(targetIndex != null && !isObjectEntry_(mEntries_[targetIndex])) targetIndex = null;
+
+        //Every scene has the root CHILD/TERM pair, so anything shorter is not a
+        //tree a paste can be placed in.
+        if(targetIndex == null && mEntries_.len() < 2) return null;
+
+        local newEntries = [];
+        local createdIds = [];
+        local topLevelIds = [];
+        local depth = 0;
+        foreach(entry in sourceEntries){
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.CHILD){
+                depth++;
+                newEntries.append(::SceneEditorFramework.FileParser.CHILD_ENTRY);
+                continue;
+            }
+            if(entry.nodeType == SceneEditorFramework_SceneTreeEntryType.TERM){
+                depth--;
+                newEntries.append(::SceneEditorFramework.FileParser.TERM_ENTRY);
+                continue;
+            }
+
+            local copied = ::SceneEditorFramework.copySceneTreeEntry(entry);
+            copied.entryId = getId();
+            createdIds.append(copied.entryId);
+            if(depth == 0) topLevelIds.append(copied.entryId);
+            newEntries.append(copied);
+        }
+        if(createdIds.len() == 0) return null;
+
+        local pastedEntries = targetIndex != null ?
+            buildEntriesWithInsertion_(targetIndex, insertionType, newEntries) :
+            insertEntriesAt_(mEntries_, mEntries_.len() - 1, newEntries);
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_PASTE];
+        local action = A(this, mEntries_, pastedEntries, createdIds, topLevelIds);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return topLevelIds;
     }
 
     /**

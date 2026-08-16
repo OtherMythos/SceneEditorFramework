@@ -99,6 +99,17 @@
             reparentWithEmpty_();
         }
 
+        _imgui.separator();
+
+        if(_imgui.menuItem("Copy")){
+            copySelection_();
+        }
+        if(mBase_.getClipboard().hasEntries()){
+            if(_imgui.menuItem("Paste")){
+                pasteClipboard_();
+            }
+        }
+
         mEditor_.drawSceneTreeContextMenuEntries_(entry, mEntryId_);
         _imgui.separator();
 
@@ -138,6 +149,28 @@
     function reparentWithEmpty_(){
         if(!selectEntry_()) return;
         mBase_.getActiveSceneTree().reparentSelectionWithEmpty("Empty");
+    }
+
+    //Copying acts on the whole selection, as reparenting does: the right
+    //clicked object is made the selection first only when it was not part of
+    //one already.
+    function copySelection_(){
+        local sceneTree = mBase_.getActiveSceneTree();
+        if(sceneTree == null || getEntry_() == null) return;
+        if(!sceneTree.isEntrySelected(mEntryId_)) sceneTree.notifySelectionChanged(mEntryId_);
+
+        sceneTree.copySelectionToClipboard(mBase_.getClipboard());
+    }
+
+    //Pasted into the object the menu was opened for, rather than beside the
+    //selection: the menu belongs to the object which was right clicked, and its
+    //other insertions - everything under Add - put what they create below that
+    //object as well.
+    function pasteClipboard_(){
+        local sceneTree = getSceneTree_();
+        if(sceneTree == null) return;
+        sceneTree.pasteFromClipboard(mBase_.getClipboard(), mEntryId_,
+            SceneEditorFramework_ObjectInsertionType.INTO);
     }
 
     function getSceneTree_(){

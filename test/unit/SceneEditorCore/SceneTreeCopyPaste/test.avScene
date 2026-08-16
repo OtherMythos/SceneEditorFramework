@@ -1,0 +1,10 @@
+<scene>
+    <mesh name="A" mesh="cube">
+        <mesh name="A1" mesh="cube">
+            <position x="1" y="2" z="3"/>
+            <scale x="2" y="2" z="2"/>
+        </mesh>
+    </mesh>
+    <empty name="B"/>
+    <mesh name="C" mesh="sphere"/>
+</scene>

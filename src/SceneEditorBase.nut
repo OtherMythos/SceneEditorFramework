@@ -218,6 +218,10 @@ whatever order they happen to be drawn in.
     mBus_ = null;
     mEditorHelperFunctions_ = null;
     mActionStack_ = null;
+    //What a copy left behind. Owned here rather than by a scene tree, so that a
+    //copy taken from one tree can be pasted into another.
+    //@see SceneEditorFramework.SceneTreeClipboard
+    mClipboard_ = null;
 
     mCurrentFilePath_ = null;
 
@@ -225,6 +229,7 @@ whatever order they happen to be drawn in.
         mActiveIMGUIPanels_ = {};
         mBus_ = ::SceneEditorFramework.SceneEditorBus();
         mActionStack_ = ::SceneEditorFramework.ActionStack();
+        mClipboard_ = ::SceneEditorFramework.SceneTreeClipboard();
         setupDatablocks();
 
         mBus_.subscribeObject(this);
@@ -281,6 +286,11 @@ whatever order they happen to be drawn in.
 
     function setActiveSceneTree(sceneTree){
         mActiveTree_ = sceneTree;
+    }
+
+    /** The clipboard copy and paste work through. */
+    function getClipboard(){
+        return mClipboard_;
     }
 
     function pushAction(action){
