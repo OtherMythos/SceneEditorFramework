@@ -495,13 +495,19 @@
             entry.nodeType != SceneEditorFramework_SceneTreeEntryType.TERM;
     }
 
-    /** Add an empty scene node as a child of an existing entry. */
+    /**
+     * Add an empty scene node as a child of an existing entry, or, with a null
+     * parent, at the end of the scene's top level.
+     */
     function insertEmptyChild(parentId, name="Empty"){
         return insertEntry_(parentId, SceneEditorFramework_ObjectInsertionType.INTO,
             SceneEditorFramework_SceneTreeEntryType.EMPTY, null, name);
     }
 
-    /** Add one of the engine's built-in primitive meshes as a child. */
+    /**
+     * Add one of the engine's built-in primitive meshes as a child. A null
+     * parent puts it at the end of the scene's top level.
+     */
     function insertPrimitiveMeshChild(parentId, meshName, name=null){
         local data = ::SceneEditorFramework.SceneTreeMeshData();
         data.meshName = meshName;
@@ -515,6 +521,9 @@
      * Insert a new object relative to a target through the action stack.
      * This is kept generic so editor-specific USER entries can use the same
      * hierarchy and undo behavior as the framework's built-in entries.
+     *
+     * A null target has nothing to be relative to, so the object goes at the
+     * end of the scene's top level and the insertion type is not used.
      */
     function insertEntry(targetId, insertionType, nodeType, data=null, name=null){
         return insertEntry_(targetId, insertionType, nodeType, data, name);
@@ -527,13 +536,19 @@
             nodeType == SceneEditorFramework_SceneTreeEntryType.TERM
         ) return null;
 
-        local targetIndex = findEntryIdIndexInTree_(targetId);
-        if(targetIndex == null || !isObjectEntry_(mEntries_[targetIndex])) return null;
+        local targetIndex = null;
+        if(targetId != null){
+            targetIndex = findEntryIdIndexInTree_(targetId);
+            if(targetIndex == null || !isObjectEntry_(mEntries_[targetIndex])) return null;
+        }
         if(
             insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
             insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
             insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
         ) return null;
+        //Every scene has the root CHILD/TERM pair, so anything shorter has no
+        //top level for a targetless insertion to go in.
+        if(targetIndex == null && mEntries_.len() < 2) return null;
 
         local entry = ::SceneEditorFramework.SceneTreeEntry();
         entry.reset();
@@ -542,7 +557,9 @@
         entry.data = data;
         entry.name = name;
 
-        local insertedEntries = buildEntriesWithInsertion_(targetIndex, insertionType, [entry]);
+        local insertedEntries = targetIndex != null ?
+            buildEntriesWithInsertion_(targetIndex, insertionType, [entry]) :
+            insertEntriesAt_(mEntries_, mEntries_.len() - 1, [entry]);
         local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_INSERTION];
         local action = A(this, mEntries_, insertedEntries, entry.entryId);
         mActionStack_.pushAction_(action);
@@ -606,6 +623,21 @@
         if(targetId == null && mCurrentSelection != -1) targetId = mCurrentSelection;
 
         return pasteEntries_(clipboard.getEntries(), targetId, insertionType);
+    }
+
+    /**
+     * Insert a clipboard's contents at the end of the scene's top level,
+     * whatever is selected. This is what a paste asked for by the child wrapper
+     * rather than by an object does.
+     *
+     * @returns The ids of the pasted objects which are not below another pasted
+     * one, or null when there was nothing to paste.
+     */
+    function pasteFromClipboardAtTopLevel(clipboard){
+        if(clipboard == null || !clipboard.hasEntries()) return null;
+
+        return pasteEntries_(clipboard.getEntries(), null,
+            SceneEditorFramework_ObjectInsertionType.INTO);
     }
 
     function pasteEntries_(sourceEntries, targetId, insertionType){

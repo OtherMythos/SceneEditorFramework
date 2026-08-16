@@ -192,6 +192,21 @@ function start(){
         assertNames(tree, ["A", "A1", "B", "C"]);
     }
 
+    { //A paste asked for by the scene tree's child wrapper - a right click which
+      //hit no entry - goes at the end of the top level whatever is selected,
+      //rather than beside the selection.
+        tree.setSingleSelection(b);
+        local pasted = tree.pasteFromClipboardAtTopLevel(clipboard);
+        _test.assertNotEqual(null, pasted);
+        _test.assertEqual(1, pasted.len());
+        assertNames(tree, ["A", "A1", "B", "C", "A", "A1"]);
+        assertTopLevelWith(tree, pasted[0], b);
+        assertParent(tree, childIdOf(tree, pasted[0]), pasted[0]);
+
+        editorBase.mActionStack_.undo();
+        assertNames(tree, ["A", "A1", "B", "C"]);
+    }
+
     _test.endTest();
 }
 

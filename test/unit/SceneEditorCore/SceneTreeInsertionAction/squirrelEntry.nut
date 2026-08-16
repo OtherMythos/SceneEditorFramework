@@ -105,6 +105,30 @@ function start(){
     assertClose(childrenBounds.getCentre().x, framingBounds.getCentre().x);
     assertClose(childrenBounds.getHalfSize().x, framingBounds.getHalfSize().x);
 
+    //A null parent has no object to be inserted relative to, so what is created
+    //goes at the end of the scene's top level. This is what the scene tree's
+    //right click menu asks for when the click hit no entry.
+    local topLevelId = tree.insertEmptyChild(null, "Top level");
+    _test.assertNotEqual(null, topLevelId);
+    local topLevelIndex = tree.findEntryIdIndexInTree_(topLevelId);
+    _test.assertEqual(null, tree.getIndexOfParentForEntry_(topLevelIndex));
+    //The last object in the layout, immediately before the root terminator.
+    _test.assertEqual(tree.mEntries_.len() - 2, topLevelIndex);
+    _test.assertEqual(tree.getEntryForId(tail).node.getParent().getId(),
+        tree.getEntryForId(topLevelId).node.getParent().getId());
+
+    local topLevelMesh = tree.insertPrimitiveMeshChild(null, "cube", "Top level cube");
+    _test.assertNotEqual(null, topLevelMesh);
+    _test.assertEqual(null, tree.getIndexOfParentForEntry_(
+        tree.findEntryIdIndexInTree_(topLevelMesh)));
+    _test.assertEqual(1, tree.getEntryForId(topLevelMesh).node.getNumAttachedObjects());
+
+    //Both are ordinary insertions, so both undo as any other one does.
+    editorBase.mActionStack_.undo();
+    _test.assertEqual(null, tree.findEntryIdIndexInTree_(topLevelMesh));
+    editorBase.mActionStack_.undo();
+    _test.assertEqual(null, tree.findEntryIdIndexInTree_(topLevelId));
+
     _test.endTest();
 }
 

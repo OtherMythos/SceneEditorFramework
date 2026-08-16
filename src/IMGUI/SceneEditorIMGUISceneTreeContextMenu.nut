@@ -19,9 +19,13 @@
     mEditor_ = null;
     //The entry the menu was opened for. Held rather than read back from the
     //selection so the menu keeps acting on the object which was right clicked.
+    //Null means the menu belongs to the scene's child wrapper rather than to an
+    //object, which is what a right click hitting no entry asks for.
     mEntryId_ = null;
     //Set when something has asked for the menu, and consumed by draw(), which is
-    //the only place allowed to open the popup.
+    //the only place allowed to open the popup. The id is allowed to be null, so
+    //the request itself is what the flag records.
+    mRequestPending_ = false;
     mRequestedEntryId_ = null;
 
     constructor(editor){
@@ -43,10 +47,12 @@
 
     /**
      * Ask for the menu to be shown for an entry. It appears where the cursor is
-     * when the next frame's gui is built.
+     * when the next frame's gui is built. A null entry shows the menu for the
+     * scene's top level.
      */
     function requestForEntry(entryId){
         mRequestedEntryId_ = entryId;
+        mRequestPending_ = true;
     }
 
     /**
@@ -55,7 +61,8 @@
      * in the same frame the user right clicked.
      */
     function draw(){
-        if(mRequestedEntryId_ != null){
+        if(mRequestPending_){
+            mRequestPending_ = false;
             mEntryId_ = mRequestedEntryId_;
             mRequestedEntryId_ = null;
             //The popup remembers where the cursor was when it was opened, which
@@ -69,8 +76,13 @@
     function drawMenu_(){
         if(!_imgui.beginPopup(MENU_POPUP_ID)) return;
 
+        //A menu opened over no entry belongs to the scene's child wrapper: what
+        //it creates goes at the top level, and the options which need an object
+        //of their own are shown disabled rather than hidden, so the menu keeps
+        //the same shape wherever it was opened.
+        local rootMenu = isRootMenu_();
         local entry = getEntry_();
-        if(entry == null){
+        if(!rootMenu && entry == null){
             //The object went away while the menu was open, so there is nothing
             //left to offer options for.
             _imgui.closeCurrentPopup();
@@ -78,7 +90,8 @@
             return;
         }
 
-        _imgui.textDisabled(::SceneEditorFramework.getNameForSceneEntry(entry));
+        _imgui.textDisabled(rootMenu ? "Scene" :
+            ::SceneEditorFramework.getNameForSceneEntry(entry));
         _imgui.separator();
 
         if(_imgui.beginMenu("Add")){
@@ -95,6 +108,8 @@
             _imgui.endMenu();
         }
 
+        //Everything below acts on an object, and the child wrapper is not one.
+        _imgui.beginDisabled(rootMenu);
         if(_imgui.menuItem("Reparent with empty")){
             reparentWithEmpty_();
         }
@@ -104,21 +119,27 @@
         if(_imgui.menuItem("Copy")){
             copySelection_();
         }
+        _imgui.endDisabled();
+
         if(mBase_.getClipboard().hasEntries()){
             if(_imgui.menuItem("Paste")){
                 pasteClipboard_();
             }
         }
 
-        mEditor_.drawSceneTreeContextMenuEntries_(entry, mEntryId_);
+        //Editors are only offered the object menu. Their entries are written
+        //against an entry, so the child wrapper has nothing to hand them.
+        if(!rootMenu) mEditor_.drawSceneTreeContextMenuEntries_(entry, mEntryId_);
         _imgui.separator();
 
+        _imgui.beginDisabled(rootMenu);
         if(_imgui.menuItem("Rename")){
             requestRename_();
         }
         if(_imgui.menuItem("Delete")){
             deleteEntry_();
         }
+        _imgui.endDisabled();
 
         _imgui.endPopup();
     }
@@ -165,23 +186,38 @@
     //Pasted into the object the menu was opened for, rather than beside the
     //selection: the menu belongs to the object which was right clicked, and its
     //other insertions - everything under Add - put what they create below that
-    //object as well.
+    //object as well. The child wrapper's menu pastes at the top level, whatever
+    //happens to be selected.
     function pasteClipboard_(){
         local sceneTree = getSceneTree_();
         if(sceneTree == null) return;
+        if(isRootMenu_()){
+            sceneTree.pasteFromClipboardAtTopLevel(mBase_.getClipboard());
+            return;
+        }
         sceneTree.pasteFromClipboard(mBase_.getClipboard(), mEntryId_,
             SceneEditorFramework_ObjectInsertionType.INTO);
     }
 
+    //The scene tree an insertion is to be made in. The child wrapper's menu has
+    //no entry to check for, and the tree's insertions take a null parent as the
+    //top level, so mEntryId_ is passed to them either way.
     function getSceneTree_(){
-        if(getEntry_() == null) return null;
+        if(!isRootMenu_() && getEntry_() == null) return null;
         return mBase_.getActiveSceneTree();
+    }
+
+    //The menu was opened over unused hierarchy space rather than over a row.
+    function isRootMenu_(){
+        return mEntryId_ == null;
     }
 
     function deleteEntry_(){
         if(!selectEntry_()) return;
         mBase_.getActiveSceneTree().deleteCurrentSelection();
-        mEntryId_ = null;
+        //The id is left in place rather than cleared: a null id now means the
+        //menu belongs to the child wrapper, and getEntry_() already reports the
+        //deleted object as gone.
     }
 
     //Both operations the framework offers work on whatever is selected, so the

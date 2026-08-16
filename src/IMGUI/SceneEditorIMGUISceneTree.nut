@@ -128,10 +128,18 @@
 
             //Clicking unused space has the same clear-selection behaviour as
             //the old tree, while a child window remains responsible for scroll.
-            if(_imgui.isWindowHovered(_imgui.HoveredFlags_ChildWindows) &&
-                _input.getMousePressed(_MB_LEFT) && !mItemClicked_){
-                mSceneTree_.notifySelectionChanged(null);
-                cancelRename_();
+            if(_imgui.isWindowHovered(_imgui.HoveredFlags_ChildWindows) && !mItemClicked_){
+                if(_input.getMousePressed(_MB_LEFT)){
+                    mSceneTree_.notifySelectionChanged(null);
+                    cancelRename_();
+                }else if(_input.getMousePressed(_MB_RIGHT)){
+                    //A right click which hit no row belongs to the scene's own
+                    //child wrapper, so the menu is asked for with no entry.
+                    mSceneTree_.notifySelectionChanged(null);
+                    cancelRename_();
+                    mBus_.transmitEvent(
+                        SceneEditorFramework_BusEvents.SCENE_TREE_OPTIONS_MENU_REQUEST, null);
+                }
             }
 
             updateDrag_();
