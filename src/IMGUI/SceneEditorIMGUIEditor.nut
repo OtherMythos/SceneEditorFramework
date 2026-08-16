@@ -105,7 +105,8 @@
     KEY_COMMAND_TRANSFORM_SCALE = 3
     KEY_COMMAND_TRANSFORM_ORIENTATION = 4
     KEY_COMMAND_FRAME_SELECTION = 5
-    KEY_COMMAND_MAX = 6
+    KEY_COMMAND_DELETE_SELECTION = 6
+    KEY_COMMAND_MAX = 7
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -502,10 +503,25 @@
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.SCALE);
             }else if(i == KEY_COMMAND_TRANSFORM_ORIENTATION){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.ORIENTATION);
-            }else{
+            }else if(i == KEY_COMMAND_FRAME_SELECTION){
                 frameSelection_();
+            }else{
+                deleteSelection_();
             }
         }
+    }
+
+    //Delete whatever is selected, if anything is. The scene tree requires a
+    //selection to delete, so an empty one is a shortcut pressed with nothing to
+    //act on rather than a mistake.
+    function deleteSelection_(){
+        if(mBase_ == null) return false;
+        local tree = mBase_.getActiveSceneTree();
+        if(tree == null) return false;
+        if(tree.getReducedSelection().len() == 0) return false;
+
+        tree.deleteCurrentSelection();
+        return true;
     }
 
     function frameSelection_(){
@@ -530,6 +546,11 @@
             SceneEditorFramework_KeyScancode.RSHIFT]);
         if(shift && _input.getRawKeyScancodeInput(
             SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_FRAME_SELECTION;
+
+        //Backspace as well as Delete, as a keyboard without a delete key is
+        //still expected to be able to remove an object.
+        if(anyKeyHeld_([SceneEditorFramework_KeyScancode.DELETE,
+            SceneEditorFramework_KeyScancode.BACKSPACE])) return KEY_COMMAND_DELETE_SELECTION;
 
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_1)) return KEY_COMMAND_TRANSFORM_POSITION;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_2)) return KEY_COMMAND_TRANSFORM_SCALE;
@@ -565,6 +586,7 @@
         if(command == KEY_COMMAND_TRANSFORM_POSITION) return "1";
         if(command == KEY_COMMAND_TRANSFORM_SCALE) return "2";
         if(command == KEY_COMMAND_FRAME_SELECTION) return "Shift+C";
+        if(command == KEY_COMMAND_DELETE_SELECTION) return "Del";
         return "3";
     }
 
@@ -855,6 +877,8 @@
         if(_imgui.beginMenu("Edit")){
             if(_imgui.menuItem("Undo", keyCommandLabel_(KEY_COMMAND_UNDO))) mBase_.mActionStack_.undo();
             if(_imgui.menuItem("Redo", keyCommandLabel_(KEY_COMMAND_REDO))) mBase_.mActionStack_.redo();
+            _imgui.separator();
+            if(_imgui.menuItem("Delete", keyCommandLabel_(KEY_COMMAND_DELETE_SELECTION))) deleteSelection_();
             _imgui.separator();
             if(_imgui.menuItem("Position", keyCommandLabel_(KEY_COMMAND_TRANSFORM_POSITION))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
