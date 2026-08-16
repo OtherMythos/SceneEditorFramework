@@ -10,10 +10,14 @@
     mVisible_ = false;
     mCentre_ = null;
     mHalfSize_ = null;
+    //Passed to every copy, so all the viewports draw this outline in the same
+    //colour. Null leaves the outline box with its own default.
+    mDatablock_ = null;
 
-    constructor(parentNode, bus){
+    constructor(parentNode, bus, datablock=null){
         mParentNode_ = parentNode;
         mBus_ = bus;
+        mDatablock_ = datablock;
         mLayers_ = array(::SceneEditorFramework.MAX_GIZMO_LAYERS, null);
     }
 
@@ -43,7 +47,7 @@
             local camera = layer < cameras.len() ? cameras[layer] : null;
             if(camera != null && mLayers_[layer] == null){
                 local outline = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
-                    mParentNode_, mBus_, layer);
+                    mParentNode_, mBus_, layer, mDatablock_);
                 outline.setVisible(mVisible_);
                 if(mCentre_ != null) outline.setBounds(mCentre_, mHalfSize_);
                 mLayers_[layer] = outline;

@@ -8,21 +8,27 @@
     //fight the depth buffer on a cube face or other exact AABB match.
     AABB_EXPANSION = 0.05;
 
+    //The brackets' default tint. The encompassing outline uses one of its own so
+    //the two boxes drawn for a selection cannot be mistaken for each other.
+    DEFAULT_DATABLOCK = "SceneEditorFramework/selectionOutline";
+
     mBus_ = null;
     //Null retains the old, scene-wide outline for direct users of this class.
     //A layer makes this a per-viewport overlay, rendered with that viewport's
     //other gizmos.
     mLayer_ = null;
+    mDatablock_ = null;
     mCornerNodes_ = null;
     mArmNodes_ = null;
     mCentre_ = null;
     mHalfSize_ = null;
 
-    constructor(parent, bus, layer=null){
+    constructor(parent, bus, layer=null, datablock=null){
         base.constructor(parent);
 
         mBus_ = bus;
         mLayer_ = layer;
+        mDatablock_ = datablock == null ? DEFAULT_DATABLOCK : datablock;
         mCentre_ = Vec3();
         mHalfSize_ = Vec3();
         setup_(mParentNode_);
@@ -53,7 +59,7 @@
                     item.setVisibilityFlags(1 << mLayer_);
                 }
                 item.setQueryFlags(0);
-                item.setDatablock("SceneEditorFramework/selectionOutline");
+                item.setDatablock(mDatablock_);
                 armNode.attachObject(item);
                 armNode.setOrientation(armOrientation_(axis, signs[axis]));
                 arms[axis] = armNode;

@@ -82,8 +82,11 @@
 
         setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);
         mOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineLayers(mParentNode_, mBus_);
+        //Orange rather than the selected object's own white, so the box which
+        //encloses everything the selection covers reads as the larger of the
+        //two when both are drawn.
         mChildrenOutlineBox_ = ::SceneEditorFramework.SceneEditorGizmoOutlineLayers(
-            mParentNode_, mBus_);
+            mParentNode_, mBus_, "SceneEditorFramework/childrenOutline");
         mMoveHandles_.setVisible(false);
     }
 

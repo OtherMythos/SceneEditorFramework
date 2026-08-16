@@ -377,6 +377,13 @@ whatever order they happen to be drawn in.
         local outline = _hlms.unlit.createDatablock(
             "SceneEditorFramework/selectionOutline", null);
         outline.setColour(ColourValue(0.55, 0.55, 0.55, 1));
+
+        //The outline around everything the selection covers is drawn at the same
+        //time as the one above and is always the larger of the two, so it is
+        //given a colour of its own rather than a second white box.
+        local childrenOutline = _hlms.unlit.createDatablock(
+            "SceneEditorFramework/childrenOutline", null);
+        childrenOutline.setColour(ColourValue(0.95, 0.55, 0.10, 1));
     }
 
     function sceneSafeUpdate(){
