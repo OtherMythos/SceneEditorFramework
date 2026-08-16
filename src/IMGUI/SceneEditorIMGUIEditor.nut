@@ -108,7 +108,8 @@
     KEY_COMMAND_DELETE_SELECTION = 6
     KEY_COMMAND_COPY_SELECTION = 7
     KEY_COMMAND_PASTE = 8
-    KEY_COMMAND_MAX = 9
+    KEY_COMMAND_SAVE = 9
+    KEY_COMMAND_MAX = 10
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -511,6 +512,8 @@
                 copySelection_();
             }else if(i == KEY_COMMAND_PASTE){
                 pasteClipboard_();
+            }else if(i == KEY_COMMAND_SAVE){
+                saveScene_();
             }else{
                 deleteSelection_();
             }
@@ -546,6 +549,17 @@
         local tree = activeSceneTree_();
         if(tree == null) return false;
         return tree.pasteFromClipboard(mBase_.getClipboard()) != null;
+    }
+
+    //Write the scene back over the file it was loaded from. An editor started
+    //without a scene has nothing to write, which is a shortcut pressed with
+    //nothing to act on rather than a mistake.
+    function saveScene_(){
+        if(mBase_ == null || mScenePath_ == null) return false;
+        if(mBase_.getActiveSceneTree() == null) return false;
+
+        mBase_.writeSceneFile(mScenePath_);
+        return true;
     }
 
     function activeSceneTree_(){
@@ -591,6 +605,7 @@
 
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_COPY_SELECTION;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.V)) return KEY_COMMAND_PASTE;
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.S)) return KEY_COMMAND_SAVE;
 
         //Ctrl+Y is the other redo shortcut on Windows.
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Y)) return KEY_COMMAND_REDO;
@@ -620,6 +635,7 @@
         if(command == KEY_COMMAND_DELETE_SELECTION) return "Del";
         if(command == KEY_COMMAND_COPY_SELECTION) return modifier + "+C";
         if(command == KEY_COMMAND_PASTE) return modifier + "+V";
+        if(command == KEY_COMMAND_SAVE) return modifier + "+S";
         return "3";
     }
 
@@ -901,8 +917,8 @@
         if(!_imgui.beginMainMenuBar()) return;
 
         if(_imgui.beginMenu("File")){
-            if(_imgui.menuItem("Save")){
-                mBase_.writeSceneFile(mScenePath_);
+            if(_imgui.menuItem("Save", keyCommandLabel_(KEY_COMMAND_SAVE))){
+                saveScene_();
             }
             _imgui.endMenu();
         }

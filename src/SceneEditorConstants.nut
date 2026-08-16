@@ -85,6 +85,7 @@ enum SceneEditorFramework_KeyScancode{
     BACKSPACE = 42,
     DELETE = 76,
     C = 6,
+    S = 22,
     V = 25,
     NUMBER_1 = 30,
     NUMBER_2 = 31,
