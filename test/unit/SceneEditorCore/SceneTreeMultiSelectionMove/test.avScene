@@ -1,0 +1,17 @@
+<scene>
+    <mesh name="Alpha" mesh="cube">
+        <position x="0" y="0" z="0"/>
+    </mesh>
+    <mesh name="Beta" mesh="cube">
+        <position x="4" y="0" z="0"/>
+    </mesh>
+    <mesh name="Gamma" mesh="cube">
+        <position x="0" y="4" z="0"/>
+    </mesh>
+    <empty name="Parent">
+        <position x="0" y="0" z="8"/>
+        <mesh name="Child" mesh="cube">
+            <position x="1" y="0" z="0"/>
+        </mesh>
+    </empty>
+</scene>

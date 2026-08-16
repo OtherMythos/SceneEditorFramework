@@ -8,6 +8,10 @@
     mOutlineBox_ = null;
     mChildrenOutlineBox_ = null;
     mCurrentPopulateAction_ = null;
+    //The starting positions of a drag which is moving more than the object the
+    //gizmo sits on, or null when the drag moves only that one.
+    //@see beginMultipleMoveChanges_
+    mMultiMoveChanges_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
     mSceneRootNode_ = null;
@@ -1209,6 +1213,15 @@
         return position;
     }
 
+    /**
+     * Move the selection so that its primary entry is at a world position.
+     *
+     * A drag names one place for one object - the entry the gizmo sits on - so
+     * the rest of the selection keeps the arrangement it was in by moving the
+     * same distance through the world. A selected entry's descendants move with
+     * it rather than being moved themselves, which is what the reduced
+     * selection describes.
+     */
     function setSelectedNodePosition(position){
         if(mCurrentSelectionIdx == -1){
             return;
@@ -1216,8 +1229,22 @@
 
         local p = getPositionWithMagnet(position);
         local e = mEntries_[mCurrentSelectionIdx];
-        e.setPosition(p, true);
-        mMoveHandles_.positionGizmo(p);
+        if(getSelectedCount() <= 1){
+            e.setPosition(p, true);
+        }else{
+            local delta = p - e.getPositionDerived();
+            foreach(entryId in getReducedSelection()){
+                local entry = getEntryForId(entryId);
+                if(entry == null) continue;
+
+                entry.setPosition(entry.getPositionDerived() + delta, true);
+            }
+        }
+
+        //Read back rather than assuming the drag's position: the primary entry
+        //is moved by its selected parent instead of on its own when one of its
+        //ancestors is selected as well.
+        mMoveHandles_.positionGizmo(e.getPositionDerived());
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
@@ -1251,13 +1278,19 @@
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
+            mMultiMoveChanges_ = beginMultipleMoveChanges_(data);
+
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
             mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
-            mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
+            if(mMultiMoveChanges_ != null){
+                pushMultipleMoveAction_();
+            }else{
+                mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
 
-            mActionStack_.pushAction_(mCurrentPopulateAction_);
+                mActionStack_.pushAction_(mCurrentPopulateAction_);
+            }
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
             positionMoveHandles();
@@ -1282,6 +1315,53 @@
             setOutlineBox(mCurrentSelection);
         }
     }
+    /**
+     * The positions a drag which is about to begin would have to put back, or
+     * null when one BasicCoordinatesChangeAction still describes it.
+     *
+     * Only a move widens to the rest of the selection - a scale or a rotation
+     * is about the object the gizmo sits on - and a move of a single object is
+     * left as the single-object action it has always been.
+     */
+    function beginMultipleMoveChanges_(coordsType){
+        if(coordsType != SceneEditorFramework_BasicCoordinateType.POSITION) return null;
+        if(getSelectedCount() <= 1) return null;
+
+        local changes = [];
+        foreach(entryId in getReducedSelection()){
+            local entry = getEntryForId(entryId);
+            if(entry == null) continue;
+
+            changes.append({
+                "id": entryId,
+                "old": entry.position.copy(),
+                "new": null
+            });
+        }
+        return changes.len() == 0 ? null : changes;
+    }
+
+    //One undo step for the whole drag, however many objects it moved.
+    function pushMultipleMoveAction_(){
+        local changes = mMultiMoveChanges_;
+        mMultiMoveChanges_ = null;
+
+        local moved = [];
+        foreach(change in changes){
+            //An object which has left the tree since the drag began is not one
+            //an undo step can put back where it was.
+            local index = findEntryIdIndexInTree_(change.id);
+            if(index == null) continue;
+
+            change["new"] = mEntries_[index].position.copy();
+            moved.append(change);
+        }
+        if(moved.len() == 0) return;
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_POSITIONS_CHANGE];
+        mActionStack_.pushAction_(A(this, mBus_, moved));
+    }
+
     function getValueForObjectCoordsChange_(coordsType){
         local endValue = null;
         local e = mEntries_[mCurrentSelectionIdx];
