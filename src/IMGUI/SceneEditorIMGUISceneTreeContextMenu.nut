@@ -95,6 +95,10 @@
             _imgui.endMenu();
         }
 
+        if(_imgui.menuItem("Reparent with empty")){
+            reparentWithEmpty_();
+        }
+
         mEditor_.drawSceneTreeContextMenuEntries_(entry, mEntryId_);
         _imgui.separator();
 
@@ -126,6 +130,14 @@
         if(sceneTree != null){
             sceneTree.insertPrimitiveMeshChild(mEntryId_, meshName, entryName);
         }
+    }
+
+    //Acts on the whole selection rather than only the right clicked object, so
+    //a group which was built up by clicking can be gathered under one empty in
+    //a single step.
+    function reparentWithEmpty_(){
+        if(!selectEntry_()) return;
+        mBase_.getActiveSceneTree().reparentSelectionWithEmpty("Empty");
     }
 
     function getSceneTree_(){

@@ -551,6 +551,61 @@
     }
 
     /**
+     * Put the current selection under a new empty entry.
+     *
+     * The empty takes the place of the most recently selected object, so the
+     * group ends up where the user was working rather than at the end of that
+     * object's parent. Creating the empty and moving the selection into it are
+     * one layout change, which is what makes them one undo step.
+     *
+     * @returns The id of the new empty, or null when there is nothing to
+     * reparent.
+     */
+    function reparentSelectionWithEmpty(name="Empty"){
+        local selected = getReducedSelection();
+        if(selected.len() == 0) return null;
+
+        local anchorId = getReparentAnchorId_(selected);
+        local anchorIndex = findEntryIdIndexInTree_(anchorId);
+        if(anchorIndex == null) return null;
+
+        local entry = ::SceneEditorFramework.SceneTreeEntry();
+        entry.reset();
+        entry.entryId = getId();
+        entry.nodeType = SceneEditorFramework_SceneTreeEntryType.EMPTY;
+        entry.name = name;
+
+        //Placing the empty before the anchor and then moving the selection out
+        //of the tree around it is what leaves it at the index the anchor had.
+        local withEmpty = insertEntriesAt_(mEntries_, anchorIndex, [entry]);
+        local rearranged = buildRearrangedEntriesInEntries_(withEmpty, selected,
+            entry.entryId, SceneEditorFramework_ObjectInsertionType.INTO);
+        if(rearranged == null){
+            recycleId(entry.entryId);
+            return null;
+        }
+
+        //The empty is created as well as moved into, so this is an insertion:
+        //undo has to give its id back rather than leave it in use.
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.OBJECT_INSERTION];
+        local action = A(this, mEntries_, rearranged, entry.entryId);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return entry.entryId;
+    }
+
+    //The most recent selection is what the empty stands in for. It is not
+    //always one of the entries which move - it can have been reduced away as a
+    //descendant of another selected entry - in which case the first of them in
+    //tree order is the closest thing to where the user was.
+    function getReparentAnchorId_(selected){
+        foreach(entryId in selected){
+            if(entryId == mMostRecentSelection_) return entryId;
+        }
+        return selected[0];
+    }
+
+    /**
      * Move the reduced current selection relative to one destination entry.
      * Returns false for a destination inside the moved subtree or a no-op.
      */
@@ -577,20 +632,28 @@
     //Build the result without changing the live tree. This makes validation
     //side-effect free and gives TreeRearrangeAction stable before/after states.
     function buildRearrangedEntries_(selectedIds, destinationId, insertionType){
+        return buildRearrangedEntriesInEntries_(mEntries_, selectedIds,
+            destinationId, insertionType);
+    }
+
+    //Rearrangement of any layout rather than only the live one, so a caller
+    //which has already added an entry can move the selection into it without
+    //that intermediate state ever reaching the tree.
+    function buildRearrangedEntriesInEntries_(entries, selectedIds, destinationId, insertionType){
         if(
             insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
             insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
             insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
         ) return null;
 
-        local destinationIndex = findEntryIdIndexInTree_(destinationId);
-        if(destinationIndex == null || !isObjectEntry_(mEntries_[destinationIndex])) return null;
+        local destinationIndex = findEntryIdIndexInEntries_(entries, destinationId);
+        if(destinationIndex == null || !isObjectEntry_(entries[destinationIndex])) return null;
 
         local rangesByStart = {};
         foreach(entryId in selectedIds){
-            local startIndex = findEntryIdIndexInTree_(entryId);
+            local startIndex = findEntryIdIndexInEntries_(entries, entryId);
             if(startIndex == null) return null;
-            local endIndex = getEntrySectionEndInEntries_(mEntries_, startIndex);
+            local endIndex = getEntrySectionEndInEntries_(entries, startIndex);
             if(destinationIndex >= startIndex && destinationIndex < endIndex) return null;
 
             local range = { "start": startIndex, "end": endIndex };
@@ -600,13 +663,13 @@
         local moved = [];
         local remaining = [];
         local index = 0;
-        while(index < mEntries_.len()){
+        while(index < entries.len()){
             if(rangesByStart.rawin(index)){
                 local range = rangesByStart.rawget(index);
-                for(local i = range.start; i < range.end; i++) moved.append(mEntries_[i]);
+                for(local i = range.start; i < range.end; i++) moved.append(entries[i]);
                 index = range.end;
             }else{
-                remaining.append(mEntries_[index]);
+                remaining.append(entries[index]);
                 index++;
             }
         }
@@ -631,7 +694,7 @@
         }
 
         local result = insertEntriesAt_(remaining, insertIndex, inserted);
-        return entryLayoutsEqual_(mEntries_, result) ? null : result;
+        return entryLayoutsEqual_(entries, result) ? null : result;
     }
 
     function applyRearrangedEntries_(entries){

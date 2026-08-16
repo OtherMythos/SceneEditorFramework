@@ -1,0 +1,13 @@
+<scene>
+    <empty name="A">
+        <empty name="A1"/>
+        <empty name="A2"/>
+    </empty>
+    <empty name="B">
+        <position x="1" y="2" z="3"/>
+    </empty>
+    <empty name="C">
+        <empty name="C1"/>
+    </empty>
+    <empty name="D"/>
+</scene>
