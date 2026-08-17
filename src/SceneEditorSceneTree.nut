@@ -1159,8 +1159,40 @@
 
     function positionTransformGizmo_(){
         mMoveHandles_.setVisible(true);
-        local targetPos = mEntries_[mCurrentSelectionIdx].node.getDerivedPositionVec3();
-        mMoveHandles_.setPosition(targetPos);
+        mMoveHandles_.setPosition(getTransformGizmoAnchor_());
+    }
+
+    /**
+     * Where the transform gizmo sits, and so what a drag of it is about.
+     *
+     * A move of a multiple selection is about the selection as a whole - every
+     * entry travels the same distance - so the handles belong at the centre of
+     * the bounds the orange outline draws around it, not on whichever entry was
+     * clicked last. That entry is an arbitrary member of the group as far as the
+     * move is concerned, and putting the handles on it leaves them off to one
+     * side of the box being dragged, or outside it.
+     *
+     * A scale or a rotation is about the entry the gizmo sits on rather than
+     * about the group (@see beginMultipleMoveChanges_), so those keep the
+     * handles on the object itself; the anchor would otherwise claim a centre
+     * the operation does not use. The raycast gizmo places an object at a point
+     * found on a surface, which is likewise about the one entry.
+     *
+     * Callers which move the selection must measure their delta from here too,
+     * since this is the point the gizmo hands back a new position for.
+     */
+    function getTransformGizmoAnchor_(){
+        if(getSelectedCount() > 1 &&
+            mCurrentObjectTransformCoordinateType_ ==
+                SceneEditorFramework_BasicCoordinateType.POSITION){
+            //Null for a selection of entries which draw nothing - a group of
+            //empties has no bounds to find a centre in - which falls through to
+            //the primary entry the same as a single selection.
+            local aabb = getSelectionAABB_();
+            if(aabb != null) return aabb.getCentre();
+        }
+
+        return mEntries_[mCurrentSelectionIdx].node.getDerivedPositionVec3();
     }
 
     function getIndexOfParentForEntry_(index){
@@ -1219,13 +1251,17 @@
     }
 
     /**
-     * Move the selection so that its primary entry is at a world position.
+     * Move the selection so that the gizmo's anchor is at a world position.
      *
-     * A drag names one place for one object - the entry the gizmo sits on - so
-     * the rest of the selection keeps the arrangement it was in by moving the
-     * same distance through the world. A selected entry's descendants move with
-     * it rather than being moved themselves, which is what the reduced
-     * selection describes.
+     * A drag names one place for one point - wherever the gizmo sits - so the
+     * selection keeps the arrangement it was in by every entry moving the same
+     * distance through the world. The distance is measured from the anchor and
+     * not from the primary entry, because for a multiple selection those are
+     * two different points: the anchor is the centre of the selection's bounds.
+     * @see getTransformGizmoAnchor_
+     *
+     * A selected entry's descendants move with it rather than being moved
+     * themselves, which is what the reduced selection describes.
      */
     function setSelectedNodePosition(position){
         if(mCurrentSelectionIdx == -1){
@@ -1237,7 +1273,7 @@
         if(getSelectedCount() <= 1){
             e.setPosition(p, true);
         }else{
-            local delta = p - e.getPositionDerived();
+            local delta = p - getTransformGizmoAnchor_();
             foreach(entryId in getReducedSelection()){
                 local entry = getEntryForId(entryId);
                 if(entry == null) continue;
@@ -1248,8 +1284,9 @@
 
         //Read back rather than assuming the drag's position: the primary entry
         //is moved by its selected parent instead of on its own when one of its
-        //ancestors is selected as well.
-        mMoveHandles_.positionGizmo(e.getPositionDerived());
+        //ancestors is selected as well, and the anchor of a multiple selection
+        //is a centre which has to be measured again now everything has moved.
+        mMoveHandles_.positionGizmo(getTransformGizmoAnchor_());
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
@@ -1260,10 +1297,7 @@
         //is no gizmo on show to be put anywhere.
         if(mCurrentSelectionIdx == -1) return;
 
-        local e = mEntries_[mCurrentSelectionIdx];
-        local derived = e.getPositionDerived();
-
-        mMoveHandles_.positionGizmo(derived);
+        mMoveHandles_.positionGizmo(getTransformGizmoAnchor_());
     }
 
     function notifyBusEvent(event, data){

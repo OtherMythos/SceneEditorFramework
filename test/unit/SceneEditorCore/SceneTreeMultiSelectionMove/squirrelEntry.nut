@@ -1,8 +1,9 @@
-//A transform gizmo sits on one object, but a drag of its position handles moves
-//everything which is selected: the objects keep the arrangement they were put in
-//rather than the drag pulling one of them out of it. The whole drag is one undo
-//step, and only a move widens like this - a scale or a rotation stays with the
-//object the gizmo belongs to.
+//A drag of the position handles moves everything which is selected: the objects
+//keep the arrangement they were put in rather than the drag pulling one of them
+//out of it. The handles sit at the middle of a multiple selection, so the drag
+//is about the group rather than about whichever object was clicked last. The
+//whole drag is one undo step, and only a move widens like this - a scale or a
+//rotation stays with the object the gizmo belongs to.
 function start(){
     local editorBase = ::SceneEditorFramework.Base();
     local parentNode = _scene.getRootSceneNode().createChildSceneNode();
@@ -30,21 +31,31 @@ function start(){
         editorBase.mActionStack_.undo();
     }
 
-    { //With more of them selected, the drag names a place for the object the
-      //gizmo is on and the others move the same distance, so the gap between
+    { //With more of them selected, the drag names a place for the middle of the
+      //selection - where the gizmo sits, and where the orange outline is drawn
+      //around - and every object moves that same distance, so the gap between
       //them is the gap they had.
         tree.notifySelectionChanged(alpha);
         tree.notifySelectionChanged(beta, true, false);
         tree.notifySelectionChanged(gamma, true, false);
-        //The gizmo is on the most recently clicked object.
+        //The properties panel still follows the most recently clicked object,
+        //even though the gizmo no longer sits on it.
         _test.assertEqual(gamma, tree.mCurrentSelection);
+
+        //The three cubes span x 0 to 4 and y 0 to 4, so their bounds are
+        //centred between them rather than on any one of them.
+        assertVec3Close(Vec3(2, 2, 0), tree.mMoveHandles_.mPosition_);
 
         local undoCount = editorBase.mActionStack_.mUndoStack_.len();
         dragPosition(tree, Vec3(0, 5, 0));
 
-        assertPosition(tree, gamma, 0, 5, 0);
-        assertPosition(tree, alpha, 0, 1, 0);
-        assertPosition(tree, beta, 4, 1, 0);
+        //A move of (-2, 3, 0), which is the drag's target measured from that
+        //centre and not from gamma.
+        assertPosition(tree, alpha, -2, 3, 0);
+        assertPosition(tree, beta, 2, 3, 0);
+        assertPosition(tree, gamma, -2, 7, 0);
+        //The gizmo ends the drag where the drag asked for.
+        assertVec3Close(Vec3(0, 5, 0), tree.mMoveHandles_.mPosition_);
 
         //One undo step, however many objects the drag moved.
         _test.assertEqual(undoCount + 1, editorBase.mActionStack_.mUndoStack_.len());
@@ -54,10 +65,18 @@ function start(){
         assertPosition(tree, gamma, 0, 4, 0);
 
         editorBase.mActionStack_.redo();
-        assertPosition(tree, alpha, 0, 1, 0);
-        assertPosition(tree, beta, 4, 1, 0);
-        assertPosition(tree, gamma, 0, 5, 0);
+        assertPosition(tree, alpha, -2, 3, 0);
+        assertPosition(tree, beta, 2, 3, 0);
+        assertPosition(tree, gamma, -2, 7, 0);
         editorBase.mActionStack_.undo();
+    }
+
+    { //One object selected puts the gizmo back on that object. Clicking beta
+      //while it is part of the selection above would keep that selection, so
+      //the group is dropped first.
+        tree.notifySelectionChanged(null);
+        tree.notifySelectionChanged(beta);
+        assertVec3Close(Vec3(4, 0, 0), tree.mMoveHandles_.mPosition_);
     }
 
     { //A drag of several objects moves each one once. A selected object which
@@ -155,6 +174,12 @@ function assertScale(tree, entryId, x, y, z){
     assertClose(x, scale.x);
     assertClose(y, scale.y);
     assertClose(z, scale.z);
+}
+
+function assertVec3Close(expected, found){
+    assertClose(expected.x, found.x);
+    assertClose(expected.y, found.y);
+    assertClose(expected.z, found.z);
 }
 
 function assertClose(expected, found){
