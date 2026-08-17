@@ -144,11 +144,23 @@
         }
     }
 
+    //Put the furthest the drag went along any one axis on all three of them,
+    //which is what makes a scale drag uniform.
+    //
+    //Furthest rather than last: a single-axis drag has only one axis to take,
+    //but a plane handle drag has two, and the one which moved less is the one
+    //the user was less clear about. Its sign is kept, so a uniform drag inward
+    //still shrinks.
     function applyMaxForVec3(vec){
         local biggest = 0.0;
-        if(vec.x != 0.0) biggest = vec.x;
-        if(vec.y != 0.0) biggest = vec.y;
-        if(vec.z != 0.0) biggest = vec.z;
+        local biggestSize = 0.0;
+        foreach(value in [vec.x, vec.y, vec.z]){
+            local size = value < 0.0 ? -value : value;
+            if(size <= biggestSize) continue;
+
+            biggestSize = size;
+            biggest = value;
+        }
 
         vec.x = biggest;
         vec.y = biggest;
@@ -247,7 +259,8 @@
 
     function getNumHandles_(){
         switch(mHandleType_){
-            case SceneEditorFramework_BasicCoordinateType.POSITION:{
+            case SceneEditorFramework_BasicCoordinateType.POSITION:
+            case SceneEditorFramework_BasicCoordinateType.SCALE:{
                 //Three arms followed by the YZ, XZ and XY plane handles.
                 return 6;
             }
@@ -289,8 +302,14 @@
         }
     }
 
+    //The last three handles of a gizmo which has them. A position gizmo moves
+    //along the pair of axes the handle stands for; a scale gizmo resizes along
+    //that same pair, which is what makes a box wider and deeper without making
+    //it taller. Neither the mesh nor the drag differs between the two - only
+    //what the axes it produces are then used for.
     function isPlaneHandle_(handle){
-        return mHandleType_ == SceneEditorFramework_BasicCoordinateType.POSITION &&
+        return (mHandleType_ == SceneEditorFramework_BasicCoordinateType.POSITION ||
+            mHandleType_ == SceneEditorFramework_BasicCoordinateType.SCALE) &&
             handle >= 3;
     }
 
@@ -305,6 +324,10 @@
     //Keep the coordinate which is perpendicular to the selected plane fixed.
     //The first three handles are single-axis drags, and the final three are
     //the YZ, XZ and XY plane handles in that order.
+    //
+    //A scale drag reads the same result as a distance from where the drag began
+    //rather than as a place to be, so an axis held fixed here is one the scale
+    //is not changed along - the same thing this means for a move.
     function constrainMovement_(point, reference, handle){
         if(handle == 0) return Vec3(point.x, reference.y, reference.z);
         if(handle == 1) return Vec3(reference.x, point.y, reference.z);

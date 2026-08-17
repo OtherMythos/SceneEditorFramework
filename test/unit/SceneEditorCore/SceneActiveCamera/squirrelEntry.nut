@@ -105,6 +105,33 @@ function start(){
             positionHandles.constrainMovement_(point, reference, 5));
         positionHandles.shutdown();
 
+        //The scale gizmo has the same six: a plane handle resizes along the two
+        //axes it stands for, leaving the third alone. One is the plugin's SCALE
+        //enum, named by value for the same reason the others above are.
+        local scaleHandles = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(
+            _scene.getRootSceneNode().createChildSceneNode(), 1,
+            editorBase.mBus_, 0);
+        _test.assertEqual(6, scaleHandles.mPositionHandles_.len());
+        _test.assertFalse(scaleHandles.isPlaneHandle_(2));
+        _test.assertTrue(scaleHandles.isPlaneHandle_(3));
+        //The arms are the scale gizmo's own mesh; the plane handles are the
+        //quads the position gizmo uses, tinted by the pair of axes they take.
+        _test.assertEqual("scaleHandle.obj", scaleHandles.getObjectForHandle_(0));
+        _test.assertEqual("planeHandle.obj", scaleHandles.getObjectForHandle_(3));
+        _test.assertEqual("SceneEditorFramework/planeHandle0",
+            scaleHandles.datablockName_(3));
+        assertVec3(Vec3(10, 2, 3),
+            scaleHandles.constrainMovement_(point, reference, 3));
+        assertVec3(Vec3(1, 2, 30),
+            scaleHandles.constrainMovement_(point, reference, 5));
+
+        //Held uniform, a drag takes the axis it went furthest along, sign and
+        //all - not whichever of the two a plane handle produced last.
+        assertVec3(Vec3(3, 3, 3), scaleHandles.applyMaxForVec3(Vec3(3, 0, 2)));
+        assertVec3(Vec3(-4, -4, -4), scaleHandles.applyMaxForVec3(Vec3(0, -4, 1)));
+        assertVec3(Vec3(0, 0, 0), scaleHandles.applyMaxForVec3(Vec3(0, 0, 0)));
+        scaleHandles.shutdown();
+
         //The selection outline uses eight independently positioned corner
         //brackets. Its arms remain uniformly sized for non-uniform bounds.
         local outline = ::SceneEditorFramework.SceneEditorGizmoOutlineBox(
