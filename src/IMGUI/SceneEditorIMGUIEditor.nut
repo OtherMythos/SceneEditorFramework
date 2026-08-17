@@ -168,7 +168,7 @@
         resetWindowLayout_();
     }
 
-    /** Frame the primary selection in the viewport the user last worked in. */
+    /** Frame the whole selection in the viewport the user last worked in. */
     function frameSelection(){
         return frameSelection_();
     }
@@ -620,12 +620,15 @@
         return mBase_ == null ? null : mBase_.getActiveSceneTree();
     }
 
+    //Bring the selection into view. A multiple selection is framed as a whole
+    //rather than on whichever entry was selected last, since that entry is an
+    //arbitrary member of the group as far as the camera is concerned.
     function frameSelection_(){
         if(mFocusedRenderWindow_ == null || mBase_ == null) return false;
         local tree = mBase_.getActiveSceneTree();
         if(tree == null || tree.mCurrentSelection == -1) return false;
 
-        local bounds = tree.getEntryAABB(tree.mCurrentSelection);
+        local bounds = tree.getFullSelectionAABB();
         if(bounds == null) return false;
         return mFocusedRenderWindow_.frameBounds(bounds,
             option_("cameraFocusDuration", 0.3));

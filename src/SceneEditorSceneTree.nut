@@ -402,6 +402,33 @@
         return result;
     }
 
+    /**
+     * Fresh world bounds of everything which is selected, descendants
+     * included.
+     *
+     * Framing a multiple selection is about the group as a whole rather than
+     * whichever entry happened to be clicked last, so the box handed to a
+     * camera is the one drawn around all of them. A single selection is the
+     * same measurement over one entry.
+     *
+     * @returns Null when nothing selected draws anything - a selection of
+     * empties has no bounds to frame - as well as when nothing is selected.
+     */
+    function getFullSelectionAABB(){
+        local result = null;
+        foreach(entryId in getSelectedIds()){
+            local bounds = getEntryAABB(entryId);
+            if(bounds == null) continue;
+
+            if(result == null){
+                result = bounds;
+            }else{
+                result.merge(bounds);
+            }
+        }
+        return result;
+    }
+
     function clearAllSelection(){
         setCurrentSelection(null);
     }
@@ -1175,21 +1202,8 @@
     //selection is a single entry with nothing below it, whose own outline
     //already says everything this one would.
     function getSelectionAABB_(){
-        local selectedIds = getSelectedIds();
-        if(selectedIds.len() <= 1) return getChildrenAABB_(mCurrentSelectionIdx);
-
-        local result = null;
-        foreach(entryId in selectedIds){
-            local bounds = getEntryAABB(entryId);
-            if(bounds == null) continue;
-
-            if(result == null){
-                result = bounds;
-            }else{
-                result.merge(bounds);
-            }
-        }
-        return result;
+        if(getSelectedCount() <= 1) return getChildrenAABB_(mCurrentSelectionIdx);
+        return getFullSelectionAABB();
     }
 
     //The flattened tree puts a CHILD marker immediately after an entry which
