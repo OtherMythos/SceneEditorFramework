@@ -232,16 +232,21 @@
 
         constructSceneTree_();
     }
+    /**
+     * Build an entry's scene object again, after a change to what the entry
+     * describes rather than to where it sits.
+     *
+     * Destroying a node destroys everything below it, so an entry with children
+     * cannot have its own node replaced without taking theirs with it. The whole
+     * framework-owned root is rebuilt instead, which leaves every entry - this
+     * one and its descendants - with a node of its own and the lookup from node
+     * back to entry rebuilt along with them.
+     */
     function regenerateSceneEntry(entryId){
         local idx = findEntryIdIndexInTree_(entryId);
-        local e = mEntries_[idx];
-        if(e.node != null){
-            local parent = e.node.getParent();
-            e.node.destroyNodeAndChildren();
-            e.node = constructObjectForEntry(e, parent);
+        if(idx == null || mEntries_[idx].node == null) return;
 
-            mNodesForEntry_.rawset(e.node.getId(), e.entryId);
-        }
+        rebuildSceneTree_();
     }
     function constructObjectForEntry(entry, parent){
         local newNode = parent.createChildSceneNode();

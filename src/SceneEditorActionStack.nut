@@ -39,7 +39,6 @@
     }
 
     function pushAction_(action){
-        print(mUndoStack_);
         mUndoStack_.append(action);
 
         clearRedoStack_();

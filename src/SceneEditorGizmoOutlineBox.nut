@@ -5,7 +5,11 @@
 
     CORNER_LENGTH_FRACTION = 0.5;
     //Move the brackets just beyond the selected mesh so their lines do not
-    //fight the depth buffer on a cube face or other exact AABB match.
+    //fight the depth buffer on a cube face or other exact AABB match. A world
+    //space distance added to the half size, not a fraction of it: a fraction
+    //would open a gap proportional to the selection, which reads as the box
+    //floating away from a large object or a wide multiple selection, and would
+    //open an uneven one on bounds far longer in one axis than another.
     AABB_EXPANSION = 0.05;
 
     //The brackets' default tint. The encompassing outline uses one of its own so
@@ -95,8 +99,6 @@
     function updateBounds_(){
         mParentNode_.setPosition(mCentre_);
 
-        local displayHalfSize = mHalfSize_ * (1.0 + AABB_EXPANSION);
-
         //All three arms share a length. This is the important distinction from
         //scaling a single line-box by x/y/z independently.
         local armLength = min_(mHalfSize_.x, min_(mHalfSize_.y, mHalfSize_.z)) *
@@ -105,9 +107,9 @@
         foreach(index, cornerNode in mCornerNodes_){
             local signs = cornerSigns_(index);
             cornerNode.setPosition(
-                signs[0] * displayHalfSize.x,
-                signs[1] * displayHalfSize.y,
-                signs[2] * displayHalfSize.z);
+                signs[0] * (mHalfSize_.x + AABB_EXPANSION),
+                signs[1] * (mHalfSize_.y + AABB_EXPANSION),
+                signs[2] * (mHalfSize_.z + AABB_EXPANSION));
 
             for(local axis = 0; axis < 3; axis++){
                 local direction = inwardDirection_(axis, signs[axis]);
