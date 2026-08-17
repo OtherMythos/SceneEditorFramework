@@ -298,11 +298,12 @@
             if(dropTarget) _imgui.popStyleColor(3);
             if(dropTarget){
                 local targetName = ::SceneEditorFramework.getNameForSceneEntry(entry);
+                local verb = isDuplicateModifierHeld_() ? "Copy" : "Move";
                 if(mDropTargetValid_){
-                    _imgui.setTooltip("Move " + insertionTypeName_(mDropInsertionType_) +
+                    _imgui.setTooltip(verb + " " + insertionTypeName_(mDropInsertionType_) +
                         " " + targetName);
                 }else{
-                    _imgui.setTooltip("Cannot move selection here");
+                    _imgui.setTooltip("Cannot " + verb.tolower() + " selection here");
                 }
             }
 
@@ -517,10 +518,16 @@
 
         if(mouseDown) return;
 
+        //The drop is where the action is pushed, for a duplicate as much as for
+        //a move: what the drag showed until the button came up was where the
+        //objects would go, and nothing had happened to them yet.
         if(mDragging_ && mDropTargetValid_){
             local insertionType = mDropInsertionType_;
             local destinationId = mDropTargetEntryId_;
-            if(mSceneTree_.rearrangeCurrentSelection(destinationId, insertionType) &&
+            local performed = isDuplicateModifierHeld_() ?
+                mSceneTree_.duplicateCurrentSelection(destinationId, insertionType) != null :
+                mSceneTree_.rearrangeCurrentSelection(destinationId, insertionType);
+            if(performed &&
                 insertionType == SceneEditorFramework_ObjectInsertionType.INTO){
                 mExpandedEntries_.rawset(destinationId, true);
             }
@@ -550,9 +557,24 @@
 
         mDropTargetEntryId_ = entry.entryId;
         mDropInsertionType_ = insertionType;
-        mDropTargetValid_ = mSceneTree_.canRearrangeCurrentSelection(
-            entry.entryId, insertionType);
+        //Asked again every frame rather than when the drag began, so alt taken
+        //up part way through a drag changes what the row on offer says it will
+        //do - and a duplicate is offered somewhere a move is refused, since a
+        //copy can go inside the object it was copied from.
+        mDropTargetValid_ = isDuplicateModifierHeld_() ?
+            mSceneTree_.canDuplicateCurrentSelection(entry.entryId, insertionType) :
+            mSceneTree_.canRearrangeCurrentSelection(entry.entryId, insertionType);
         return true;
+    }
+
+    //Alt, and either of them, held as a tree drag is let go of. The drag is a
+    //move up until then, so this is read at the drop rather than latched when
+    //the drag started.
+    function isDuplicateModifierHeld_(){
+        return isAnyKeyHeld_([
+            SceneEditorFramework_KeyScancode.LALT,
+            SceneEditorFramework_KeyScancode.RALT
+        ]);
     }
 
     function resetDropTarget_(){

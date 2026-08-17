@@ -614,6 +614,71 @@
     }
 
     /**
+     * Detached copies of the entries the current selection covers, flattened
+     * with their hierarchy markers in the same form the tree itself uses.
+     *
+     * The reduced selection is what is taken, so selecting a parent as well as
+     * one of its children describes that child once, as part of its parent,
+     * rather than twice. Nothing in the result points back at this tree - no
+     * ids and no scene nodes - which is what lets it outlive the objects it was
+     * taken from, and be instantiated more than once.
+     *
+     * @returns The copied entries, or null when nothing is selected.
+     */
+    function copySelectionEntries(){
+        local selected = getReducedSelection();
+        if(selected.len() == 0) return null;
+
+        local copied = [];
+        foreach(entryId in selected){
+            local startIndex = findEntryIdIndexInTree_(entryId);
+            if(startIndex == null) continue;
+
+            local endIndex = getEntrySectionEndInEntries_(mEntries_, startIndex);
+            for(local index = startIndex; index < endIndex; index++){
+                copied.append(::SceneEditorFramework.copySceneTreeEntry(mEntries_[index]));
+            }
+        }
+        return copied.len() == 0 ? null : copied;
+    }
+
+    /**
+     * Put a copy of the current selection beside one destination entry, as one
+     * undoable action, and leave the copies selected.
+     *
+     * What is copied is described before anything is inserted, so a selection
+     * may be duplicated into itself: dropping an object into its own subtree
+     * copies what that subtree was rather than chasing the copy it is making.
+     * This is the difference from a move, which has nowhere to put an object
+     * inside itself and refuses. @see rearrangeCurrentSelection
+     *
+     * @returns The ids of the new objects which are not below another new one,
+     * or null when there was nothing to duplicate or nowhere to put it.
+     */
+    function duplicateCurrentSelection(destinationId, insertionType){
+        local copied = copySelectionEntries();
+        if(copied == null) return null;
+
+        return pasteEntries_(copied, destinationId, insertionType);
+    }
+
+    /**
+     * Whether duplicateCurrentSelection would do anything, asked before the
+     * drag which would ask for it has been let go of.
+     */
+    function canDuplicateCurrentSelection(destinationId, insertionType){
+        if(getReducedSelection().len() == 0) return false;
+        if(
+            insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.ABOVE &&
+            insertionType != SceneEditorFramework_ObjectInsertionType.BELOW
+        ) return false;
+
+        local destinationIndex = findEntryIdIndexInTree_(destinationId);
+        return destinationIndex != null && isObjectEntry_(mEntries_[destinationIndex]);
+    }
+
+    /**
      * Insert a clipboard's contents into this tree as one undoable action.
      *
      * The clipboard holds descriptions rather than objects, so this is where

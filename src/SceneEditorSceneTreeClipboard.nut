@@ -63,20 +63,10 @@
     function copyFromTree(tree){
         if(tree == null) return false;
 
-        local selected = tree.getReducedSelection();
-        if(selected.len() == 0) return false;
-
-        local copied = [];
-        foreach(entryId in selected){
-            local startIndex = tree.findEntryIdIndexInTree_(entryId);
-            if(startIndex == null) continue;
-
-            local endIndex = tree.getEntrySectionEndInEntries_(tree.mEntries_, startIndex);
-            for(local index = startIndex; index < endIndex; index++){
-                copied.append(::SceneEditorFramework.copySceneTreeEntry(tree.mEntries_[index]));
-            }
-        }
-        if(copied.len() == 0) return false;
+        //The same description a duplicate is built from, which is why it lives
+        //on the tree rather than here. @see SceneTree.copySelectionEntries
+        local copied = tree.copySelectionEntries();
+        if(copied == null) return false;
 
         mEntries_ = copied;
         mTopLevelCount_ = countTopLevelEntries_(copied);
