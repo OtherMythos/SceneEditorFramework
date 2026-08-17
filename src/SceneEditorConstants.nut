@@ -59,6 +59,7 @@ enum SceneEditorFramework_Action{
     CHANGE_MESH_RESOURCE,
     OBJECT_PASTE,
     MULTIPLE_POSITIONS_CHANGE,
+    MULTIPLE_VISIBILITY_CHANGE,
 
     MAX
 };
@@ -85,6 +86,7 @@ enum SceneEditorFramework_KeyScancode{
     BACKSPACE = 42,
     DELETE = 76,
     C = 6,
+    H = 11,
     S = 22,
     V = 25,
     NUMBER_1 = 30,

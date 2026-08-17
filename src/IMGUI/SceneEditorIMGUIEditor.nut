@@ -115,7 +115,8 @@
     KEY_COMMAND_COPY_SELECTION = 7
     KEY_COMMAND_PASTE = 8
     KEY_COMMAND_SAVE = 9
-    KEY_COMMAND_MAX = 10
+    KEY_COMMAND_TOGGLE_VISIBILITY = 10
+    KEY_COMMAND_MAX = 11
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -556,6 +557,8 @@
                 pasteClipboard_();
             }else if(i == KEY_COMMAND_SAVE){
                 saveScene_();
+            }else if(i == KEY_COMMAND_TOGGLE_VISIBILITY){
+                toggleSelectionVisibility_();
             }else{
                 deleteSelection_();
             }
@@ -573,6 +576,15 @@
 
         tree.deleteCurrentSelection();
         return true;
+    }
+
+    //Take whatever is selected out of sight, or bring it back. As with
+    //deletion, a shortcut pressed with nothing selected is nothing to act on
+    //rather than a mistake.
+    function toggleSelectionVisibility_(){
+        local tree = activeSceneTree_();
+        if(tree == null) return false;
+        return tree.toggleSelectionVisibility();
     }
 
     //Take a copy of whatever is selected. As with deletion, a shortcut pressed
@@ -639,6 +651,7 @@
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_1)) return KEY_COMMAND_TRANSFORM_POSITION;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_2)) return KEY_COMMAND_TRANSFORM_SCALE;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.NUMBER_3)) return KEY_COMMAND_TRANSFORM_ORIENTATION;
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.H)) return KEY_COMMAND_TOGGLE_VISIBILITY;
 
         //Command as well as Control, as that is the shortcut on macOS. Both
         //sides of the keyboard, which is what a modifier scancode distinguishes.
@@ -678,6 +691,7 @@
         if(command == KEY_COMMAND_COPY_SELECTION) return modifier + "+C";
         if(command == KEY_COMMAND_PASTE) return modifier + "+V";
         if(command == KEY_COMMAND_SAVE) return modifier + "+S";
+        if(command == KEY_COMMAND_TOGGLE_VISIBILITY) return "H";
         return "3";
     }
 
@@ -972,6 +986,8 @@
             if(_imgui.menuItem("Copy", keyCommandLabel_(KEY_COMMAND_COPY_SELECTION))) copySelection_();
             if(_imgui.menuItem("Paste", keyCommandLabel_(KEY_COMMAND_PASTE))) pasteClipboard_();
             if(_imgui.menuItem("Delete", keyCommandLabel_(KEY_COMMAND_DELETE_SELECTION))) deleteSelection_();
+            if(_imgui.menuItem("Toggle Visibility",
+                keyCommandLabel_(KEY_COMMAND_TOGGLE_VISIBILITY))) toggleSelectionVisibility_();
             _imgui.separator();
             if(_imgui.menuItem("Position", keyCommandLabel_(KEY_COMMAND_TRANSFORM_POSITION))){
                 mBase_.getActiveSceneTree().setObjectTransformCoordinateType(SceneEditorFramework_BasicCoordinateType.POSITION);

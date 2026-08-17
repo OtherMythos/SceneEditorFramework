@@ -1588,6 +1588,52 @@
         action.performAction();
     }
 
+    /**
+     * Show or hide everything selected, as one undoable action.
+     *
+     * A selection with anything still showing in it is hidden, and only a
+     * selection which is already completely hidden is brought back. Toggling
+     * each object against its own state would leave a mixed selection mixed the
+     * other way round, which is a group half in the way rather than either of
+     * the two things the key was pressed for.
+     *
+     * The reduced selection is what is changed, so a selected object below
+     * another selected one is left as it is: hiding its parent already takes it
+     * out of sight, and its own flag is what it goes back to being when the
+     * parent is shown again.
+     *
+     * @returns true when there was a selection to change.
+     */
+    function toggleSelectionVisibility(){
+        local selected = getReducedSelection();
+        if(selected.len() == 0) return false;
+
+        local visible = false;
+        foreach(entryId in selected){
+            local entry = getEntryForId(entryId);
+            if(entry != null && entry.visible) visible = true;
+        }
+
+        local changes = [];
+        foreach(entryId in selected){
+            local entry = getEntryForId(entryId);
+            if(entry == null || entry.visible == !visible) continue;
+
+            changes.append({
+                "id": entryId,
+                "old": entry.visible,
+                "new": !visible
+            });
+        }
+        if(changes.len() == 0) return false;
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_VISIBILITY_CHANGE];
+        local action = A(this, mBus_, changes);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+        return true;
+    }
+
     //Called by ChangeSceneNodeVisibilityAction. Keeping the engine-node write
     //here makes visibility work for every caller, not only the imgui panel.
     function setEntryVisibility_(entryId, visible){

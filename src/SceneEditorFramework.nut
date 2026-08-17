@@ -54,3 +54,4 @@ _doFile("script://actions/ObjectInsertionAction.nut");
 _doFile("script://actions/ChangeMeshResourceAction.nut");
 _doFile("script://actions/ObjectPasteAction.nut");
 _doFile("script://actions/MultiplePositionsChangeAction.nut");
+_doFile("script://actions/MultipleVisibilityChangeAction.nut");
