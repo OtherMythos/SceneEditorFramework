@@ -103,6 +103,13 @@
         local sine = axis.dot(mStartVector_.cross(mouseVector));
         local cosine = mStartVector_.dot(mouseVector);
         local angle = atan2(sine, cosine);
+        //Snapped here rather than where the turn is applied, because this is
+        //where it is still an angle: what the event carries is a quaternion the
+        //steps could only be recovered from.
+        if(::SceneEditorFramework.gizmoSnapModifierHeld()){
+            angle = ::SceneEditorFramework.snapValueToStep(angle,
+                SceneEditorFramework_GizmoSnap.ORIENTATION);
+        }
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_ORIENTATION_CHANGE,
             Quat(angle, axis));
     }

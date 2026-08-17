@@ -1236,7 +1236,19 @@
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
     }
 
+    /**
+     * The place a drag of the position handles puts what it is dragging.
+     *
+     * The snap modifier and the magnetic edit toggle ask for the same kind of
+     * thing, so a held modifier answers rather than the toggle - it is the one
+     * the hand is on at the time - and rounds to the nearest step rather than
+     * upward, so an object goes to the grid line it is nearest to.
+     */
     function getPositionWithMagnet(position){
+        if(::SceneEditorFramework.gizmoSnapModifierHeld()){
+            return ::SceneEditorFramework.snapVec3ToStep(position,
+                SceneEditorFramework_GizmoSnap.POSITION);
+        }
 
         if(mMagneticEdit_){
             local p = position.copy();
@@ -1248,6 +1260,33 @@
         }
 
         return position;
+    }
+
+    /**
+     * The size a drag of the scale handles gives what it is dragging.
+     *
+     * Snapped to absolute multiples of the step rather than to multiples away
+     * from the size the object already had, so a snapped drag puts an object
+     * left at an odd size by an earlier one back onto the same sizes as its
+     * neighbours.
+     */
+    function getScaleWithSnap_(scale){
+        if(!::SceneEditorFramework.gizmoSnapModifierHeld()) return scale;
+
+        local snapped = ::SceneEditorFramework.snapVec3ToStep(scale,
+            SceneEditorFramework_GizmoSnap.SCALE);
+
+        //Anything within half a step of nothing would otherwise snap to a scale
+        //of zero, which is a whole axis of an object collapsed by a drag which
+        //only meant to make it small. The step nearest zero is as far down as a
+        //snapped drag goes, on whichever side of it the drag was on: a negative
+        //scale is a mirrored object rather than a mistake.
+        local step = SceneEditorFramework_GizmoSnap.SCALE;
+        if(snapped.x == 0) snapped.x = scale.x < 0 ? -step : step;
+        if(snapped.y == 0) snapped.y = scale.y < 0 ? -step : step;
+        if(snapped.z == 0) snapped.z = scale.z < 0 ? -step : step;
+
+        return snapped;
     }
 
     /**
@@ -1308,7 +1347,8 @@
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
             assert(mCurrentPopulateAction_ != null);
-            setSelectedNodeScale(mCurrentPopulateAction_.mOld_ - data*0.2);
+            setSelectedNodeScale(
+                getScaleWithSnap_(mCurrentPopulateAction_.mOld_ - data*0.2));
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_ORIENTATION_CHANGE){

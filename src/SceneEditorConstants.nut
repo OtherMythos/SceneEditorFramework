@@ -102,6 +102,25 @@ enum SceneEditorFramework_KeyScancode{
     RGUI = 231
 }
 
+//The steps a transform gizmo drag lands on while the snap modifier is held.
+//@see SceneEditorFramework.gizmoSnapModifierHeld
+//
+//A position and a scale snap to their own absolute values, so that a snapped
+//drag puts an object on the same grid whichever direction it was dragged from.
+//A rotation snaps its angle instead, which is measured from where the drag
+//began: an object which was not on the grid to start with turns by whole steps
+//rather than jumping onto it.
+enum SceneEditorFramework_GizmoSnap{
+    //One world unit, matching what the magnetic edit toggle rounds to.
+    POSITION = 1.0,
+    //A quarter, so a half and a quarter of a mesh's authored size are both
+    //reachable without the steps being so fine that they stop reading as steps.
+    SCALE = 0.25,
+    //Fifteen degrees in radians. Twenty four steps to a full turn, which is
+    //fine enough for the eighths of one and still lands exactly on the thirds.
+    ORIENTATION = 0.26179938779914943
+}
+
 //Where the framework's own geometry sits in the render queue.
 //
 //Ogre hands render queues 0-99 to v2 objects and 100-199 to v1 ones, so the

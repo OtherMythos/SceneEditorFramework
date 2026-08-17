@@ -1,0 +1,5 @@
+<scene>
+    <mesh name="Alpha" mesh="cube">
+        <position x="0" y="0" z="0"/>
+    </mesh>
+</scene>

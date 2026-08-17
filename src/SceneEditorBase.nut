@@ -211,6 +211,49 @@ whatever order they happen to be drawn in.
     return false;
 }
 
+/**
+Whether the modifier which makes a transform gizmo drag move in steps is held.
+
+Shift, and either of them: a keyboard has two and an editor should not care which
+one a hand fell on. Read live during a drag rather than latched when it began, so
+that a drag can be snapped part way through and let go of again.
+@see SceneEditorFramework_GizmoSnap for the steps themselves.
+*/
+::SceneEditorFramework.gizmoSnapModifierHeld <- function(){
+    return _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.LSHIFT) ||
+        _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.RSHIFT);
+}
+
+/**
+Whether the modifier which keeps a scale drag uniform across the three axes is
+held.
+
+Alt rather than shift, which snapping has taken over: snapping applies to all
+three kinds of drag and this applies to one, so shift is the one which reads the
+same wherever the gizmo is used.
+*/
+::SceneEditorFramework.gizmoUniformScaleModifierHeld <- function(){
+    return _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.LALT) ||
+        _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.RALT);
+}
+
+/**
+Round a value to the nearest multiple of a step.
+
+Halves round upward, on both sides of zero, so that a drag crossing the origin
+does not find a step twice the size of the others waiting for it there.
+*/
+::SceneEditorFramework.snapValueToStep <- function(value, step){
+    return floor(value / step + 0.5) * step;
+}
+
+::SceneEditorFramework.snapVec3ToStep <- function(value, step){
+    return Vec3(
+        ::SceneEditorFramework.snapValueToStep(value.x, step),
+        ::SceneEditorFramework.snapValueToStep(value.y, step),
+        ::SceneEditorFramework.snapValueToStep(value.z, step));
+}
+
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;

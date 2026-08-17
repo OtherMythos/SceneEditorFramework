@@ -161,7 +161,7 @@
         print(newScale);
         //mParentNode_.setScale(newScale);
 
-        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.LSHIFT)){
+        if(::SceneEditorFramework.gizmoUniformScaleModifierHeld()){
             newScale = applyMaxForVec3(newScale);
         }
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE, newScale);
