@@ -526,6 +526,14 @@
     }
 
     /**
+     * The point orbiting, panning and zooming all turn around, which is also the
+     * point in the scene the camera is considered to be looking at.
+     */
+    function getOrbitTarget(){
+        return mOrbitTarget_;
+    }
+
+    /**
      * Smoothly move to a position looking at a target. This is deliberately a
      * general camera-pose operation rather than framing-specific logic, so
      * other editor actions can use the same animation.

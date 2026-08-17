@@ -31,12 +31,22 @@
     ICON_CELL_WIDTH = 0.1
 
     //Views a window can be set to. A new window opens on the next one along, so
-    //that opening a second viewport shows something the first one does not.
+    //that opening a second viewport shows something the first one does not - the
+    //first four only, since those are the ones with a placement to open on.
+    //@see viewPlacement_
     VIEW_PERSPECTIVE = 0
     VIEW_TOP = 1
     VIEW_FRONT = 2
     VIEW_SIDE = 3
-    VIEW_MAX = 4
+    //The other three ends of the same three axes, which a viewport is only put
+    //into by being asked for. Numbered after the four above so that a layout
+    //saved by an older version still restores the view it recorded.
+    VIEW_BOTTOM = 4
+    VIEW_BACK = 5
+    VIEW_LEFT = 6
+    VIEW_MAX = 7
+    //How many of them a new window cycles through.
+    VIEW_CYCLE_COUNT = 4
 
     //The window has no size before its first frame, so the texture starts at
     //something usable and is re-created once the window has been laid out.
@@ -51,6 +61,15 @@
     FRAME_HALF_FOV = 22.5
     FRAME_MARGIN = 1.15
     MIN_FRAME_RADIUS = 0.5
+    //How far off vertical a top or bottom view is aimed. A camera pointed along
+    //the axis it measures its roll against has no way to decide which way up it
+    //is, so the fps camera stops its pitch a degree short of straight down -
+    //tilting the view by the same amount is what keeps what it is looking at in
+    //the middle of the viewport rather than a degree off it.
+    //@see ::SceneEditorFramework.FPSCamera.PITCH_LIMIT
+    VERTICAL_VIEW_TILT = 0.02
+    //How long an axis view takes to fly to.
+    VIEW_TRANSITION_DURATION = 0.25
 
     //Unique among the windows which have ever been opened, so that the names
     //below never collide with one belonging to a window which has been closed.
@@ -70,6 +89,11 @@
     mCamera_ = null;
     mCameraNode_ = null;
     mView_ = null;
+    //Whether this viewport's camera is projecting orthographically, which is a
+    //setting on the camera and so belongs to this viewport alone. An axis view
+    //switches it on, since a view down an axis is being asked for to measure
+    //against and a perspective one is no use for that. @see setAxisView
+    mOrthographic_ = false;
     //Flies the camera above. Each window has its own, so each is flown
     //separately and only the one the cursor is in moves.
     mFPSCamera_ = null;
@@ -136,7 +160,7 @@
         //the angles it flies by have to be the ones the view left it at, or the
         //first turn would snap the view somewhere else.
         mFPSCamera_ = ::SceneEditorFramework.FPSCamera(mCamera_);
-        setView(viewIndex % VIEW_MAX);
+        setView(viewIndex % VIEW_CYCLE_COUNT);
 
         //Aimed at the scene pass of the layer this window claimed, which is what
         //keeps the setting to this viewport. Constructed before the saved state is
@@ -200,6 +224,9 @@
         //the scene is stretched to the window's shape rather than the panel's,
         //and the rays cast for picking and the gizmos miss.
         mCamera_.setAspectRatio(width.tofloat() / height.tofloat());
+        //An orthographic window is a size in world units rather than an angle,
+        //so it does not follow the aspect ratio by itself.
+        updateOrthoWindow_();
     }
 
     function destroyTexture_(){
@@ -270,7 +297,120 @@
      * is released however far the cursor wanders in the meantime.
      */
     function updateCamera(interactable, deltaSeconds=1.0 / 60.0){
-        return mFPSCamera_.update(interactable, deltaSeconds);
+        local flying = mFPSCamera_.update(interactable, deltaSeconds);
+        //Zooming an orthographic camera cannot be moving it towards what it is
+        //looking at, because that does not change what an orthographic
+        //projection shows. It is the size of the window which has to follow the
+        //distance the camera was zoomed to. @see updateOrthoWindow_
+        updateOrthoWindow_();
+        return flying;
+    }
+
+    /**
+     * Look down one of the world axes, orthographically.
+     *
+     * The point being orbited stays where it is and so does the distance to it,
+     * so this turns the viewport around whatever is being worked on rather than
+     * sending the camera back to the middle of the scene. @see setView, which is
+     * the fixed placement a viewport opens on.
+     *
+     * @param view One of the axis views. VIEW_PERSPECTIVE has no direction to
+     * look along and is not one of them; it is asked for by switching the
+     * projection back. @see setOrthographic
+     * @returns Whether the viewport is now looking down that axis.
+     */
+    function setAxisView(view){
+        local direction = viewDirection_(view);
+        if(direction == null) return false;
+
+        mView_ = view;
+        setOrthographic(true);
+
+        local target = mFPSCamera_.getOrbitTarget();
+        return mFPSCamera_.animateTo(target - direction * mFPSCamera_.getOrbitDistance(),
+            target, VIEW_TRANSITION_DURATION);
+    }
+
+    /**
+     * Which axis view a handle on the axis indicator asks for.
+     *
+     * @param axis 0, 1 or 2 for the x, y or z axis.
+     * @param sign 1 for the positive end of it and -1 for the negative one.
+     * @returns The view looking back down that end of the axis, or null when
+     * there is no such axis.
+     */
+    function axisViewForHandle(axis, sign){
+        switch(axis){
+            case 0: return sign > 0 ? VIEW_SIDE : VIEW_LEFT;
+            case 1: return sign > 0 ? VIEW_TOP : VIEW_BOTTOM;
+            case 2: return sign > 0 ? VIEW_FRONT : VIEW_BACK;
+        }
+        return null;
+    }
+
+    //The direction an axis view looks along, or null for a view which is not one
+    //of them.
+    function viewDirection_(view){
+        switch(view){
+            case VIEW_TOP: return Vec3(0, -1, -VERTICAL_VIEW_TILT);
+            case VIEW_BOTTOM: return Vec3(0, 1, -VERTICAL_VIEW_TILT);
+            case VIEW_FRONT: return Vec3(0, 0, -1);
+            case VIEW_BACK: return Vec3(0, 0, 1);
+            //The positive x axis, which the framework has always called the side
+            //view, is the one looked at from the right.
+            case VIEW_SIDE: return Vec3(-1, 0, 0);
+            case VIEW_LEFT: return Vec3(1, 0, 0);
+        }
+        return null;
+    }
+
+    //What an axis view is called in the interface.
+    function viewName_(view){
+        switch(view){
+            case VIEW_TOP: return "Top";
+            case VIEW_BOTTOM: return "Bottom";
+            case VIEW_FRONT: return "Front";
+            case VIEW_BACK: return "Back";
+            case VIEW_SIDE: return "Right";
+            case VIEW_LEFT: return "Left";
+        }
+        return "Perspective";
+    }
+
+    /**
+     * Switch this viewport's camera between an orthographic and a perspective
+     * projection, leaving it where it is and pointed where it is.
+     */
+    function setOrthographic(orthographic){
+        if(mOrthographic_ == orthographic) return;
+
+        mOrthographic_ = orthographic;
+        mCamera_.setProjectionType(orthographic ? _PT_ORTHOGRAPHIC : _PT_PERSPECTIVE);
+        updateOrthoWindow_();
+    }
+
+    function toggleOrthographic(){
+        setOrthographic(!mOrthographic_);
+        //No longer down an axis in the sense the view names mean, since what a
+        //named view is for is measuring against and a perspective one is not.
+        if(!mOrthographic_) mView_ = VIEW_PERSPECTIVE;
+    }
+
+    function isOrthographic(){
+        return mOrthographic_;
+    }
+
+    //Size the orthographic window so that it shows what the perspective one would
+    //show at the point being orbited. Anything else and switching projection, or
+    //zooming after having switched, would jump the scene to a different size.
+    function updateOrthoWindow_(){
+        if(!mOrthographic_) return;
+        if(mTextureWidth_ <= 0 || mTextureHeight_ <= 0) return;
+
+        local height = 2.0 * mFPSCamera_.getOrbitDistance() *
+            tan(FRAME_HALF_FOV * PI / 180.0);
+        local aspect = mTextureWidth_.tofloat() / mTextureHeight_.tofloat();
+        mCamera_.setOrthoWindow(height * aspect, height);
     }
 
     /** Animate this viewport to contain the supplied world-space bounds. */
@@ -297,8 +437,11 @@
             //Deliberately not straight down: a camera pointed along the axis it
             //measures its roll against has no way to decide which way up it is.
             case VIEW_TOP: return [Vec3(0, 24, 0), Vec3(0, -1, -0.001), 24.0];
+            case VIEW_BOTTOM: return [Vec3(0, -24, 0), Vec3(0, 1, -0.001), 24.0];
             case VIEW_FRONT: return [Vec3(0, 4, 24), Vec3(0, 0, -1), 24.0];
+            case VIEW_BACK: return [Vec3(0, 4, -24), Vec3(0, 0, 1), 24.0];
             case VIEW_SIDE: return [Vec3(24, 4, 0), Vec3(-1, 0, 0), 24.0];
+            case VIEW_LEFT: return [Vec3(-24, 4, 0), Vec3(1, 0, 0), 24.0];
             case VIEW_PERSPECTIVE:
             default: return [Vec3(12, 8, 15), Vec3(-12, -8, -15), 20.8087];
         }
@@ -362,7 +505,10 @@
         //from the invisible button below - which is the item imgui hands such a
         //drag to, and holds until the button comes back up.
         local sceneItemActive = false;
-        local toolbarHovered = false;
+        //Whether the cursor is over one of the controls drawn over the scene -
+        //the toolbar or the axis indicator's handles - and so whether a click
+        //belongs to them rather than to the scene behind them.
+        local overlayHovered = false;
 
         if(size[0] > 0 && size[1] > 0){
             //Drawn at the panel's size rather than the texture's, so a resize
@@ -373,7 +519,20 @@
             //Drawn after the image but before its invisible interaction target.
             //The toolbar therefore appears over the scene and claims the ImGui
             //hover id first, preventing the target below from swallowing clicks.
-            toolbarHovered = drawToolbar_(cursorX, cursorY);
+            overlayHovered = drawToolbar_(cursorX, cursorY);
+
+            //Before that target for the same reason: the first item to claim the
+            //hover id keeps it, so an indicator drawn after the scene's target
+            //would be a set of handles which could never be clicked.
+            if(mEditor_.option_("showAxisIndicator", true)){
+                local indicator = mAxisIndicator_.draw(mCamera_, cursorX, cursorY,
+                    size[0], size[1]);
+                if(indicator.hovered) overlayHovered = true;
+                if(indicator.clicked != null){
+                    setAxisView(axisViewForHandle(indicator.clicked[0],
+                        indicator.clicked[1]));
+                }
+            }
 
             //An invisible button over the image, so that dragging in the scene
             //is a drag on an item rather than on the window's empty space -
@@ -389,11 +548,6 @@
             _imgui.invisibleButton("##sceneViewport", size[0], size[1]);
             sceneItemActive = _imgui.isItemActive();
 
-            //Placed after the scene interaction target so the lines render on
-            //top. The indicator itself is disabled and remains click-through.
-            if(mEditor_.option_("showAxisIndicator", true)){
-                mAxisIndicator_.draw(mCamera_, cursorX, cursorY, size[0], size[1]);
-            }
             _imgui.setCursorPos(cursorX, cursorY + size[1]);
         }
 
@@ -408,7 +562,7 @@
         //properties - is one the cursor may well cross this window during.
         //Whatever grabbed the mouse keeps it until it is released, so the window
         //is only hovered while something is active if that something is its own.
-        if(toolbarHovered || (!sceneItemActive && _imgui.isAnyItemActive())){
+        if(overlayHovered || (!sceneItemActive && _imgui.isAnyItemActive())){
             mHovered_ = false;
         }
 
@@ -465,6 +619,7 @@
     function viewOptionsAtDefaults_(){
         if(!mShowGizmos_) return false;
         if(mObjectColourView_.isEnabled()) return false;
+        if(mOrthographic_) return false;
         return true;
     }
 
@@ -519,10 +674,44 @@
                     _imgui.textDisabled("Object colours unavailable.");
                 }
             }
+
+            _imgui.separator();
+            //The same views the handles on the axis indicator ask for, for
+            //anyone who would rather name the one they want than find it in the
+            //corner of the viewport. @see setAxisView
+            if(_imgui.menuItem("Orthographic", null, mOrthographic_)){
+                toggleOrthographic();
+            }
+            if(_imgui.beginMenu("Viewpoint")){
+                drawViewpointItem_(VIEW_FRONT);
+                drawViewpointItem_(VIEW_BACK);
+                drawViewpointItem_(VIEW_LEFT);
+                drawViewpointItem_(VIEW_SIDE);
+                drawViewpointItem_(VIEW_TOP);
+                drawViewpointItem_(VIEW_BOTTOM);
+                _imgui.separator();
+                //Back to a perspective projection without moving the camera,
+                //which is the way out of a viewpoint rather than another one.
+                if(_imgui.menuItem(viewName_(VIEW_PERSPECTIVE), null, !mOrthographic_)){
+                    setOrthographic(false);
+                    mView_ = VIEW_PERSPECTIVE;
+                }
+                _imgui.endMenu();
+            }
+
             hovered = _imgui.isWindowHovered() || hovered;
             _imgui.endPopup();
         }
         return hovered;
+    }
+
+    //One entry in the viewpoint menu. Ticked only while the viewport is actually
+    //showing that view: an orthographic camera which has since been flown
+    //somewhere else is no longer looking down the axis it was put on, and neither
+    //is a perspective one however it is pointed.
+    function drawViewpointItem_(view){
+        local current = mOrthographic_ && mView_ == view;
+        if(_imgui.menuItem(viewName_(view), null, current)) setAxisView(view);
     }
 
     function drawToolButton_(sceneTree, coordinateType, iconCell, tooltip){
@@ -609,6 +798,7 @@
             "showGizmos": mShowGizmos_,
             "objectColours": mObjectColourView_.isEnabled(),
             "view": mView_,
+            "orthographic": mOrthographic_,
             "cameraPosition": [position.x, position.y, position.z],
             "cameraDirection": [direction.x, direction.y, direction.z],
             "cameraOrbitDistance": mFPSCamera_.getOrbitDistance(),
@@ -646,6 +836,11 @@
         }
         if(state.rawin("cameraOrbitDistance")){
             mFPSCamera_.setOrbitDistance(state.rawget("cameraOrbitDistance"));
+        }
+        //Last of the camera state, since the size of an orthographic window comes
+        //from the distance restored above.
+        if(state.rawin("orthographic") && typeof state.rawget("orthographic") == "bool"){
+            setOrthographic(state.rawget("orthographic"));
         }
 
         if(!state.rawin("window") || typeof state.rawget("window") != "table") return;
