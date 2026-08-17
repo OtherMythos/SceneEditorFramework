@@ -34,6 +34,23 @@ jobs:
           name: av-x86_64-${{ matrix.buildType }}.AppImage
           repo: OtherMythos/avEngine
           workflow: buildLinux.yml
+      # The stress plan runs the example editor, which needs the imgui plugin the
+      # example bundles. That distribution is not kept in this repository, so it
+      # is fetched here. Its artifact carries the plugin's version and commit in
+      # its name, hence the pattern rather than a fixed one.
+      - name: Download the avImguiPlugin distribution
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          name: avImguiPlugin-
+          name_is_regexp: true
+          repo: OtherMythos/avEngineIMGUI
+          workflow: build.yml
+          path: /tmp/imguiPlugin
+      - name: Install the imgui plugin where the example expects it
+        run: |
+          mkdir -p example/plugins
+          mv /tmp/imguiPlugin/*/avImguiPlugin example/plugins/avImguiPlugin
+          ls example/plugins/avImguiPlugin
       - name: Run tests
         run: |
           chmod +x ./av-x86_64.AppImage
