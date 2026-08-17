@@ -50,7 +50,7 @@
 
     //The options offered for a right clicked object.
     mRightClickMenu_ = null
-    //The list of every object under an Alt-click.
+    //The list of every object under an alt+right click.
     mRaycastSelectionMenu_ = null
     //An object right clicked in the scene, waiting for the gui to be built. The
     //pick has to happen while the scene is clean and the menu has to be opened
@@ -60,6 +60,12 @@
     //getMouseReleased is cleared before sceneSafeUpdate runs again, so the
     //release is found by watching the button rather than by asking for it.
     mRightMouseDown_ = false
+    //The same, watched where the cameras are updated instead, which is a
+    //different point in the frame. @see updateRightHoldGesture_
+    mRightHeldForCameras_ = false
+    //Whether alt was held when the right button went down, which is what makes
+    //the hold the object chooser's rather than the camera's.
+    mRightHoldWasAlt_ = false
 
     //Every viewport onto the scene which is currently open.
     //@see SceneEditorFramework.IMGUI.SceneRenderWindow
@@ -351,8 +357,14 @@
     //Called on every update rather than once per rendered frame, so that the
     //distance a camera travels is the same however fast the editor is drawing.
     function updateRenderWindowCameras_(deltaSeconds){
+        updateRightHoldGesture_();
+
         foreach(window in mRenderWindows_){
-            local interactable = mFlyingRenderWindow_ == null && window.isHovered();
+            //A hold which belongs to the object chooser is not offered to any
+            //camera, so alt+right clicking a viewport cannot begin a flight it
+            //would then have to be told apart from.
+            local interactable = !mRightHoldWasAlt_ &&
+                mFlyingRenderWindow_ == null && window.isHovered();
 
             if(window.updateCamera(interactable, deltaSeconds)){
                 mFlyingRenderWindow_ = window;
@@ -360,6 +372,36 @@
                 mFlyingRenderWindow_ = null;
             }
         }
+    }
+
+    /**
+     * Work out which gesture the right button being held is.
+     *
+     * Alt held as it went down makes the hold the object chooser's, and no
+     * camera is given it. The right button otherwise flies the camera, and a
+     * flight is what the chooser's release would be mistaken for: the cursor is
+     * hidden and taken over the moment the button goes down, and the smallest
+     * drift of it while the button is held is a turn of the camera, which is
+     * enough for the release to be read as the end of a flight rather than as a
+     * click.
+     *
+     * Decided at the press and left alone for the rest of the hold. Letting go
+     * of alt part way through does not hand the hold to the camera, and alt
+     * taken up during a flight is the camera's own speed modifier rather than a
+     * request for the list.
+     *
+     * Here rather than beside the release which reads it, because this has to
+     * have happened before the cameras are updated and those two run at
+     * different points in the frame.
+     */
+    function updateRightHoldGesture_(){
+        local down = _input.getMouseButton(_MB_RIGHT);
+        local pressed = down && !mRightHeldForCameras_;
+        mRightHeldForCameras_ = down;
+
+        //Not cleared when the button comes up: the release is what opens the
+        //chooser, and it has to still be able to tell what the hold was.
+        if(pressed) mRightHoldWasAlt_ = altSelectionModifierHeld_();
     }
 
     //Scale the gui to the display. imgui is given the window's size in pixels
@@ -1005,7 +1047,6 @@
 
     function sceneSafeUpdate(){
         mBase_.sceneSafeUpdate();
-        updateSceneAltClick_();
         updateSceneRightClick_();
     }
 
@@ -1013,34 +1054,24 @@
         return anyKeyHeld_([SceneEditorFramework_KeyScancode.LALT, SceneEditorFramework_KeyScancode.RALT]);
     }
 
-    //Alt+click asks which of all the objects along the cursor ray should be
-    //selected. This runs while the scene is clean; the resulting popup is drawn
-    //from update(), where ImGui calls are safe.
-    function updateSceneAltClick_(){
-        if(mRaycastSelectionMenu_ == null || !altSelectionModifierHeld_() ||
-            !_input.getMousePressed(_MB_LEFT) ||
-            !sceneEditorInteractable_()) return;
-
-        local sceneTree = mBase_.getActiveSceneTree();
-        if(sceneTree == null) return;
-
-        local entries = sceneTree.findEntryIdsAtScenePosition(
-            ::SceneEditorFramework.getNormalisedSceneMousePosition());
-        mRaycastSelectionMenu_.requestForEntries(entries);
-    }
-
-    //Right clicking an object in the scene offers the same options right
-    //clicking it in the scene tree does.
-    //
-    //Which object is under the cursor is a ray cast against the scene, which
-    //needs the scene to be clean - so it happens here rather than while the gui
-    //is built, and what it finds waits until then.
-    //
-    //On the release rather than the press, because the same button flies the
-    //camera: until it comes back up there is no telling whether it was a click
-    //asking for a menu or the beginning of a flight.
+    /**
+     * What a right click in a viewport asks for.
+     *
+     * Plainly, the same options right clicking the object in the scene tree
+     * offers. Pressed with alt held, which of all the objects along the cursor
+     * ray should be selected - the objects behind the nearest one are reachable
+     * only by asking. One release does one of the two, which is the reason they
+     * are decided together rather than in a handler each.
+     *
+     * Which object is under the cursor is a ray cast against the scene, which
+     * needs the scene to be clean - so it happens here rather than while the gui
+     * is built, and what it finds waits until then.
+     *
+     * On the release rather than the press, because the same button flies the
+     * camera: until it comes back up there is no telling whether it was a click
+     * asking for a menu or the beginning of a flight.
+     */
     function updateSceneRightClick_(){
-        if(mRightClickMenu_ == null) return;
         local down = _input.getMouseButton(_MB_RIGHT);
         local released = !down && mRightMouseDown_;
         mRightMouseDown_ = down;
@@ -1054,13 +1085,33 @@
         //the button has come up, so on the frame a flight ends it would refuse
         //every release, menu-worthy or not.
         if(!released || !sceneCursorInViewport_()) return;
+
+        local sceneTree = mBase_.getActiveSceneTree();
+        if(sceneTree == null) return;
+
+        //What the hold was was settled when the button went down, so a chooser
+        //release is not refused for alt having been let go of first - and a
+        //flight is not turned into a chooser by alt taken up during it.
+        //@see updateRightHoldGesture_
+        if(mRightHoldWasAlt_){
+            //No camera was given this hold, so there is no flight it could have
+            //been instead, and nothing to ask the camera about.
+            //
+            //A release over nothing hands over an empty list, which the chooser
+            //treats as nothing to choose between and opens no popup.
+            if(mRaycastSelectionMenu_ != null){
+                mRaycastSelectionMenu_.requestForEntries(
+                    sceneTree.findEntryIdsAtScenePosition(
+                        ::SceneEditorFramework.getNormalisedSceneMousePosition()));
+            }
+            return;
+        }
+
         //A button which flew the camera was doing that rather than asking for
         //anything. The camera keeps the answer until the next press, so it is
         //still there to be asked once the flight is over.
         if(mFocusedRenderWindow_.cameraWasFlown()) return;
-
-        local sceneTree = mBase_.getActiveSceneTree();
-        if(sceneTree == null) return;
+        if(mRightClickMenu_ == null) return;
 
         local entryId = sceneTree.findEntryIdAtScenePosition(::SceneEditorFramework.getNormalisedSceneMousePosition());
         //Right clicking empty space is not a request for options on anything.

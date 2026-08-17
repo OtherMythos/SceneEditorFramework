@@ -1,6 +1,6 @@
-//The object chooser shown by Alt-clicking a scene viewport. The ray query is
-//performed by the editor during sceneSafeUpdate; this class owns only the ImGui
-//popup and the selection made from it.
+//The object chooser shown by alt+right clicking a scene viewport. The ray query
+//is performed by the editor during sceneSafeUpdate; this class owns only the
+//ImGui popup and the selection made from it.
 ::SceneEditorFramework.IMGUI.RaycastSelectionMenu <- class{
 
     POPUP_ID = "sceneEditorRaycastSelectionMenu"
@@ -25,7 +25,7 @@
             mEntryIds_ = mRequestedEntryIds_;
             mRequestedEntryIds_ = null;
             //ImGui remembers the cursor position at OpenPopup, placing the list
-            //at the Alt-click which requested it.
+            //at the click which requested it.
             _imgui.openPopup(POPUP_ID);
         }
 
@@ -57,7 +57,7 @@
             local label = ::SceneEditorFramework.getNameForSceneEntry(entry) +
                 "##raycastEntry" + entryId;
             //The checked state is rendered as a tick in the popup's right-hand
-            //column, so an Alt-click chooser shows which hits are already part
+            //column, so the chooser shows which hits are already part
             //of the current multi-selection.
             if(_imgui.menuItem(label, null, sceneTree.isEntrySelected(entryId))){
                 sceneTree.notifySelectionChanged(entryId);
