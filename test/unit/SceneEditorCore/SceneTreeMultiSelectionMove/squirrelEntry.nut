@@ -1,9 +1,10 @@
 //A drag of the position handles moves everything which is selected: the objects
 //keep the arrangement they were put in rather than the drag pulling one of them
-//out of it. The handles sit at the middle of a multiple selection, so the drag
-//is about the group rather than about whichever object was clicked last. The
-//whole drag is one undo step, and only a move widens like this - a scale or a
-//rotation stays with the object the gizmo belongs to.
+//out of it. The handles sit at the middle of a multiple selection, whichever
+//transform tool they belong to, so the drag is about the group rather than about
+//whichever object was clicked last. The whole drag is one undo step, and only a
+//move widens like this - a scale or a rotation still changes the most recently
+//clicked object alone.
 function start(){
     local editorBase = ::SceneEditorFramework.Base();
     local parentNode = _scene.getRootSceneNode().createChildSceneNode();
@@ -102,12 +103,34 @@ function start(){
         assertPosition(tree, child, 1, 0, 0);
     }
 
-    { //A scale is about the object the gizmo belongs to: the others are not
-      //resized around a middle they are not at.
+    { //Every transform tool's handles go to the same place, so switching between
+      //them with a group selected does not move the gizmo about.
+        tree.notifySelectionChanged(alpha);
+        tree.notifySelectionChanged(beta, true, false);
+        tree.notifySelectionChanged(gamma, true, false);
+
+        foreach(tool in ["SCALE", "ORIENTATION", "RAYCAST", "POSITION"]){
+            tree.setObjectTransformCoordinateType(coordinateType(tool));
+            assertVec3Close(Vec3(2, 2, 0), tree.mMoveHandles_.mPosition_);
+        }
+
+        //One selected object has no group centre to use, so every tool's handles
+        //are on the object itself.
+        tree.notifySelectionChanged(null);
+        tree.notifySelectionChanged(beta);
+        foreach(tool in ["SCALE", "ORIENTATION", "POSITION"]){
+            tree.setObjectTransformCoordinateType(coordinateType(tool));
+            assertVec3Close(Vec3(4, 0, 0), tree.mMoveHandles_.mPosition_);
+        }
+    }
+
+    { //A scale still changes only the most recently clicked object: the others
+      //are not resized around a middle they are not at, even though the handles
+      //are drawn at that middle.
+        tree.notifySelectionChanged(null);
         tree.notifySelectionChanged(alpha);
         tree.notifySelectionChanged(beta, true, false);
 
-        //Beta was the last one clicked, so the gizmo is on it.
         dragScale(tree, Vec3(1, 1, 1));
 
         assertScale(tree, beta, 0.8, 0.8, 0.8);

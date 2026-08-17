@@ -8,8 +8,8 @@
     mOutlineBox_ = null;
     mChildrenOutlineBox_ = null;
     mCurrentPopulateAction_ = null;
-    //The starting positions of a drag which is moving more than the object the
-    //gizmo sits on, or null when the drag moves only that one.
+    //The starting positions of a drag which is moving more than the primary
+    //entry, or null when the drag moves only that one.
     //@see beginMultipleMoveChanges_
     mMultiMoveChanges_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
@@ -1242,28 +1242,23 @@
     }
 
     /**
-     * Where the transform gizmo sits, and so what a drag of it is about.
+     * Where the transform gizmo sits.
      *
-     * A move of a multiple selection is about the selection as a whole - every
-     * entry travels the same distance - so the handles belong at the centre of
-     * the bounds the orange outline draws around it, not on whichever entry was
-     * clicked last. That entry is an arbitrary member of the group as far as the
-     * move is concerned, and putting the handles on it leaves them off to one
-     * side of the box being dragged, or outside it.
+     * A multiple selection is worked on as a whole, so the handles belong at the
+     * centre of the bounds the orange outline draws around it, not on whichever
+     * entry happened to be clicked last. That entry is an arbitrary member of the
+     * group, and putting the handles on it leaves them off to one side of the box
+     * being worked on, or outside it entirely.
      *
-     * A scale or a rotation is about the entry the gizmo sits on rather than
-     * about the group (@see beginMultipleMoveChanges_), so those keep the
-     * handles on the object itself; the anchor would otherwise claim a centre
-     * the operation does not use. The raycast gizmo places an object at a point
-     * found on a surface, which is likewise about the one entry.
+     * The same point for every kind of gizmo, so that switching between the
+     * transform tools does not move the handles about: a selection has one centre
+     * whether it is being moved, scaled or turned.
      *
      * Callers which move the selection must measure their delta from here too,
      * since this is the point the gizmo hands back a new position for.
      */
     function getTransformGizmoAnchor_(){
-        if(getSelectedCount() > 1 &&
-            mCurrentObjectTransformCoordinateType_ ==
-                SceneEditorFramework_BasicCoordinateType.POSITION){
+        if(getSelectedCount() > 1){
             //Null for a selection of entries which draw nothing - a group of
             //empties has no bounds to find a centre in - which falls through to
             //the primary entry the same as a single selection.
@@ -1478,8 +1473,10 @@
      * null when one BasicCoordinatesChangeAction still describes it.
      *
      * Only a move widens to the rest of the selection - a scale or a rotation
-     * is about the object the gizmo sits on - and a move of a single object is
-     * left as the single-object action it has always been.
+     * still changes the primary entry alone, whatever else is selected with it,
+     * and about that entry's own origin rather than about the centre the gizmo
+     * is drawn at - and a move of a single object is left as the single-object
+     * action it has always been.
      */
     function beginMultipleMoveChanges_(coordsType){
         if(coordsType != SceneEditorFramework_BasicCoordinateType.POSITION) return null;
