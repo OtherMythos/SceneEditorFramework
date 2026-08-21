@@ -6,6 +6,8 @@
     ICON_WIDTH = 14.0;
     ICON_HEIGHT = 12.0;
     ICON_CELL_WIDTH = 0.1;
+    //Which cell of the visibility sprite sheet marks a tagged object.
+    TAG_ICON = 8;
     INDENT_WIDTH = 10.0;
     ICON_GAP = 6.0;
     SCROLLBAR_WIDTH = 14.0;
@@ -220,7 +222,12 @@
         //and the content edge. ScrollbarSize defaults to 14 and is style-scaled.
         local scrollbarSize = (SCROLLBAR_WIDTH * guiScale).tointeger();
         local visibilityX = startX + rowWidth - iconWidth - scrollbarSize;
-        local nameWidth = visibilityX - nameX;
+        //The tag marker sits immediately left of the visibility toggle, so the
+        //markers line up down the panel wherever they appear. Only a row which
+        //has one gives up the width for it: tags are rare, and a panel docked
+        //down to a narrow column has little enough room for names as it is.
+        local tagX = visibilityX - iconWidth - ICON_GAP;
+        local nameWidth = (entry.tag == null ? visibilityX : tagX) - nameX;
         if(nameWidth < 8.0) nameWidth = 8.0;
 
         _imgui.pushId(entry.entryId);
@@ -246,6 +253,18 @@
         //Object sprite sheet: empty, mesh, then the extension slots.
         _imgui.setCursorPos(iconX, startY + (frameHeight - iconHeight) * 0.5);
         drawObjectIcon_(entry.nodeType, iconWidth, iconHeight);
+
+        //A tag is what a loaded scene is searched by, and only one object in a
+        //scene carries any given one, so which object that is belongs on the row
+        //rather than only in the properties panel. It marks the object rather
+        //than offering anything to press: the tag itself is edited there.
+        if(entry.tag != null){
+            _imgui.setCursorPos(tagX, startY + (frameHeight - iconHeight) * 0.5);
+            local tagUv0 = TAG_ICON * ICON_CELL_WIDTH;
+            _imgui.image(mVisibilityIcons_, iconWidth, iconHeight,
+                tagUv0, 0.0, tagUv0 + ICON_CELL_WIDTH, 1.0);
+            if(_imgui.isItemHovered()) _imgui.setTooltip("Tag: " + entry.tag);
+        }
 
         _imgui.setCursorPos(visibilityX, startY);
         local visibilityUv0 = entry.visible ? 0.0 : ICON_CELL_WIDTH;
