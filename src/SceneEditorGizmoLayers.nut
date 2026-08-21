@@ -60,6 +60,13 @@
         syncLayers_(::SceneEditorFramework.getGizmoLayerCameras());
         setActiveLayer_(::SceneEditorFramework.getActiveGizmoLayer());
 
+        //Every copy, since a modifier which changes what handles a gizmo has
+        //changes them wherever the gizmo is drawn rather than only under the
+        //cursor. @see SceneEditorGizmoObjectHandles.updateHandleModifiers
+        foreach(i in mLayers_){
+            if(i != null) i.updateHandleModifiers();
+        }
+
         //A drag belongs to the viewport it began in, which is the one which stays
         //active for as long as the button is held - so a drag which wanders into
         //another viewport carries on being dragged against the view it started

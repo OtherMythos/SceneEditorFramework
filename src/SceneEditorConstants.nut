@@ -39,6 +39,11 @@ enum SceneEditorFramework_BusEvents{
     //event after it.
     SCENE_TREE_RENAME_REQUEST,
     OBJECT_TAG_CHANGE,
+    //A scale drag which holds one side of what it is resizing still, rather
+    //than growing it evenly about its own middle. The data is a table of the
+    //drag's amount and the direction it is growing in.
+    //@see SceneEditorFramework.gizmoOneSidedScaleModifierHeld
+    SELECTED_SCALE_ONE_SIDED_CHANGE,
 };
 
 enum SceneEditorFramework_Action{
@@ -62,6 +67,7 @@ enum SceneEditorFramework_Action{
     MULTIPLE_COORDINATES_CHANGE,
     MULTIPLE_VISIBILITY_CHANGE,
     CHANGE_SCENE_NODE_TAG,
+    COMPOUND,
 
     MAX
 };

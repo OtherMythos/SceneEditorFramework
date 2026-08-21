@@ -113,6 +113,42 @@ object already at an angle turns by whole steps from it. The modifier is read
 while the drag is happening, so it can be taken up or let go part way through
 one. Holding alt while dragging the scale handles scales all three axes together.
 
+Holding control while taking hold of a scale handle resizes an object from one
+side instead of from its middle. A scale on its own grows both sides of an axis
+at once - which is what a scene node's scale does - so an object appears to grow
+out of or shrink into its own centre; held this way, the side opposite the handle
+stays exactly where it was and only the dragged side moves, which is what putting
+an object against a wall or standing it on a floor asks for. Ogre has no scale
+which does that, so the object is moved as it is resized by however much it takes
+to leave that side where it started. The side is measured from the bounds of the
+object as it is drawn, descendants included, and measured again as the drag goes
+on, so an object turned at an angle to the axis being dragged is held by the same
+face of the box it draws as a square-on one is. The resize and the move it took
+are one undo step.
+
+While control is held the scale gizmo doubles its handles. Three more arms
+appear, one for the negative end of each axis, so every side of an object has a
+handle of its own and can be the side which moves: the arm which was always there
+grows the object toward the positive end of its axis, and the new one opposite it
+grows the object the other way. Three more plane handles appear with them, each
+in the negative quadrant of the pair of axes its twin sits in the positive
+quadrant of, so both of the corners a pair of axes offers can be taken: a plane
+handle grows the object out of both of the sides it lies between at once, and
+which two sides those are is what choosing between the pair of them says. Every
+one of them is coloured for the axis or the pair it belongs to, the same as the
+handle it faces, and they appear in every viewport showing the object. Control is
+read as the drag begins rather than while it runs, unlike shift and alt: the
+handles it puts there go away with it, and a drag cannot go on against a handle
+which is no longer there. Shift and alt still apply while it is held - a
+one-sided drag can be snapped, and alt gives all three axes the drag while the
+one side named by the handle is still the only one held still.
+
+A drag with more than one object selected holds each of them by its own opposite
+side rather than by one side of the group, which is the same thing every other
+transform does with a selection: the drag asks the same change of size of each
+object and resizes each about its own origin, so a row of things standing on a
+floor is still standing on it afterward, however far apart they were.
+
 Clicking an object in a viewport selects it, and clicking the same spot again
 steps to the next object along the cursor's ray, so something behind a larger
 object can be reached by tapping. Alt+right clicking offers all of them at once

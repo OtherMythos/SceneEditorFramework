@@ -16,6 +16,13 @@
     //Which of position, scale and orientation those starting values are, so a
     //drag applies itself to the same thing it recorded.
     mMultiTransformType_ = null;
+    //Where each object a scale drag is resizing began, and how big it was
+    //there: what a one-sided scale needs to hold one side of it still, and to
+    //put back what the drag moved when it is undone. Null when no scale drag is
+    //happening. @see beginScaleDragStates_
+    mScaleDragStates_ = null;
+    //Whether that drag has moved anything, which only a one-sided one does.
+    mScaleDragMoved_ = false;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
     mSceneRootNode_ = null;
@@ -1320,13 +1327,46 @@
      * @see beginMultipleTransformChanges_
      */
     function setSelectedNodeScale(scale){
+        applySelectedNodeScale_(scale, null);
+    }
+
+    /**
+     * Resize the selection, leaving one side of each object where it was.
+     *
+     * A scene node's scale grows an object about its own origin, which moves
+     * both sides of every axis and leaves an object looking as though it is
+     * growing out of or shrinking into its middle. A one-sided scale is the
+     * same resize with the object moved as it happens, by however much it takes
+     * to put the side opposite the drag back where it started - so that side
+     * stays still and the dragged side is the only one which moves.
+     *
+     * The side is measured from the bounds of the object as it is drawn,
+     * descendants included, and measured again after each resize, so an object
+     * which is turned at an angle to the axis being dragged is held by the same
+     * face of the box it draws as a square-on one is.
+     *
+     * Every object in a multiple selection is held by its own opposite side
+     * rather than by one side of the group. A drag asks the same change of size
+     * of each of them and resizes each about its own origin - so anchoring the
+     * group would move objects the resize had not grown - and a group of things
+     * standing on a floor stays standing on it this way.
+     *
+     * @param direction Which way the drag is growing what it is resizing, as a
+     * component per axis: positive, negative, or zero for an axis this drag
+     * leaves alone. @see SceneEditorGizmoObjectHandles.handleDirection_
+     */
+    function setSelectedNodeScaleOneSided(scale, direction){
+        applySelectedNodeScale_(scale, direction);
+    }
+
+    function applySelectedNodeScale_(scale, direction){
         if(mCurrentSelectionIdx == -1){
             return;
         }
 
         local e = mEntries_[mCurrentSelectionIdx];
         if(!isMultiTransformDrag_(SceneEditorFramework_BasicCoordinateType.SCALE)){
-            e.setScale(scale);
+            applyEntryScale_(e, scale, direction);
         }else{
             //What the drag's numbers were measured from, which is the size the
             //primary entry was before it began.
@@ -1340,12 +1380,158 @@
                 //Snapped per object rather than once for the drag: the step is
                 //an absolute one, so an object given its share of the drag has
                 //to be put onto it in its own right.
-                entry.setScale(getScaleWithSnap_(
-                    scaledLikeDrag_(change.old, dragStart, scale)));
+                applyEntryScale_(entry, getScaleWithSnap_(
+                    scaledLikeDrag_(change.old, dragStart, scale)), direction);
             }
         }
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+    }
+
+    //Resize one object, and put it wherever that size leaves it: where it began
+    //for an ordinary scale, which moves nothing, and wherever holds its far
+    //side still for a one-sided one.
+    function applyEntryScale_(entry, newScale, direction){
+        entry.setScale(newScale);
+
+        if(direction == null){
+            //A drag which was one-sided and is no longer has left the object
+            //somewhere its scale alone does not describe.
+            restoreScaleDragPosition_(entry);
+            return;
+        }
+
+        anchorEntryAfterScale_(entry, direction);
+    }
+
+    //Move an object which has just been resized back onto the side of it the
+    //drag is not growing.
+    //
+    //The bounds are measured again rather than worked out from the sizes, so
+    //this holds the same face still whatever the object is, however it is
+    //turned, and wherever its origin sits inside it.
+    function anchorEntryAfterScale_(entry, direction){
+        local state = scaleDragStateForId_(entry.entryId);
+        if(state == null || state.centre == null) return;
+
+        //An object which draws nothing has no side to be held by.
+        local bounds = getEntryAABB(entry.entryId);
+        if(bounds == null) return;
+
+        local centre = bounds.getCentre();
+        local halfSize = bounds.getHalfSize();
+        local delta = Vec3(
+            anchorAxisDelta_(direction.x, state.centre.x, state.halfSize.x,
+                centre.x, halfSize.x),
+            anchorAxisDelta_(direction.y, state.centre.y, state.halfSize.y,
+                centre.y, halfSize.y),
+            anchorAxisDelta_(direction.z, state.centre.z, state.halfSize.z,
+                centre.z, halfSize.z));
+
+        entry.setPosition(entry.getPositionDerived() + delta, true);
+        mScaleDragMoved_ = true;
+    }
+
+    //How far one axis has to move to put the far side of an object back where
+    //the drag found it. An axis the drag is not growing along has nothing to
+    //hold, so it is left exactly as the resize left it.
+    function anchorAxisDelta_(direction, oldCentre, oldHalfSize,
+            newCentre, newHalfSize){
+        if(direction == 0) return 0.0;
+
+        local sign = direction > 0 ? 1.0 : -1.0;
+        return (oldCentre - sign * oldHalfSize) - (newCentre - sign * newHalfSize);
+    }
+
+    //Put an object back where the drag which is resizing it found it. Only a
+    //one-sided drag ever moves one, so this has something to undo only when a
+    //drag has stopped being one part way through.
+    function restoreScaleDragPosition_(entry){
+        if(!mScaleDragMoved_) return;
+
+        local state = scaleDragStateForId_(entry.entryId);
+        if(state == null) return;
+
+        entry.setPosition(state.position);
+    }
+
+    /**
+     * Record where the objects a scale drag is about to resize are, and how big
+     * they are there.
+     *
+     * A one-sided drag holds the side of an object which the drag began with,
+     * rather than the side it had a moment ago, so that dragging back and forth
+     * arrives at the size the cursor asks for rather than creeping across the
+     * scene. The positions are what an undo of the drag puts back, since a
+     * one-sided resize moves what it resizes.
+     */
+    function beginScaleDragStates_(){
+        mScaleDragStates_ = [];
+        mScaleDragMoved_ = false;
+
+        foreach(entryId in scaleDragEntryIds_()){
+            local entry = getEntryForId(entryId);
+            if(entry == null) continue;
+
+            //Null bounds for an object which draws nothing, which is one this
+            //cannot hold a side of.
+            local bounds = getEntryAABB(entryId);
+            mScaleDragStates_.append({
+                "id": entryId,
+                "position": entry.position.copy(),
+                "centre": bounds == null ? null : bounds.getCentre(),
+                "halfSize": bounds == null ? null : bounds.getHalfSize()
+            });
+        }
+    }
+
+    //The objects a scale drag is resizing: everything selected which is not
+    //carried by something else selected, or the primary entry on its own.
+    function scaleDragEntryIds_(){
+        if(mMultiTransformChanges_ == null){
+            return mCurrentSelection == -1 ? [] : [mCurrentSelection];
+        }
+
+        local result = [];
+        foreach(change in mMultiTransformChanges_) result.append(change.id);
+        return result;
+    }
+
+    function scaleDragStateForId_(entryId){
+        if(mScaleDragStates_ == null) return null;
+        foreach(state in mScaleDragStates_){
+            if(state.id == entryId) return state;
+        }
+        return null;
+    }
+
+    //The move half of a one-sided scale drag, or null when the drag left
+    //everything where it was - which is every drag that was not one-sided.
+    function buildScaleDragPositionAction_(){
+        if(!mScaleDragMoved_ || mScaleDragStates_ == null) return null;
+
+        local changes = [];
+        foreach(state in mScaleDragStates_){
+            local entry = getEntryForId(state.id);
+            if(entry == null) continue;
+
+            local moved = entry.position;
+            if(moved.x == state.position.x && moved.y == state.position.y &&
+                moved.z == state.position.z){
+                continue;
+            }
+
+            changes.append({
+                "id": state.id,
+                "old": state.position,
+                "new": moved.copy()
+            });
+        }
+        if(changes.len() == 0) return null;
+
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_COORDINATES_CHANGE];
+        return A(this, mBus_, SceneEditorFramework_BasicCoordinateType.POSITION,
+            changes);
     }
 
     /**
@@ -1491,6 +1677,13 @@
                 getScaleWithSnap_(mCurrentPopulateAction_.mOld_ - data*0.2));
             setOutlineBox(mCurrentSelectionIdx);
         }
+        else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_ONE_SIDED_CHANGE){
+            assert(mCurrentPopulateAction_ != null);
+            setSelectedNodeScaleOneSided(
+                getScaleWithSnap_(mCurrentPopulateAction_.mOld_ - data.amount*0.2),
+                data.direction);
+            setOutlineBox(mCurrentSelectionIdx);
+        }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_ORIENTATION_CHANGE){
             assert(mCurrentPopulateAction_ != null);
             setSelectedNodeOrientationFromWorldDelta_(data);
@@ -1502,16 +1695,43 @@
 
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
             mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
+
+            //Only a scale drag can end up moving what it is working on, and it
+            //has to have been measured before it began to do so.
+            if(data == SceneEditorFramework_BasicCoordinateType.SCALE){
+                beginScaleDragStates_();
+            }
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
+            local action = null;
             if(mMultiTransformChanges_ != null){
-                pushMultipleTransformAction_();
+                action = buildMultipleTransformAction_();
             }else{
                 mMultiTransformType_ = null;
                 mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
 
-                mActionStack_.pushAction_(mCurrentPopulateAction_);
+                action = mCurrentPopulateAction_;
             }
+
+            //A one-sided scale moved what it resized as well as resizing it, and
+            //an undo which took back only half of that would leave the object a
+            //size the drag gave it in a place the drag never put it.
+            local positionAction = buildScaleDragPositionAction_();
+            if(positionAction != null){
+                if(action == null){
+                    action = positionAction;
+                }else{
+                    local C = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.COMPOUND];
+                    action = C([action, positionAction]);
+                }
+                //The handles sit at the middle of what is selected, which a
+                //resize which moved things has left them off.
+                positionMoveHandles();
+            }
+            mScaleDragStates_ = null;
+            mScaleDragMoved_ = false;
+
+            if(action != null) mActionStack_.pushAction_(action);
         }
         else if(event == SceneEditorFramework_BusEvents.OBJECT_POSITION_CHANGE){
             positionMoveHandles();
@@ -1569,7 +1789,10 @@
     }
 
     //One undo step for the whole drag, however many objects it transformed.
-    function pushMultipleTransformAction_(){
+    //Handed back rather than pushed, so that a drag which changed something
+    //else as well can put both on the stack as the one step it was.
+    //@see buildScaleDragPositionAction_
+    function buildMultipleTransformAction_(){
         local changes = mMultiTransformChanges_;
         local coordsType = mMultiTransformType_;
         mMultiTransformChanges_ = null;
@@ -1585,10 +1808,10 @@
             change["new"] = coordValueForEntry_(mEntries_[index], coordsType);
             transformed.append(change);
         }
-        if(transformed.len() == 0) return;
+        if(transformed.len() == 0) return null;
 
         local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_COORDINATES_CHANGE];
-        mActionStack_.pushAction_(A(this, mBus_, coordsType, transformed));
+        return A(this, mBus_, coordsType, transformed);
     }
 
     function getValueForObjectCoordsChange_(coordsType){

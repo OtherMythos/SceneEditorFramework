@@ -238,6 +238,33 @@ same wherever the gizmo is used.
 }
 
 /**
+Whether the modifier which anchors a scale drag to one side of what it is
+resizing is held.
+
+Without it a scale grows an object evenly about its own middle, since that is
+what a scene node's scale does - both sides of every axis move, and the object
+appears to grow out of or shrink into its centre. With it the side opposite the
+handle being dragged is held where it is and only the dragged side moves, which
+is what putting an object against a wall or a floor asks for. Ogre has no such
+scale, so the framework moves the object as it resizes it to leave that side
+where it was. @see SceneEditorFramework.SceneTree.setSelectedNodeScaleOneSided
+
+Control, which the transform gizmo has nothing else to do with: shift snaps and
+alt keeps a scale uniform, and both of those still apply while this is held.
+
+Held while the drag begins rather than while it runs, unlike the other two. The
+three extra handles this puts on the scale gizmo - one for the negative
+direction of each axis, so every side of an object has a handle of its own -
+exist only while it is held, so letting go part way through a drag would take
+away the arm being dragged and turn the drag it began into a different one.
+@see SceneEditorFramework.SceneEditorGizmoObjectHandles
+*/
+::SceneEditorFramework.gizmoOneSidedScaleModifierHeld <- function(){
+    return _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.LCTRL) ||
+        _input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.RCTRL);
+}
+
+/**
 Round a value to the nearest multiple of a step.
 
 Halves round upward, on both sides of zero, so that a drag crossing the origin

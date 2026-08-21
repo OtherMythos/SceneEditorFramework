@@ -1,0 +1,11 @@
+<scene>
+    <mesh name="Alpha" mesh="cube">
+        <position x="0" y="0" z="0"/>
+    </mesh>
+    <mesh name="Beta" mesh="cube">
+        <position x="4" y="0" z="0"/>
+    </mesh>
+    <empty name="Lonely">
+        <position x="0" y="0" z="8"/>
+    </empty>
+</scene>

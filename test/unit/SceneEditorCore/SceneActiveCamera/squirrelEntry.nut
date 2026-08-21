@@ -105,25 +105,44 @@ function start(){
             positionHandles.constrainMovement_(point, reference, 5));
         positionHandles.shutdown();
 
-        //The scale gizmo has the same six: a plane handle resizes along the two
-        //axes it stands for, leaving the third alone. One is the plugin's SCALE
-        //enum, named by value for the same reason the others above are.
+        //The scale gizmo has those same six and six more: a plane handle resizes
+        //along the two axes it stands for, leaving the third alone, and the
+        //second set of six faces the other way - an arm down the negative end of
+        //each axis and a plane handle in the negative quadrant of each pair,
+        //which is what gives every side and corner of an object a handle to be
+        //grown from. One is the plugin's SCALE enum, named by value for the same
+        //reason the others above are.
+        //@see SceneEditorFramework.SceneEditorGizmoObjectHandles
         local scaleHandles = ::SceneEditorFramework.SceneEditorGizmoObjectHandles(
             _scene.getRootSceneNode().createChildSceneNode(), 1,
             editorBase.mBus_, 0);
-        _test.assertEqual(6, scaleHandles.mPositionHandles_.len());
+        _test.assertEqual(12, scaleHandles.mPositionHandles_.len());
         _test.assertFalse(scaleHandles.isPlaneHandle_(2));
         _test.assertTrue(scaleHandles.isPlaneHandle_(3));
+        _test.assertFalse(scaleHandles.isPlaneHandle_(6));
+        _test.assertTrue(scaleHandles.isDirectionalHandle_(6));
         //The arms are the scale gizmo's own mesh; the plane handles are the
         //quads the position gizmo uses, tinted by the pair of axes they take.
         _test.assertEqual("scaleHandle.obj", scaleHandles.getObjectForHandle_(0));
         _test.assertEqual("planeHandle.obj", scaleHandles.getObjectForHandle_(3));
+        _test.assertEqual("scaleHandle.obj", scaleHandles.getObjectForHandle_(6));
         _test.assertEqual("SceneEditorFramework/planeHandle0",
             scaleHandles.datablockName_(3));
         assertVec3(Vec3(10, 2, 3),
             scaleHandles.constrainMovement_(point, reference, 3));
         assertVec3(Vec3(1, 2, 30),
             scaleHandles.constrainMovement_(point, reference, 5));
+        //A handle facing the other way drags along the same axes as the one it
+        //is opposite, since those are the axes being resized.
+        assertVec3(Vec3(1, 20, 30),
+            scaleHandles.constrainMovement_(point, reference, 6));
+        assertVec3(Vec3(10, 20, 3),
+            scaleHandles.constrainMovement_(point, reference, 8));
+        assertVec3(Vec3(10, 2, 3),
+            scaleHandles.constrainMovement_(point, reference, 9));
+        assertVec3(Vec3(1, 2, 30),
+            scaleHandles.constrainMovement_(point, reference, 11));
+        _test.assertTrue(scaleHandles.isPlaneHandle_(9));
 
         //Held uniform, a drag takes the axis it went furthest along, sign and
         //all - not whichever of the two a plane handle produced last.
