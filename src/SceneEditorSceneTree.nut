@@ -106,6 +106,7 @@
     }
 
     function shutdown(){
+        mBus_.unsubscribeObject(this);
         mParentNode_.destroyNodeAndChildren();
         mParentNode_ = null;
         mEntries_.clear();

@@ -70,6 +70,17 @@
         base.shutdown();
     }
 
+    /** Bind the panel to a freshly loaded tree and discard old UI state. */
+    function setSceneTree(sceneTree){
+        mSceneTree_ = sceneTree;
+        mExpandedEntries_.clear();
+        mSelectedAncestorIds_.clear();
+        cancelRename_();
+        cancelDrag_();
+        mLastClickedEntryId_ = null;
+        mLastClickTime_ = -100.0;
+    }
+
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SCENE_TREE_RENAME_REQUEST){
             beginRename(data);

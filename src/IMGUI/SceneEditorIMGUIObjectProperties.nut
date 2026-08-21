@@ -35,6 +35,15 @@
         mResourcePicker_ = picker;
     }
 
+    /** Drop widget state which may refer to entries in the discarded tree. */
+    function sceneTreeReloaded(){
+        mEditStates_.clear();
+        mTagEntryId_ = null;
+        mTagText_ = "";
+        mTagEditing_ = false;
+        mTagError_ = null;
+    }
+
     function draw(){
         if(!mVisible_) return;
 

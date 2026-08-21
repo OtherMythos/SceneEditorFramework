@@ -49,6 +49,13 @@ function start(){
     actionStack.redo();
     _test.assertEqual(-1, value[0]);
 
+    actionStack.markSaved();
+    actionStack.undo();
+    actionStack.clear();
+    _test.assertEqual(0, actionStack.mUndoStack_.len());
+    _test.assertEqual(0, actionStack.mRedoStack_.len());
+    _test.assertFalse(actionStack.hasUnsavedChanges());
+
     local bus = ::SceneEditorFramework.SceneEditorBus();
     local firstListener = TestListener();
     local secondListener = TestListener();

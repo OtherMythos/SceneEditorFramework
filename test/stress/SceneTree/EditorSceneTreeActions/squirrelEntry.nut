@@ -144,6 +144,20 @@ function start(){
     });
     ::StressEditor.start();
 
+    //Reload must remove renderable entries belonging to the discarded tree,
+    //clear their actions, and point the panel at the replacement model.
+    local loadedState = captureState(stressTree());
+    local discardedTree = stressTree();
+    discardedTree.insertPrimitiveMeshChild(null, "cube", "Discarded by reload");
+    _test.assertEqual(1, ::StressEditor.mBase_.mActionStack_.mUndoStack_.len());
+    _test.assertTrue(::StressEditor.reloadScene_());
+    _test.assertTrue(stressTree() != discardedTree);
+    _test.assertEqual(null, discardedTree.mParentNode_);
+    _test.assertTrue(::StressEditor.mSceneTreePanel_.mSceneTree_ == stressTree());
+    _test.assertEqual(0, ::StressEditor.mBase_.mActionStack_.mUndoStack_.len());
+    _test.assertEqual(0, ::StressEditor.mBase_.mActionStack_.mRedoStack_.len());
+    assertState(stressTree(), loadedState, "reload from disk");
+
     ::STRESS_STATES = [captureState(stressTree())];
     ::STRESS_DESCRIPTIONS = [];
     ::STRESS_OPERATION_COUNTS = array(::OP_MAX, 0);

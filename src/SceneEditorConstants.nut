@@ -95,6 +95,7 @@ enum SceneEditorFramework_KeyScancode{
     DELETE = 76,
     C = 6,
     H = 11,
+    R = 21,
     S = 22,
     V = 25,
     NUMBER_1 = 30,

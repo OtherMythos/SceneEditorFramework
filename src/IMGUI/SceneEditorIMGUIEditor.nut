@@ -126,7 +126,8 @@
     KEY_COMMAND_PASTE = 8
     KEY_COMMAND_SAVE = 9
     KEY_COMMAND_TOGGLE_VISIBILITY = 10
-    KEY_COMMAND_MAX = 11
+    KEY_COMMAND_RELOAD = 11
+    KEY_COMMAND_MAX = 12
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -567,6 +568,8 @@
                 pasteClipboard_();
             }else if(i == KEY_COMMAND_SAVE){
                 saveScene_();
+            }else if(i == KEY_COMMAND_RELOAD){
+                reloadScene_();
             }else if(i == KEY_COMMAND_TOGGLE_VISIBILITY){
                 toggleSelectionVisibility_();
             }else{
@@ -626,6 +629,35 @@
         return true;
     }
 
+    //Replace only the framework-owned tree. Tear the old one down before
+    //parsing the replacement so none of its renderables can remain in the
+    //scene while the new tree is constructed.
+    function reloadScene_(){
+        if(mBase_ == null || mScenePath_ == null) return false;
+        local oldTree = mBase_.getActiveSceneTree();
+        if(oldTree == null) return false;
+
+        mBase_.setActiveSceneTree(null);
+        mBase_.mActionStack_.clear();
+        oldTree.shutdown();
+
+        local newParent = _scene.getRootSceneNode().createChildSceneNode();
+        local newTree = mBase_.loadSceneTree(newParent, mScenePath_);
+        mSceneParent_ = newParent;
+        mBase_.setActiveSceneTree(newTree);
+
+        //The standard tree panel holds the model directly; other standard
+        //panels query Base each frame but may still have edits in progress.
+        if("setSceneTree" in mSceneTreePanel_){
+            mSceneTreePanel_.setSceneTree(newTree);
+        }
+        if("sceneTreeReloaded" in mObjectPropertiesPanel_){
+            mObjectPropertiesPanel_.sceneTreeReloaded();
+        }
+        mPendingSceneMenuEntry_ = null;
+        return true;
+    }
+
     function activeSceneTree_(){
         return mBase_ == null ? null : mBase_.getActiveSceneTree();
     }
@@ -674,6 +706,7 @@
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_COPY_SELECTION;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.V)) return KEY_COMMAND_PASTE;
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.S)) return KEY_COMMAND_SAVE;
+        if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.R)) return KEY_COMMAND_RELOAD;
 
         //Ctrl+Y is the other redo shortcut on Windows.
         if(_input.getRawKeyScancodeInput(SceneEditorFramework_KeyScancode.Y)) return KEY_COMMAND_REDO;
@@ -704,6 +737,7 @@
         if(command == KEY_COMMAND_COPY_SELECTION) return modifier + "+C";
         if(command == KEY_COMMAND_PASTE) return modifier + "+V";
         if(command == KEY_COMMAND_SAVE) return modifier + "+S";
+        if(command == KEY_COMMAND_RELOAD) return modifier + "+R";
         if(command == KEY_COMMAND_TOGGLE_VISIBILITY) return "H";
         return "3";
     }
@@ -994,6 +1028,9 @@
         if(_imgui.beginMenu("File")){
             if(_imgui.menuItem("Save", keyCommandLabel_(KEY_COMMAND_SAVE))){
                 saveScene_();
+            }
+            if(_imgui.menuItem("Reload", keyCommandLabel_(KEY_COMMAND_RELOAD))){
+                reloadScene_();
             }
             _imgui.endMenu();
         }

@@ -46,7 +46,8 @@ was copied rather than pointing at it, so it can be pasted repeatedly, and after
 the objects it was taken from have been deleted. Paste from an object's right
 click menu instead, and what was copied becomes a child of that object. Ctrl+S
 writes the scene back over the file it was loaded from, as the File menu's Save
-does. Each viewport's
+does. Ctrl+R, or Reload in the File menu, replaces the scene tree with the copy
+on disk and clears its undo and redo history. Each viewport's
 View button controls its own gizmos, including selection outlines, independently;
 that choice is restored with the viewport's layout state.
 

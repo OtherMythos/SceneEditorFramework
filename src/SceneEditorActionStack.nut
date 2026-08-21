@@ -59,6 +59,13 @@
         mRedoStack_.clear();
     }
 
+    /** Forget every action and make the current scene the clean baseline. */
+    function clear(){
+        mUndoStack_.clear();
+        mRedoStack_.clear();
+        mSavedAction_ = null;
+    }
+
     /**
      * Record that the scene as it stands has been written to disk, so that
      * nothing counts as unsaved until something else is done to it.
