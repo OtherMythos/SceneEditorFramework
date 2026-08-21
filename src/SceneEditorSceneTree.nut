@@ -8,10 +8,14 @@
     mOutlineBox_ = null;
     mChildrenOutlineBox_ = null;
     mCurrentPopulateAction_ = null;
-    //The starting positions of a drag which is moving more than the primary
-    //entry, or null when the drag moves only that one.
-    //@see beginMultipleMoveChanges_
-    mMultiMoveChanges_ = null;
+    //The starting positions, scales or orientations of a drag which is
+    //transforming more than the primary entry, or null when the drag changes
+    //only that one.
+    //@see beginMultipleTransformChanges_
+    mMultiTransformChanges_ = null;
+    //Which of position, scale and orientation those starting values are, so a
+    //drag applies itself to the same thing it recorded.
+    mMultiTransformType_ = null;
     mCurrentObjectTransformCoordinateType_ = null;
     mNodesForEntry_ = null;
     mSceneRootNode_ = null;
@@ -908,8 +912,9 @@
         //move, and an edit which changes nothing is not worth an undo step.
         if(positionsEqual_(entryPosition, entryCentred)) return false;
 
-        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_POSITIONS_CHANGE];
-        local action = A(this, mBus_, changes);
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_COORDINATES_CHANGE];
+        local action = A(this, mBus_,
+            SceneEditorFramework_BasicCoordinateType.POSITION, changes);
         mActionStack_.pushAction_(action);
         action.performAction();
         return true;
@@ -1299,15 +1304,76 @@
         return -1;
     }
 
+    /**
+     * The size a drag of the scale handles gives the selection.
+     *
+     * A drag names one size for one object - the primary entry, which is what
+     * the drag's numbers are measured against - and the rest of the selection
+     * is given the same change of size rather than the same size, so a drag
+     * which doubles one object doubles all of them and a selection of mixed
+     * sizes stays mixed.
+     *
+     * Each object is sized about its own origin, so the selection keeps the
+     * arrangement it was in: a group is not spread out by being made bigger.
+     * A selected entry's descendants are scaled by it rather than being scaled
+     * themselves, which is what the recorded selection describes.
+     * @see beginMultipleTransformChanges_
+     */
     function setSelectedNodeScale(scale){
         if(mCurrentSelectionIdx == -1){
             return;
         }
 
         local e = mEntries_[mCurrentSelectionIdx];
-        e.setScale(scale);
+        if(!isMultiTransformDrag_(SceneEditorFramework_BasicCoordinateType.SCALE)){
+            e.setScale(scale);
+        }else{
+            //What the drag's numbers were measured from, which is the size the
+            //primary entry was before it began.
+            local dragStart = mCurrentPopulateAction_ == null ?
+                e.scale : mCurrentPopulateAction_.mOld_;
+
+            foreach(change in mMultiTransformChanges_){
+                local entry = getEntryForId(change.id);
+                if(entry == null) continue;
+
+                //Snapped per object rather than once for the drag: the step is
+                //an absolute one, so an object given its share of the drag has
+                //to be put onto it in its own right.
+                entry.setScale(getScaleWithSnap_(
+                    scaledLikeDrag_(change.old, dragStart, scale)));
+            }
+        }
 
         mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, e);
+    }
+
+    /**
+     * The size an object which did not start at the size a drag is measured
+     * from takes on from that drag.
+     *
+     * A ratio, so the drag is the same change of size for every object rather
+     * than the same size. An axis which started at nothing has no ratio to
+     * grow by - and multiplying it would leave it at nothing however far the
+     * drag went - so there the drag's difference is added instead.
+     */
+    function scaledLikeDrag_(entryScale, dragStart, dragEnd){
+        local result = entryScale.copy();
+        result.x = scaledLikeDragAxis_(entryScale.x, dragStart.x, dragEnd.x);
+        result.y = scaledLikeDragAxis_(entryScale.y, dragStart.y, dragEnd.y);
+        result.z = scaledLikeDragAxis_(entryScale.z, dragStart.z, dragEnd.z);
+        return result;
+    }
+
+    function scaledLikeDragAxis_(entryValue, dragStart, dragEnd){
+        if(dragStart == 0.0) return entryValue + (dragEnd - dragStart);
+        return entryValue * (dragEnd / dragStart);
+    }
+
+    //Whether the drag in progress is applying itself to more than the primary
+    //entry, and to the kind of coordinate asked about.
+    function isMultiTransformDrag_(coordsType){
+        return mMultiTransformChanges_ != null && mMultiTransformType_ == coordsType;
     }
 
     /**
@@ -1431,15 +1497,17 @@
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
-            mMultiMoveChanges_ = beginMultipleMoveChanges_(data);
+            mMultiTransformType_ = data;
+            mMultiTransformChanges_ = beginMultipleTransformChanges_(data);
 
             local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.BASIC_COORDINATES_CHANGE];
             mCurrentPopulateAction_ = A(this, mBus_, mCurrentSelection, getValueForObjectCoordsChange_(data), null, data, false);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
-            if(mMultiMoveChanges_ != null){
-                pushMultipleMoveAction_();
+            if(mMultiTransformChanges_ != null){
+                pushMultipleTransformAction_();
             }else{
+                mMultiTransformType_ = null;
                 mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
 
                 mActionStack_.pushAction_(mCurrentPopulateAction_);
@@ -1469,17 +1537,21 @@
         }
     }
     /**
-     * The positions a drag which is about to begin would have to put back, or
+     * The values a drag which is about to begin would have to put back, or
      * null when one BasicCoordinatesChangeAction still describes it.
      *
-     * Only a move widens to the rest of the selection - a scale or a rotation
-     * still changes the primary entry alone, whatever else is selected with it,
-     * and about that entry's own origin rather than about the centre the gizmo
-     * is drawn at - and a move of a single object is left as the single-object
+     * Every transform tool widens to the whole selection - a drag asks for the
+     * same change of each object which is selected, whether that is a move, a
+     * resize or a rotation - so what each of them was before it began is what
+     * an undo of it has to restore, and what the drag itself measures each new
+     * value from. A drag of a single object is left as the single-object
      * action it has always been.
+     *
+     * The descendants of a selected entry are transformed by their ancestor
+     * rather than in their own right, so the reduced selection is what is
+     * recorded: transforming both would apply the drag to them twice.
      */
-    function beginMultipleMoveChanges_(coordsType){
-        if(coordsType != SceneEditorFramework_BasicCoordinateType.POSITION) return null;
+    function beginMultipleTransformChanges_(coordsType){
         if(getSelectedCount() <= 1) return null;
 
         local changes = [];
@@ -1489,61 +1561,95 @@
 
             changes.append({
                 "id": entryId,
-                "old": entry.position.copy(),
+                "old": coordValueForEntry_(entry, coordsType),
                 "new": null
             });
         }
         return changes.len() == 0 ? null : changes;
     }
 
-    //One undo step for the whole drag, however many objects it moved.
-    function pushMultipleMoveAction_(){
-        local changes = mMultiMoveChanges_;
-        mMultiMoveChanges_ = null;
+    //One undo step for the whole drag, however many objects it transformed.
+    function pushMultipleTransformAction_(){
+        local changes = mMultiTransformChanges_;
+        local coordsType = mMultiTransformType_;
+        mMultiTransformChanges_ = null;
+        mMultiTransformType_ = null;
 
-        local moved = [];
+        local transformed = [];
         foreach(change in changes){
             //An object which has left the tree since the drag began is not one
-            //an undo step can put back where it was.
+            //an undo step can put back as it was.
             local index = findEntryIdIndexInTree_(change.id);
             if(index == null) continue;
 
-            change["new"] = mEntries_[index].position.copy();
-            moved.append(change);
+            change["new"] = coordValueForEntry_(mEntries_[index], coordsType);
+            transformed.append(change);
         }
-        if(moved.len() == 0) return;
+        if(transformed.len() == 0) return;
 
-        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_POSITIONS_CHANGE];
-        mActionStack_.pushAction_(A(this, mBus_, moved));
+        local A = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.MULTIPLE_COORDINATES_CHANGE];
+        mActionStack_.pushAction_(A(this, mBus_, coordsType, transformed));
     }
 
     function getValueForObjectCoordsChange_(coordsType){
-        local endValue = null;
-        local e = mEntries_[mCurrentSelectionIdx];
-        if(coordsType == SceneEditorFramework_BasicCoordinateType.POSITION){
-            endValue = e.position.copy();
-        }
-        else if(coordsType == SceneEditorFramework_BasicCoordinateType.SCALE){
-            endValue = e.scale.copy();
-        }
-        else if(coordsType == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
-            endValue = e.orientation.copy();
-        }else{
-            assert(false);
-        }
-        return endValue;
+        return coordValueForEntry_(mEntries_[mCurrentSelectionIdx], coordsType);
     }
 
-    //A ring rotates around a world axis. Convert that world-space delta into
-    //the selected entry's local space so nested objects rotate correctly too.
+    //A copy of one of an entry's coordinates, which is what an action holds on
+    //to: the entry's own value goes on being changed by the drag.
+    function coordValueForEntry_(entry, coordsType){
+        if(coordsType == SceneEditorFramework_BasicCoordinateType.POSITION){
+            return entry.position.copy();
+        }
+        else if(coordsType == SceneEditorFramework_BasicCoordinateType.SCALE){
+            return entry.scale.copy();
+        }
+        else if(coordsType == SceneEditorFramework_BasicCoordinateType.ORIENTATION){
+            return entry.orientation.copy();
+        }
+
+        assert(false);
+        return null;
+    }
+
+    /**
+     * Turn the selection by a rotation given in world space.
+     *
+     * A ring rotates around a world axis, and every selected object is turned
+     * by that same rotation, each about its own origin. The selection
+     * therefore keeps the arrangement it was in - a group is not swung around
+     * the centre the handles are drawn at - and each object ends up turned by
+     * as much as the drag asked for whichever way it was already facing.
+     *
+     * A selected entry's descendants are turned by it rather than being turned
+     * themselves, which is what the recorded selection describes.
+     * @see beginMultipleTransformChanges_
+     */
     function setSelectedNodeOrientationFromWorldDelta_(worldDelta){
         if(mCurrentSelectionIdx == -1) return;
 
         local entry = mEntries_[mCurrentSelectionIdx];
+        if(!isMultiTransformDrag_(SceneEditorFramework_BasicCoordinateType.ORIENTATION)){
+            applyWorldOrientationDelta_(entry, worldDelta, mCurrentPopulateAction_.mOld_);
+        }else{
+            foreach(change in mMultiTransformChanges_){
+                local selected = getEntryForId(change.id);
+                if(selected == null) continue;
+
+                applyWorldOrientationDelta_(selected, worldDelta, change.old);
+            }
+        }
+
+        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, entry);
+    }
+
+    //Convert a world-space rotation into an entry's local space, so nested
+    //objects rotate correctly too, and turn it from where it started the drag
+    //rather than from where the last frame of that drag left it.
+    function applyWorldOrientationDelta_(entry, worldDelta, startOrientation){
         local parentOrientation = entry.node.getParent().getDerivedOrientation();
         local localDelta = parentOrientation.inverse() * worldDelta * parentOrientation;
-        entry.setOrientation(localDelta * mCurrentPopulateAction_.mOld_);
-        mBus_.transmitEvent(SceneEditorFramework_BusEvents.SELECTED_DATA_CHANGE, entry);
+        entry.setOrientation(localDelta * startOrientation);
     }
 
     function deleteCurrentSelection(){

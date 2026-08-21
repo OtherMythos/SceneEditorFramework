@@ -73,7 +73,7 @@
 ::OP_VISIBILITY <- 3;
 ::OP_CHANGE_MESH <- 4;
 ::OP_TRANSFORM <- 5;
-::OP_MULTI_MOVE <- 6;
+::OP_MULTI_TRANSFORM <- 6;
 ::OP_REARRANGE <- 7;
 ::OP_REARRANGE_MULTI <- 8;
 ::OP_COPY_PASTE <- 9;
@@ -85,7 +85,7 @@
 
 ::OPERATION_NAMES <- [
     "insert empty", "insert mesh", "rename", "visibility", "change mesh",
-    "transform", "multiple move", "rearrange", "rearrange multiple",
+    "transform", "multiple transform", "rearrange", "rearrange multiple",
     "copy and paste", "group under empty", "centre on contents", "delete",
     "tag"
 ];
@@ -430,16 +430,25 @@ function performRandomOperation(tree, editorBase, clipboard){
             tree.notifyBusEvent(::EVENT_GIZMO_ENDED, coordType);
             break;
         }
-        case ::OP_MULTI_MOVE:{
+        case ::OP_MULTI_TRANSFORM:{
             local selected = selectSeveral(tree, ids, 2 + nextRandom(3));
             if(selected.len() == 0) break;
 
             //A drag of more than one object is one action for the whole of the
-            //selection rather than one per object.
-            ::CURRENT_OPERATION = "move selection " + idsString(selected);
-            tree.notifyBusEvent(::EVENT_GIZMO_BEGAN, ::COORD_POSITION);
-            tree.setSelectedNodePosition(randomPosition());
-            tree.notifyBusEvent(::EVENT_GIZMO_ENDED, ::COORD_POSITION);
+            //selection rather than one per object, whichever transform tool
+            //made it.
+            local coordType = nextRandom(3);
+            ::CURRENT_OPERATION = "transform selection " + idsString(selected) +
+                " of type " + coordType;
+            tree.notifyBusEvent(::EVENT_GIZMO_BEGAN, coordType);
+            if(coordType == ::COORD_POSITION){
+                tree.setSelectedNodePosition(randomPosition());
+            }else if(coordType == ::COORD_SCALE){
+                tree.setSelectedNodeScale(randomScale());
+            }else{
+                tree.setSelectedNodeOrientationFromWorldDelta_(randomOrientationDelta());
+            }
+            tree.notifyBusEvent(::EVENT_GIZMO_ENDED, coordType);
             break;
         }
         case ::OP_REARRANGE:{

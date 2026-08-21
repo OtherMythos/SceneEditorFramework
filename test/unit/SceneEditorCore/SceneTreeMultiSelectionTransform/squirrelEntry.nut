@@ -1,10 +1,10 @@
-//A drag of the position handles moves everything which is selected: the objects
-//keep the arrangement they were put in rather than the drag pulling one of them
-//out of it. The handles sit at the middle of a multiple selection, whichever
-//transform tool they belong to, so the drag is about the group rather than about
-//whichever object was clicked last. The whole drag is one undo step, and only a
-//move widens like this - a scale or a rotation still changes the most recently
-//clicked object alone.
+//A gizmo drag applies itself to everything which is selected, whichever
+//transform tool it belongs to: a move, a resize and a rotation all ask the same
+//thing of every selected object. The objects keep the arrangement they were put
+//in rather than the drag pulling one of them out of it, and the handles sit at
+//the middle of a multiple selection, so the drag is about the group rather than
+//about whichever object was clicked last. The whole drag is one undo step
+//however many objects it changed.
 function start(){
     local editorBase = ::SceneEditorFramework.Base();
     local parentNode = _scene.getRootSceneNode().createChildSceneNode();
@@ -124,21 +124,83 @@ function start(){
         }
     }
 
-    { //A scale still changes only the most recently clicked object: the others
-      //are not resized around a middle they are not at, even though the handles
-      //are drawn at that middle.
+    { //A scale resizes everything which is selected. The drag is measured
+      //against the most recently clicked object, and the rest are given the
+      //same change of size rather than the same size, so a selection of mixed
+      //sizes stays mixed.
         tree.notifySelectionChanged(null);
         tree.notifySelectionChanged(alpha);
         tree.notifySelectionChanged(beta, true, false);
+        tree.getEntryForId(alpha).setScale(Vec3(2, 2, 2));
 
+        local undoCount = editorBase.mActionStack_.mUndoStack_.len();
+        //Beta was clicked last and began the drag at a size of one, so this
+        //asks for four fifths of the size each object had.
         dragScale(tree, Vec3(1, 1, 1));
 
         assertScale(tree, beta, 0.8, 0.8, 0.8);
-        assertScale(tree, alpha, 1, 1, 1);
+        assertScale(tree, alpha, 1.6, 1.6, 1.6);
+        //Each object is resized about its own origin, so a group is not spread
+        //out by being made bigger.
         assertPosition(tree, alpha, 0, 0, 0);
+        assertPosition(tree, beta, 4, 0, 0);
 
+        //One undo step, however many objects the drag resized.
+        _test.assertEqual(undoCount + 1, editorBase.mActionStack_.mUndoStack_.len());
         editorBase.mActionStack_.undo();
         assertScale(tree, beta, 1, 1, 1);
+        assertScale(tree, alpha, 2, 2, 2);
+
+        editorBase.mActionStack_.redo();
+        assertScale(tree, beta, 0.8, 0.8, 0.8);
+        assertScale(tree, alpha, 1.6, 1.6, 1.6);
+        editorBase.mActionStack_.undo();
+        tree.getEntryForId(alpha).setScale(Vec3(1, 1, 1));
+    }
+
+    { //A rotation turns everything which is selected, each object about its own
+      //origin and from the angle it was already at, so the drag turns each of
+      //them by as much as it asked for.
+        tree.notifySelectionChanged(null);
+        tree.notifySelectionChanged(alpha);
+        tree.notifySelectionChanged(beta, true, false);
+        //Alpha starts a quarter turn round, beta square on.
+        tree.getEntryForId(alpha).setOrientation(Quat(PI / 2, Vec3(0, 1, 0)));
+
+        local undoCount = editorBase.mActionStack_.mUndoStack_.len();
+        dragOrientation(tree, Quat(PI / 2, Vec3(0, 1, 0)));
+
+        assertOrientation(tree, beta, Quat(PI / 2, Vec3(0, 1, 0)));
+        assertOrientation(tree, alpha, Quat(PI, Vec3(0, 1, 0)));
+        assertPosition(tree, alpha, 0, 0, 0);
+        assertPosition(tree, beta, 4, 0, 0);
+
+        _test.assertEqual(undoCount + 1, editorBase.mActionStack_.mUndoStack_.len());
+        editorBase.mActionStack_.undo();
+        assertOrientation(tree, beta, Quat());
+        assertOrientation(tree, alpha, Quat(PI / 2, Vec3(0, 1, 0)));
+
+        editorBase.mActionStack_.redo();
+        assertOrientation(tree, alpha, Quat(PI, Vec3(0, 1, 0)));
+        editorBase.mActionStack_.undo();
+        tree.getEntryForId(alpha).setOrientation(Quat());
+    }
+
+    { //A resize of several objects resizes each one once. A selected object
+      //which hangs below another selected one is resized by that one, the same
+      //as it is moved by it, so its own size is left alone - even when it is
+      //the object the gizmo is on.
+        tree.notifySelectionChanged(null);
+        tree.notifySelectionChanged(parent);
+        tree.notifySelectionChanged(child, true, false);
+
+        dragScale(tree, Vec3(1, 1, 1));
+
+        assertScale(tree, parent, 0.8, 0.8, 0.8);
+        assertScale(tree, child, 1, 1, 1);
+
+        editorBase.mActionStack_.undo();
+        assertScale(tree, parent, 1, 1, 1);
     }
 
     _test.endTest();
@@ -156,6 +218,14 @@ function dragScale(tree, amount){
     tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_BEGAN"), coordinateType("SCALE"));
     tree.notifyBusEvent(busEvent("SELECTED_SCALE_CHANGE"), amount);
     tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_ENDED"), coordinateType("SCALE"));
+}
+
+//The rotation handles report the turn they have made in world space, which is
+//what the tree is given.
+function dragOrientation(tree, worldDelta){
+    tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_BEGAN"), coordinateType("ORIENTATION"));
+    tree.notifyBusEvent(busEvent("SELECTED_ORIENTATION_CHANGE"), worldDelta);
+    tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_ENDED"), coordinateType("ORIENTATION"));
 }
 
 //The framework's enums are squirrel constants, which resolve when a file is
@@ -197,6 +267,33 @@ function assertScale(tree, entryId, x, y, z){
     assertClose(x, scale.x);
     assertClose(y, scale.y);
     assertClose(z, scale.z);
+}
+
+//A quaternion and its negation describe the same rotation, so whichever of the
+//two an object ended up holding is accepted.
+function assertOrientation(tree, entryId, expected){
+    local found = tree.getEntryForId(entryId).orientation;
+    if(quatDifference(expected, found) > quatDifference(expected, negatedQuat(found))){
+        found = negatedQuat(found);
+    }
+
+    assertClose(expected.x, found.x);
+    assertClose(expected.y, found.y);
+    assertClose(expected.z, found.z);
+    assertClose(expected.w, found.w);
+}
+
+function negatedQuat(quat){
+    return Quat(-quat.x, -quat.y, -quat.z, -quat.w);
+}
+
+function quatDifference(first, second){
+    local total = 0.0;
+    foreach(difference in [first.x - second.x, first.y - second.y,
+            first.z - second.z, first.w - second.w]){
+        total += difference < 0 ? -difference : difference;
+    }
+    return total;
 }
 
 function assertVec3Close(expected, found){

@@ -54,5 +54,5 @@ _doFile("script://actions/TreeRearrangeAction.nut");
 _doFile("script://actions/ObjectInsertionAction.nut");
 _doFile("script://actions/ChangeMeshResourceAction.nut");
 _doFile("script://actions/ObjectPasteAction.nut");
-_doFile("script://actions/MultiplePositionsChangeAction.nut");
+_doFile("script://actions/MultipleCoordinatesChangeAction.nut");
 _doFile("script://actions/MultipleVisibilityChangeAction.nut");

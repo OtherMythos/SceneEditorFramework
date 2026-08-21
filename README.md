@@ -78,19 +78,26 @@ layer to match `gizmoLayerCameras`; without one the scene is taken to fill the
 window.
 
 A transform gizmo sits on the most recently clicked object, and dragging its
-position handles moves everything which is selected. With more than one object
+handles transforms everything which is selected. With more than one object
 selected the handles move to the middle of the selection's bounds - the same
 bounds the second, orange outline is drawn around - so the drag is about the
 group rather than about whichever of them happened to be clicked last: the middle
 goes where the drag asks and every object moves that same distance through the
-world, so the group keeps the arrangement it was put in. An object which hangs
-below another selected one is carried by it rather than being moved a second
-time, and the whole drag is one undoable action however many objects it moved.
-Every transform tool's handles go to that same middle, so switching between them
-does not move the gizmo about; a selection has one centre whether it is being
-moved, scaled or turned. Only a move widens to the group, though - scaling and
-rotating still change the most recently clicked object alone, and about that
-object's own origin rather than about the centre the handles are drawn at.
+world, so the group keeps the arrangement it was put in. Every transform tool's
+handles go to that same middle, so switching between them does not move the
+gizmo about; a selection has one centre whether it is being moved, scaled or
+turned. An object which hangs below another selected one is carried by it rather
+than being transformed a second time, and the whole drag is one undoable action
+however many objects it changed.
+
+A scale or a rotation asks the same thing of every selected object as a move
+does. The drag is measured against the most recently clicked object, and the
+rest are given the same change rather than the same value: a drag which doubles
+the size of one object doubles the size of all of them, so a selection of mixed
+sizes stays mixed, and a rotation turns each object by as much as the drag asked
+for from whichever angle it was already at. Each object is resized and turned
+about its own origin rather than about the centre the handles are drawn at, so
+the group keeps its arrangement there too.
 
 The position and scale gizmos both offer three axis handles and three plane
 handles, one for each pair of axes and coloured for that pair. Dragging a plane
