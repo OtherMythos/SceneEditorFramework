@@ -70,6 +70,9 @@
         if(entry.name != null){
             inserted.setAttribute("name", entry.name);
         }
+        if(entry.tag != null){
+            inserted.setAttribute("tag", entry.tag);
+        }
         if(!entry.visible){
             inserted.setAttribute("visible", "false");
         }

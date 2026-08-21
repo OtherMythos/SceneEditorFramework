@@ -14,6 +14,11 @@
     nodeType = SceneEditorFramework_SceneTreeEntryType.NONE;
     animIdx = -1;
     name = null;
+    //What a loaded scene is searched by, and unique within one: at most one
+    //object in a scene carries any given tag. Null when the object has not been
+    //given one, which is most of them.
+    //@see SceneEditorFramework.SceneTree.setEntryTag
+    tag = null;
     visible = true;
 
     node = null;
@@ -73,6 +78,10 @@
 
     function setName(newName){
         name = newName;
+    }
+
+    function setTag(newTag){
+        tag = newTag;
     }
 
 }

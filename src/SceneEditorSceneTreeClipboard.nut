@@ -114,6 +114,10 @@ they are passed through as they are.
     result.node = null;
     result.nodeType = entry.nodeType;
     result.name = entry.name;
+    //The tag is deliberately not carried over. At most one object in a scene
+    //holds a given tag, so a copy which took the original's would be a second
+    //claim on it - and the copy is a new object, which the thing searching for
+    //that tag was not asking for. A paste therefore produces untagged objects.
     result.animIdx = entry.animIdx;
     result.visible = entry.visible;
 

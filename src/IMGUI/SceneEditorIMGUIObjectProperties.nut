@@ -4,9 +4,18 @@
     ICON_HEIGHT = 12.0;
     ICON_CELL_WIDTH = 0.1;
     REFRESH_ICON = 6;
+    //Unscaled width the tag field gives up so that the clear button beside it
+    //fits: the button's icon, its frame padding, and the gap between the two.
+    TAG_BUTTON_RESERVE = 24.0;
 
     mWindowTitle_ = "Object Properties##SceneEditorFrameworkObjectProperties";
     mEditStates_ = null;
+    //Which entry the tag field is showing, what is typed into it, and whether
+    //the last commit was refused. @see drawTagControl_
+    mTagEntryId_ = null;
+    mTagText_ = "";
+    mTagEditing_ = false;
+    mTagError_ = null;
     mObjectIcons_ = null;
     mVisibilityIcons_ = null;
     mResourcePicker_ = null;
@@ -55,6 +64,8 @@
         drawVectorControl_("Scale", entry, SceneEditorFramework_BasicCoordinateType.SCALE, Vec3(1, 1, 1));
         drawQuatControl_("Orientation", entry);
 
+        drawTagControl_(entry);
+
         drawEntryData_(entry);
     }
 
@@ -81,6 +92,67 @@
                 performAndPushAction_(SceneEditorFramework_BasicCoordinateType.ORIENTATION, entry.entryId, entry.orientation, Quat());
             }
         }
+    }
+
+    /**
+     * The tag this object is found by, which is unique within the scene.
+     *
+     * The field mirrors the entry whenever it is not being typed into, so undo,
+     * redo and a change of selection are all shown without the panel having to
+     * be told about them. A tag another object already holds is refused by the
+     * tree, and the field goes back to what the entry actually carries with the
+     * reason left on screen: moving the tag off the other object is not
+     * something a typed field can be read as asking for.
+     */
+    function drawTagControl_(entry){
+        _imgui.separatorText("Tag");
+
+        if(mTagEntryId_ != entry.entryId){
+            mTagEntryId_ = entry.entryId;
+            mTagEditing_ = false;
+            mTagError_ = null;
+        }
+        if(!mTagEditing_){
+            mTagText_ = entry.tag == null ? "" : entry.tag;
+        }
+
+        local hasTag = entry.tag != null;
+        //Leave room for the clear button beside the field when there is one.
+        local reserved = (ICON_WIDTH + TAG_BUTTON_RESERVE) * _imgui.getGlobalScale();
+        _imgui.setNextItemWidth(hasTag ? -reserved : -1);
+        mTagText_ = _imgui.inputText("##tag", mTagText_, _imgui.InputTextFlags_EnterReturnsTrue);
+        mTagEditing_ = _imgui.isItemActive();
+
+        if(_imgui.isItemDeactivatedAfterEdit()){
+            commitTag_(entry, mTagText_);
+        }
+
+        if(hasTag){
+            _imgui.sameLine();
+            if(drawResetButton_("Tag")){
+                mBaseObj_.getActiveSceneTree().clearEntryTag(entry.entryId);
+                mTagError_ = null;
+            }
+        }
+
+        if(mTagError_ != null){
+            _imgui.textColored(1.0, 0.4, 0.4, 1.0, mTagError_);
+        }
+    }
+
+    function commitTag_(entry, newTag){
+        mTagEditing_ = false;
+
+        local sceneTree = mBaseObj_.getActiveSceneTree();
+        if(!sceneTree.isTagAvailable(newTag, entry.entryId)){
+            local holder = sceneTree.getEntryForId(sceneTree.getEntryIdForTag(newTag));
+            mTagError_ = "'" + newTag + "' is already the tag of " +
+                ::SceneEditorFramework.getNameForSceneEntry(holder);
+            return;
+        }
+
+        mTagError_ = null;
+        sceneTree.setEntryTag(entry.entryId, newTag);
     }
 
     function drawResetButton_(label){

@@ -70,7 +70,7 @@
             </mesh>
             <empty name="Structure 2 Branch A">
                 <position x="12" y="0" z="0"/>
-                <mesh name="S2A Box" mesh="lineBox">
+                <mesh name="S2A Box" tag="test" mesh="lineBox">
                     <scale x="1.5" y="1.5" z="1.5"/>
                     <orientation x="-3.47645e-10" y="1.75014e-09" z="0.194832" w="0.980837"/>
                 </mesh>

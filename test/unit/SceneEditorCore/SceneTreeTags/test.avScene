@@ -1,0 +1,7 @@
+<scene>
+    <mesh name="A" mesh="cube" tag="playerStart">
+        <mesh name="A1" mesh="cube"/>
+    </mesh>
+    <mesh name="B" mesh="cube" tag="exit"/>
+    <mesh name="C" mesh="cube" tag="exit"/>
+</scene>

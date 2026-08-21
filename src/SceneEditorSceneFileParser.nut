@@ -15,10 +15,15 @@
         local root = doc.getRootElement();
         if(root.getName() != "scene") throw INVALID_TAG;
 
+        //A tag identifies one object in a scene, so the first claim on one is
+        //kept and any later claim is dropped rather than being loaded into a
+        //tree the editor would then refuse to write back.
+        local claimedTags = {};
+
         local entries = [CHILD_ENTRY];
         local currentChild = root.getFirstChildElement();
         while(currentChild != null){
-            parseNodeForSceneTree_(currentChild, entries, tree);
+            parseNodeForSceneTree_(currentChild, entries, tree, claimedTags);
 
             currentChild = currentChild.nextSiblingElement();
         }
@@ -27,7 +32,7 @@
         tree.setEntries(entries);
     }
 
-    function parseNodeForSceneTree_(node, entries, sceneTree){
+    function parseNodeForSceneTree_(node, entries, sceneTree, claimedTags){
         local nodeEntry = ::SceneEditorFramework.SceneTreeEntry();
         nodeEntry.reset();
 
@@ -46,6 +51,15 @@
         local entryName = node.getAttribute("name");
         if(entryName != null){
             nodeEntry.name = entryName;
+        }
+        local entryTag = node.getAttribute("tag");
+        if(entryTag != null && entryTag.len() > 0){
+            if(claimedTags.rawin(entryTag)){
+                printf("Ignoring duplicate tag '%s' in scene file; it is already carried by another object.", entryTag);
+            }else{
+                claimedTags.rawset(entryTag, true);
+                nodeEntry.tag = entryTag;
+            }
         }
         local visible = node.getAttribute("visible");
         if(visible != null){
@@ -82,7 +96,7 @@
                     if(!startedWrap){
                         entries.append(CHILD_ENTRY);
                     }
-                    parseNodeForSceneTree_(currentChild, entries, sceneTree);
+                    parseNodeForSceneTree_(currentChild, entries, sceneTree, claimedTags);
                     startedWrap = true;
                 }
             }

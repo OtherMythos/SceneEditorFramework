@@ -1586,6 +1586,76 @@
         action.performAction();
     }
 
+    /**
+     * The id of the entry carrying a tag, or null when nothing in this tree
+     * does.
+     *
+     * The entries are scanned rather than a lookup table being kept beside
+     * them. A tree is rebuilt wholesale by rearrangement, paste and undo, so a
+     * table would be one more thing each of those has to remember to repair;
+     * the scan cannot fall out of step with what the tree actually holds.
+     */
+    function getEntryIdForTag(tag){
+        if(tag == null) return null;
+
+        foreach(entry in mEntries_){
+            if(!isObjectEntry_(entry)) continue;
+            if(entry.tag == tag) return entry.entryId;
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a tag can be given to an entry: either nothing in the tree
+     * carries it, or the entry which does is the one asking for it.
+     *
+     * Clearing a tag is always allowed, so a null tag is always available.
+     */
+    function isTagAvailable(tag, entryId=null){
+        if(tag == null) return true;
+
+        local holder = getEntryIdForTag(tag);
+        return holder == null || holder == entryId;
+    }
+
+    /**
+     * Give one entry a tag, or take its tag away with null, through an undoable
+     * action.
+     *
+     * At most one object in a scene carries any given tag, since a tag is what
+     * the scene is searched by. A tag another entry already holds is therefore
+     * refused rather than being moved off that entry: which of the two the user
+     * meant to keep it is not something the tree can decide, and the engine
+     * refuses to parse a file where two objects claim one.
+     *
+     * @returns true when the tag was changed. False means the tag is taken, or
+     * that the entry already carried it.
+     */
+    function setEntryTag(entryId, tag){
+        local idx = findEntryIdIndexInTree_(entryId);
+        assert(idx != null);
+
+        //An empty field in a properties panel means no tag rather than a tag
+        //which is the empty string, which nothing could search for anyway.
+        if(tag != null && tag.len() == 0) tag = null;
+
+        local entry = mEntries_[idx];
+        if(entry.tag == tag) return false;
+        if(!isTagAvailable(tag, entryId)) return false;
+
+        local action = ::SceneEditorFramework.Actions[SceneEditorFramework_Action.CHANGE_SCENE_NODE_TAG](this, mBus_, entryId, entry.tag, tag);
+        mActionStack_.pushAction_(action);
+        action.performAction();
+
+        return true;
+    }
+
+    /** Take the tag away from the entry carrying one, as an undoable action. */
+    function clearEntryTag(entryId){
+        return setEntryTag(entryId, null);
+    }
+
     /** Set an entry's scene-node visibility through an undoable action. */
     function setEntryVisibility(entryId, visible){
         local idx = findEntryIdIndexInTree_(entryId);

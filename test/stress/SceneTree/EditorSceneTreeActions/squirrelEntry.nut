@@ -80,12 +80,14 @@
 ::OP_REPARENT_EMPTY <- 10;
 ::OP_CENTRE_ON_CONTENTS <- 11;
 ::OP_DELETE <- 12;
-::OP_MAX <- 13;
+::OP_TAG <- 13;
+::OP_MAX <- 14;
 
 ::OPERATION_NAMES <- [
     "insert empty", "insert mesh", "rename", "visibility", "change mesh",
     "transform", "multiple move", "rearrange", "rearrange multiple",
-    "copy and paste", "group under empty", "centre on contents", "delete"
+    "copy and paste", "group under empty", "centre on contents", "delete",
+    "tag"
 ];
 
 ::RANDOM_STATE <- ::STRESS_SEED;
@@ -522,6 +524,25 @@ function performRandomOperation(tree, editorBase, clipboard){
             tree.deleteCurrentSelection();
             break;
         }
+        case ::OP_TAG:{
+            local target = randomId(ids);
+            local roll = nextRandom(3);
+            local tag = null;
+            if(roll == 0){
+                //Give up whatever tag it holds.
+            }else if(roll == 1){
+                //One of a small set, so the run keeps asking for tags which are
+                //already taken. Those must be refused rather than moved off the
+                //object holding them, and must leave nothing on the stack.
+                tag = "Tag" + nextRandom(4);
+            }else{
+                tag = "Tag" + nextName();
+            }
+            ::CURRENT_OPERATION = "set the tag of " + target + " to " +
+                (tag == null ? "-" : tag);
+            tree.setEntryTag(target, tag);
+            break;
+        }
     }
 }
 
@@ -562,6 +583,7 @@ function captureState(tree){
 
         result += "{" + entry.entryId + " " + entry.nodeType +
             " " + (entry.name == null ? "-" : entry.name) +
+            " " + (entry.tag == null ? "-" : entry.tag) +
             " " + (entry.nodeType == ::TYPE_MESH ? entry.data.meshName : "-") +
             " " + (entry.visible ? "visible" : "hidden") +
             " " + vec3String(entry.node.getPositionVec3()) +
@@ -656,6 +678,18 @@ function assertTreeConsistent(tree){
     }
 
     assertIdsUnclaimed(tree, seenIds);
+    assertTagsUnique(tree);
+}
+
+//A tag identifies one object in a scene, so no edit - and no undo of one - may
+//leave two objects claiming the same one.
+function assertTagsUnique(tree){
+    local seenTags = {};
+    foreach(entry in tree.mEntries_){
+        if(entry.tag == null) continue;
+        _test.assertFalse(seenTags.rawin(entry.tag));
+        seenTags.rawset(entry.tag, true);
+    }
 }
 
 //An id is either an object's or waiting in the pool to be handed out again.

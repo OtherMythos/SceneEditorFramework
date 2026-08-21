@@ -38,6 +38,7 @@ enum SceneEditorFramework_BusEvents{
     //an event is transmitted by its value, so inserting one renumbers every
     //event after it.
     SCENE_TREE_RENAME_REQUEST,
+    OBJECT_TAG_CHANGE,
 };
 
 enum SceneEditorFramework_Action{
@@ -60,6 +61,7 @@ enum SceneEditorFramework_Action{
     OBJECT_PASTE,
     MULTIPLE_POSITIONS_CHANGE,
     MULTIPLE_VISIBILITY_CHANGE,
+    CHANGE_SCENE_NODE_TAG,
 
     MAX
 };

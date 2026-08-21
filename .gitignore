@@ -3,3 +3,4 @@ Ogre.log
 ogre.log
 example/plugins/avImguiPlugin/
 example/.editorState.json
+test/unit/SceneEditorCore/SceneTreeTags/written.avScene

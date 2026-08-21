@@ -48,6 +48,7 @@ _doFile("script://IMGUI/SceneEditorIMGUIEditor.nut");
 _doFile("script://actions/BasicCoordinatesChangeAction.nut");
 _doFile("script://actions/RenameSceneNodeAction.nut");
 _doFile("script://actions/ChangeSceneNodeVisibilityAction.nut");
+_doFile("script://actions/ChangeSceneNodeTagAction.nut");
 _doFile("script://actions/ObjectDeleteAction.nut");
 _doFile("script://actions/TreeRearrangeAction.nut");
 _doFile("script://actions/ObjectInsertionAction.nut");
