@@ -102,6 +102,16 @@
     //@see SceneEditorFramework.IMGUI.EditorState
     mEditorState_ = null
 
+    //The title the window was created with - avSetup.cfg's WindowTitle, or the
+    //project name in its absence. The unsaved marker is appended to it rather
+    //than replacing it, so the window is still recognisably the application it
+    //was. @see updateWindowTitle_
+    mBaseWindowTitle_ = null
+    //Whether the title currently on the window is the unsaved one, or null
+    //before it has been set at all. Kept so the title is set when the answer
+    //changes rather than once a frame, since setting it goes to the platform.
+    mTitleShowsUnsaved_ = null
+
     PANEL_SCENE_TREE = 0
     PANEL_OBJECT_PROPERTIES = 1
     PANEL_FILE_BROWSER = 2
@@ -699,6 +709,11 @@
     }
 
     function start(){
+        //Read before the editor sets a title of its own, so the marker is
+        //appended to the title the window was created with rather than to one
+        //already carrying a marker. @see updateWindowTitle_
+        mBaseWindowTitle_ = _window.getTitle();
+
         if(mStatePath_ != null){
             local stateClass = option_("editorStateClass",
                 ::SceneEditorFramework.IMGUI.EditorState);
@@ -860,6 +875,7 @@
         }
         buildDefaultLayout_();
 
+        updateWindowTitle_();
         drawMenuBar_();
         //A viewport opened by the menu above is drawn from this frame onwards.
         foreach(window in mRenderWindows_){
@@ -1061,7 +1077,42 @@
         local drawMainMenu = option_("drawMainMenu", null);
         if(drawMainMenu != null) drawMainMenu(this);
 
+        drawUnsavedIndicator_();
+
         _imgui.endMainMenuBar();
+    }
+
+    //Say so in the menu bar while the scene has been changed since it was last
+    //written. Last in the bar, after whatever menus the application added, so
+    //it sits to the right of them rather than between them - and in a colour,
+    //because a word among the menu names is easy to read past.
+    function drawUnsavedIndicator_(){
+        if(!option_("showUnsavedIndicator", true)) return;
+        if(!hasUnsavedChanges()) return;
+
+        _imgui.separator();
+        _imgui.textColored(1.0, 0.75, 0.2, 1.0, "Unsaved changes");
+    }
+
+    /** Whether the scene has been changed since it was last saved. */
+    function hasUnsavedChanges(){
+        return mBase_ != null && mBase_.hasUnsavedChanges();
+    }
+
+    //Mark the window itself, so the scene is known to be unsaved from the title
+    //bar and the task switcher as well as from inside the editor.
+    //
+    //Setting a title goes through to the platform, so it is set on the frames
+    //where the answer changes rather than on all of them.
+    function updateWindowTitle_(){
+        if(!option_("markWindowTitleUnsaved", true)) return;
+
+        local unsaved = hasUnsavedChanges();
+        if(mTitleShowsUnsaved_ == unsaved) return;
+        mTitleShowsUnsaved_ = unsaved;
+
+        _window.setTitle(unsaved ?
+            mBaseWindowTitle_ + " (unsaved)" : mBaseWindowTitle_);
     }
 
     function sceneSafeUpdate(){

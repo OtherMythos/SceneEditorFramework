@@ -153,6 +153,8 @@ The options table keeps common variations out of copied editor code:
 | `showViewportToolbar` | `true` | Show transform tools over each viewport. |
 | `showAxisIndicator` | `true` | Show the camera-oriented XYZ indicator, whose handles aim the viewport. |
 | `showMainMenuBar` | `true` | Show the standard File, Edit and Window menus. |
+| `showUnsavedIndicator` | `true` | Show "Unsaved changes" in the main menu bar while the scene has been changed since it was last saved. |
+| `markWindowTitleUnsaved` | `true` | Append an unsaved marker to the window title while the scene has been changed since it was last saved. |
 | `cameraFocusDuration` | `0.3` | Seconds used to animate Shift+C framing. |
 | `drawMainMenu` | `null` | Callback for adding project menus to the main bar. |
 | `drawSceneTreeContextMenu` | `null` | Callback for adding project-specific object actions. |

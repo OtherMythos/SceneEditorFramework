@@ -290,6 +290,9 @@ does not find a step twice the size of the others waiting for it there.
         parser.parseForSceneTree(filePath, tree);
 
         mCurrentFilePath_ = filePath;
+        //The tree as parsed is exactly what is on disk, and a scene loaded over
+        //another one leaves that one's actions behind on the stack.
+        mActionStack_.markSaved();
 
         return tree;
     }
@@ -308,6 +311,17 @@ does not find a step twice the size of the others waiting for it there.
         if(mActiveTree_ == null) throw "No active scene tree";
         local writer = ::SceneEditorFramework.FileWriter();
         writer.writeToFile(filePath, mActiveTree_);
+        //After the write rather than before it, so a write which throws leaves
+        //the scene marked as still having something unsaved in it.
+        mActionStack_.markSaved();
+    }
+
+    /**
+     * Whether the scene has been changed since it was last written to disk.
+     * @see SceneEditorFramework.ActionStack.hasUnsavedChanges
+     */
+    function hasUnsavedChanges(){
+        return mActionStack_.hasUnsavedChanges();
     }
 
     function notifyBusEvent(event, data){
