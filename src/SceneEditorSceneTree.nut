@@ -41,6 +41,13 @@
     //it, which is what a shift click in the scene asks for.
     mCurrentSelectionDeferredAdditive_ = false;
 
+    //Whether the left button was down last time the scene was picked.
+    //getMousePressed is cleared by the input manager's own update, which runs
+    //in the fixed-step loop after the events for the frame have been read and
+    //before sceneSafeUpdate runs again - so the press is found by watching the
+    //button rather than by asking for it.
+    mLeftMouseDown_ = false;
+
     //The hits of the previous scene click, and which of them it selected.
     //Tapping the same spot again finds the same objects, and stepping along
     //this list is what gives an object behind a larger one a way of being
@@ -2264,6 +2271,14 @@
      * @param mousePos Position of the mouse in screen space. Can be null if the current position is invalid and the editor can respond in some way as a result of that.
      */
     function updateSceneSafeMousePosition(mousePos){
+        //Watched before anything is given up on, so that a button which went
+        //down somewhere else - over a panel, or outside the window - is not
+        //read as a press when the cursor comes back into the viewport with it
+        //still held. @see mLeftMouseDown_
+        local down = _input.getMouseButton(_MB_LEFT);
+        local pressed = down && !mLeftMouseDown_;
+        mLeftMouseDown_ = down;
+
         //No camera means no viewport for the cursor to be in, which is the same
         //situation as it being outside one.
         local camera = ::SceneEditorFramework.getActiveSceneCamera();
@@ -2284,7 +2299,7 @@
         //Only the press selects. A tap is what asks for an object, and cycling
         //through what is under the cursor would otherwise run for every frame
         //the button stayed down.
-        if(interactedWithGizmo && _input.getMousePressed(_MB_LEFT)){
+        if(interactedWithGizmo && pressed){
             local sceneResult = _scene.testRayForObjectArray(ray, SceneEditorFramework_QueryFlag.SCENE_OBJECT);
             local entryIds = entryIdsForQueryResult_(sceneResult);
             //Shift adds the object under the cursor to the selection. The
