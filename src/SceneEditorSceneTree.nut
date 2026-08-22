@@ -705,7 +705,24 @@
         local copied = copySelectionEntries();
         if(copied == null) return null;
 
-        return pasteEntries_(copied, destinationId, insertionType);
+        return pasteEntries_(copied, destinationId, insertionType, true);
+    }
+
+    /**
+     * Duplicate the current selection beside itself, which is what a shortcut
+     * or a menu asks for: there is no drop to say where the copies should go,
+     * so they are put below the object the user was last working on, in the
+     * same parent as it.
+     *
+     * @returns The ids of the new objects which are not below another new one,
+     * or null when there was nothing to duplicate.
+     */
+    function duplicateSelectionInPlace(){
+        local selected = getReducedSelection();
+        if(selected.len() == 0) return null;
+
+        return duplicateCurrentSelection(getReparentAnchorId_(selected),
+            SceneEditorFramework_ObjectInsertionType.BELOW);
     }
 
     /**
@@ -763,7 +780,12 @@
             SceneEditorFramework_ObjectInsertionType.INTO);
     }
 
-    function pasteEntries_(sourceEntries, targetId, insertionType){
+    //uniqueNames asks for the copies to be named apart from what the tree
+    //already holds, which is what a duplicate wants and a paste does not: a
+    //paste may well be going into a different tree, or replacing objects which
+    //have since been deleted, and the name the user gave the original is then
+    //the name they are asking for back.
+    function pasteEntries_(sourceEntries, targetId, insertionType, uniqueNames=false){
         if(sourceEntries == null || sourceEntries.len() == 0) return null;
         if(
             insertionType != SceneEditorFramework_ObjectInsertionType.INTO &&
@@ -779,6 +801,11 @@
         //Every scene has the root CHILD/TERM pair, so anything shorter is not a
         //tree a paste can be placed in.
         if(targetIndex == null && mEntries_.len() < 2) return null;
+
+        //Filled with the names the tree already holds, and then with the names
+        //this run of copies takes, so that a duplicate of a subtree does not
+        //name two of its own objects the same either.
+        local usedNames = uniqueNames ? collectEntryNames_() : null;
 
         local newEntries = [];
         local createdIds = [];
@@ -797,6 +824,10 @@
             }
 
             local copied = ::SceneEditorFramework.copySceneTreeEntry(entry);
+            if(usedNames != null && copied.name != null){
+                copied.name = uniqueNameFrom_(copied.name, usedNames);
+                usedNames.rawset(copied.name, true);
+            }
             copied.entryId = getId();
             createdIds.append(copied.entryId);
             if(depth == 0) topLevelIds.append(copied.entryId);
@@ -813,6 +844,50 @@
         mActionStack_.pushAction_(action);
         action.performAction();
         return topLevelIds;
+    }
+
+    //The names the tree currently holds, as a set. Only names which were
+    //actually given are in it: an entry without one is shown by the name of its
+    //type, which is not a name the user chose and not one worth counting up
+    //from either.
+    function collectEntryNames_(){
+        local names = {};
+        foreach(entry in mEntries_){
+            if(entry.name != null) names.rawset(entry.name, true);
+        }
+        return names;
+    }
+
+    //A name close to the one given which nothing in taken holds. Whatever
+    //number the name already ends with is counted up from - cube4 becomes
+    //cube5, and cube5 as well if that is taken - and a name ending in no number
+    //starts at one, so cube becomes cube1.
+    function uniqueNameFrom_(name, taken){
+        if(!(name in taken)) return name;
+
+        local digitStart = name.len();
+        while(digitStart > 0 && isDigitCharacter_(name[digitStart - 1])) digitStart--;
+
+        local stem = name.slice(0, digitStart);
+        local number = digitStart == name.len() ? 0 : name.slice(digitStart).tointeger();
+        //A name which is nothing but digits is counted up as a whole rather
+        //than being taken as a number with no name in front of it, so 001 does
+        //not duplicate into 2.
+        if(stem.len() == 0){
+            stem = name;
+            number = 0;
+        }
+
+        local next = number + 1;
+        while(true){
+            local candidate = stem + next;
+            if(!(candidate in taken)) return candidate;
+            next++;
+        }
+    }
+
+    function isDigitCharacter_(character){
+        return character >= '0' && character <= '9';
     }
 
     /**

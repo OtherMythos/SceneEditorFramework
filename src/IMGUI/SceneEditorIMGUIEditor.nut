@@ -127,7 +127,8 @@
     KEY_COMMAND_SAVE = 9
     KEY_COMMAND_TOGGLE_VISIBILITY = 10
     KEY_COMMAND_RELOAD = 11
-    KEY_COMMAND_MAX = 12
+    KEY_COMMAND_DUPLICATE_SELECTION = 12
+    KEY_COMMAND_MAX = 13
 
     constructor(options){
         mOptions_ = options == null ? {} : options;
@@ -572,6 +573,8 @@
                 reloadScene_();
             }else if(i == KEY_COMMAND_TOGGLE_VISIBILITY){
                 toggleSelectionVisibility_();
+            }else if(i == KEY_COMMAND_DUPLICATE_SELECTION){
+                duplicateSelection_();
             }else{
                 deleteSelection_();
             }
@@ -598,6 +601,15 @@
         local tree = activeSceneTree_();
         if(tree == null) return false;
         return tree.toggleSelectionVisibility();
+    }
+
+    //Leave a copy of whatever is selected beside it, and go on working on the
+    //copy. As with deletion, a shortcut pressed with nothing selected is
+    //nothing to act on rather than a mistake.
+    function duplicateSelection_(){
+        local tree = activeSceneTree_();
+        if(tree == null) return false;
+        return tree.duplicateSelectionInPlace() != null;
     }
 
     //Take a copy of whatever is selected. As with deletion, a shortcut pressed
@@ -687,6 +699,12 @@
             SceneEditorFramework_KeyScancode.RSHIFT]);
         if(shift && _input.getRawKeyScancodeInput(
             SceneEditorFramework_KeyScancode.C)) return KEY_COMMAND_FRAME_SELECTION;
+
+        //D is the camera's strafe key while the right button is held, and a
+        //flight with shift held is a fast one rather than a request for a
+        //duplicate.
+        if(shift && !_input.getMouseButton(_MB_RIGHT) && _input.getRawKeyScancodeInput(
+            SceneEditorFramework_KeyScancode.D)) return KEY_COMMAND_DUPLICATE_SELECTION;
 
         //Backspace as well as Delete, as a keyboard without a delete key is
         //still expected to be able to remove an object.

@@ -37,8 +37,11 @@ function start(){
 
         local copyOfA = created[0];
         _test.assertNotEqual(a, copyOfA);
-        //The original is still where it was, with the copy inside B.
-        assertNames(tree, ["A", "A1", "B", "A", "A1"]);
+        //The original is still where it was, with the copy inside B. The copy
+        //is named apart from what the scene already holds: A has no number to
+        //count up from so it starts at one, which A1 has already taken, and the
+        //copy of A1 counts up past the name its parent has just claimed.
+        assertNames(tree, ["A", "A1", "B", "A2", "A3"]);
         assertParent(tree, copyOfA, b);
         _test.assertEqual(1, tree.getSelectedCount());
         _test.assertTrue(tree.isEntrySelected(copyOfA));
@@ -64,7 +67,7 @@ function start(){
         _test.assertEqual(null, tree.findEntryIdIndexInTree_(copyOfA1));
 
         editorBase.mActionStack_.redo();
-        assertNames(tree, ["A", "A1", "B", "A", "A1"]);
+        assertNames(tree, ["A", "A1", "B", "A2", "A3"]);
         editorBase.mActionStack_.undo();
     }
 
@@ -77,7 +80,7 @@ function start(){
 
         local created = tree.duplicateCurrentSelection(a1, INTO);
         _test.assertNotEqual(null, created);
-        assertNames(tree, ["A", "A1", "A", "A1", "B"]);
+        assertNames(tree, ["A", "A1", "A2", "A3", "B"]);
         assertParent(tree, created[0], a1);
 
         editorBase.mActionStack_.undo();
@@ -92,7 +95,7 @@ function start(){
 
         local created = tree.duplicateCurrentSelection(b, BELOW);
         _test.assertEqual(1, created.len());
-        assertNames(tree, ["A", "A1", "B", "A", "A1"]);
+        assertNames(tree, ["A", "A1", "B", "A2", "A3"]);
 
         editorBase.mActionStack_.undo();
         assertNames(tree, ["A", "A1", "B"]);
@@ -111,8 +114,64 @@ function start(){
         tree.setSingleSelection(b);
         local created = tree.duplicateCurrentSelection(a, ABOVE);
         _test.assertEqual(1, created.len());
-        assertNames(tree, ["B", "A", "A1", "B"]);
+        assertNames(tree, ["B1", "A", "A1", "B"]);
 
+        editorBase.mActionStack_.undo();
+        assertNames(tree, ["A", "A1", "B"]);
+    }
+
+    { //A duplicate asked for without a drop to place it - the Shift+D shortcut
+      //or the right click menu - lands below the object it was taken from, in
+      //the same parent, and the copies become the selection.
+        tree.setSingleSelection(a1);
+        local created = tree.duplicateSelectionInPlace();
+        _test.assertEqual(1, created.len());
+        assertNames(tree, ["A", "A1", "A2", "B"]);
+        assertParent(tree, created[0], a);
+        _test.assertEqual(1, tree.getSelectedCount());
+        _test.assertTrue(tree.isEntrySelected(created[0]));
+
+        editorBase.mActionStack_.undo();
+        assertNames(tree, ["A", "A1", "B"]);
+    }
+
+    { //Several objects at once are all copied below the one the user was last
+      //working on, which is where they would have appeared one at a time.
+        tree.setSingleSelection(a);
+        tree.toggleEntrySelection(b);
+        local created = tree.duplicateSelectionInPlace();
+        _test.assertEqual(2, created.len());
+        assertNames(tree, ["A", "A1", "B", "A2", "A3", "B1"]);
+
+        editorBase.mActionStack_.undo();
+        assertNames(tree, ["A", "A1", "B"]);
+    }
+
+    { //Nothing selected is nothing to duplicate, and nothing is pushed for it.
+        tree.clearAllSelection();
+        _test.assertEqual(null, tree.duplicateSelectionInPlace());
+        _test.assertEqual(0, editorBase.mActionStack_.mUndoStack_.len());
+    }
+
+    { //A name ending in a number counts up from that number, and past every
+      //name already taken above it.
+        tree.setSingleSelection(a);
+        tree.renameEntry(a, "cube4");
+        tree.renameEntry(b, "cube5");
+
+        tree.setSingleSelection(a);
+        local created = tree.duplicateSelectionInPlace();
+        _test.assertEqual("cube6", tree.getEntryForId(created[0]).name);
+
+        //A pasted copy keeps the name it was given: the clipboard may well be
+        //going somewhere the original name is free.
+        tree.copySelectionToClipboard(editorBase.getClipboard());
+        local pasted = tree.pasteFromClipboard(editorBase.getClipboard());
+        _test.assertEqual("cube6", tree.getEntryForId(pasted[0]).name);
+
+        editorBase.mActionStack_.undo();
+        editorBase.mActionStack_.undo();
+        editorBase.mActionStack_.undo();
         editorBase.mActionStack_.undo();
         assertNames(tree, ["A", "A1", "B"]);
     }

@@ -122,6 +122,9 @@
         if(_imgui.menuItem("Copy")){
             copySelection_();
         }
+        if(_imgui.menuItem("Duplicate")){
+            duplicateSelection_();
+        }
         _imgui.endDisabled();
 
         if(mBase_.getClipboard().hasEntries()){
@@ -192,6 +195,18 @@
         if(!sceneTree.isEntrySelected(mEntryId_)) sceneTree.notifySelectionChanged(mEntryId_);
 
         sceneTree.copySelectionToClipboard(mBase_.getClipboard());
+    }
+
+    //Duplicating acts on the whole selection, as copying does, and leaves the
+    //copies beside what they were copied from rather than inside the right
+    //clicked object: this is the same operation the Shift+D shortcut performs,
+    //and the copies become the selection so they can be moved straight away.
+    function duplicateSelection_(){
+        local sceneTree = mBase_.getActiveSceneTree();
+        if(sceneTree == null || getEntry_() == null) return;
+        if(!sceneTree.isEntrySelected(mEntryId_)) sceneTree.notifySelectionChanged(mEntryId_);
+
+        sceneTree.duplicateSelectionInPlace();
     }
 
     //Pasted into the object the menu was opened for, rather than beside the

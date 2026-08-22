@@ -38,18 +38,19 @@ selection out of sight and brings it back, through
 `SceneTree.toggleSelectionVisibility()`: a selection with anything still showing
 in it is hidden, and only one which is already completely hidden comes back, so
 a mixed selection is not left mixed the other way round. The whole press is one
-undoable action however many objects it covered. Ctrl+C copies the
-current selection, with everything below it, and Ctrl+V pastes it back beside
-whatever is selected then - or at the end of the scene when nothing is - as one
-undoable action which leaves the pasted objects selected. A copy describes what
-was copied rather than pointing at it, so it can be pasted repeatedly, and after
-the objects it was taken from have been deleted. Paste from an object's right
-click menu instead, and what was copied becomes a child of that object. Ctrl+S
-writes the scene back over the file it was loaded from, as the File menu's Save
-does. Ctrl+R, or Reload in the File menu, replaces the scene tree with the copy
-on disk and clears its undo and redo history. Each viewport's
-View button controls its own gizmos, including selection outlines, independently;
-that choice is restored with the viewport's layout state.
+undoable action however many objects it covered. Shift+D leaves a copy of the
+selection beside it and goes on working on the copy, as one undoable action.
+Ctrl+C copies the current selection, with everything below it, and Ctrl+V pastes
+it back beside whatever is selected then - or at the end of the scene when
+nothing is - as one undoable action which leaves the pasted objects selected. A
+copy describes what was copied rather than pointing at it, so it can be pasted
+repeatedly, and after the objects it was taken from have been deleted. Paste
+from an object's right click menu instead, and what was copied becomes a child
+of that object. Ctrl+S writes the scene back over the file it was loaded from,
+as the File menu's Save does. Ctrl+R, or Reload in the File menu, replaces the
+scene tree with the copy on disk and clears its undo and redo history. Each
+viewport's View button controls its own gizmos, including selection outlines,
+independently; that choice is restored with the viewport's layout state.
 
 The XYZ indicator in the corner of each viewport is also a way of aiming it, as
 Blender's navigation gizmo is. Both ends of each axis are a handle, the positive
@@ -192,7 +193,7 @@ The options table keeps common variations out of copied editor code:
 | `onStarted` / `onShutdown` | `null` | Lifecycle callbacks around the running editor. |
 | `helperFunctions` | `null` | Overrides for `SceneEditorFramework.HelperFunctions`. |
 | `enableObjectColourView` | `true` | Offer the flat per-object colouring in each viewport's View menu. |
-| `enableSceneTreeContextMenu` | `true` | Enable Add, Reparent, Centre on contents, Copy, Paste, Rename and Delete on right click. |
+| `enableSceneTreeContextMenu` | `true` | Enable Add, Reparent, Centre on contents, Copy, Duplicate, Paste, Rename and Delete on right click. |
 | `enableRaycastSelectionMenu` | `true` | Enable the alt+right click all-hits chooser. |
 | `showViewportToolbar` | `true` | Show transform tools over each viewport. |
 | `showAxisIndicator` | `true` | Show the camera-oriented XYZ indicator, whose handles aim the viewport. |
@@ -251,6 +252,22 @@ under the cursor says which of the two the drop will do. Unlike a move, a copy
 can be dropped inside the object it was taken from: what is duplicated is
 described before anything is inserted, so the copy is of what that subtree was.
 The whole drop is one undoable action however many objects it created.
+
+Shift+D, and Duplicate in an object's right click menu, ask for the same copy
+without a drop to place it, through `SceneTree.duplicateSelectionInPlace()`. The
+copies go below the object the user was last working on, in the same parent as
+it, and become the selection, so a duplicate can be dragged or transformed
+straight away. It is one undoable action however many objects it covered, and a
+shortcut pressed with nothing selected is nothing to act on. D is the camera's
+strafe key while the right mouse button is held, so the shortcut is ignored
+during a flight.
+
+A duplicate names its copies apart from what the scene already holds, which a
+paste does not: whatever number a name ends with is counted up from, so `cube4`
+duplicates into `cube5`, and past every name already taken above it. A name
+ending in no number starts at one, and every object a duplicate creates is named
+this way, not only the ones which were selected. A paste keeps the names it was
+given, since the clipboard may well be going into a tree where they are free.
 
 Copy and paste go through `SceneEditorFramework.SceneTreeClipboard`, which the
 base owns and `Base.getClipboard()` returns. It holds detached descriptions of
