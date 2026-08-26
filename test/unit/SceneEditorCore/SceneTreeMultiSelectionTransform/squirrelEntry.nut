@@ -203,6 +203,43 @@ function start(){
         assertScale(tree, parent, 1, 1, 1);
     }
 
+    { //A drag which arrives with nothing selected has nothing to act on. The
+      //gizmo is taken away with the selection, but the arm the cursor was over
+      //could be left highlighted when it went, and the press after that begins
+      //a drag against it - which used to be read as a drag of the entry at
+      //index -1.
+        tree.notifySelectionChanged(null);
+        local undoCount = editorBase.mActionStack_.mUndoStack_.len();
+
+        dragPosition(tree, Vec3(9, 9, 9));
+        dragScale(tree, Vec3(1, 1, 1));
+        dragOrientation(tree, Quat(PI / 2, Vec3(0, 1, 0)));
+
+        assertPosition(tree, alpha, 0, 0, 0);
+        assertScale(tree, alpha, 1, 1, 1);
+        assertOrientation(tree, alpha, Quat());
+        _test.assertEqual(undoCount, editorBase.mActionStack_.mUndoStack_.len());
+    }
+
+    { //The object a drag is being made against can go away while it runs, which
+      //leaves its end with no final value to record and nothing to record it
+      //against.
+        tree.notifySelectionChanged(alpha);
+        local undoCount = editorBase.mActionStack_.mUndoStack_.len();
+
+        tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_BEGAN"), coordinateType("POSITION"));
+        tree.notifyBusEvent(busEvent("SELECTED_POSITION_CHANGE"), Vec3(1, 2, 3));
+        tree.deleteCurrentSelection();
+        tree.notifyBusEvent(busEvent("HANDLES_GIZMO_INTERACTION_ENDED"), coordinateType("POSITION"));
+
+        //Only the deletion, and not a transform of an object which is no longer
+        //there.
+        _test.assertEqual(undoCount + 1, editorBase.mActionStack_.mUndoStack_.len());
+        editorBase.mActionStack_.undo();
+        assertPosition(tree, alpha, 1, 2, 3);
+        tree.getEntryForId(alpha).setPosition(Vec3());
+    }
+
     _test.endTest();
 }
 

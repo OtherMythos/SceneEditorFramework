@@ -99,7 +99,15 @@
     function setVisible(visible){
         mVisible_ = visible;
         foreach(i in mLayers_){
-            if(i != null) i.setVisible(visible);
+            if(i != null){
+                i.setVisible(visible);
+                //A gizmo which has just gone away must not be left holding a
+                //highlighted arm. The selection is what takes the gizmo away,
+                //so an arm which stayed highlighted would be one the next
+                //press began a drag against with nothing selected for that
+                //drag to act on.
+                if(!visible) i.clearIdleHighlight();
+            }
         }
     }
 
@@ -124,12 +132,17 @@
      * it is when there is no gizmo for it to be over.
      */
     function notifyNewQueryResults(results){
-        //An analytic picker has no hidden render object for the engine query to
-        //filter out, so visibility must be enforced here explicitly.
-        if(!mVisible_) return true;
-
         local active = getActiveHandles_();
         if(active == null) return true;
+
+        //An analytic picker has no hidden render object for the engine query to
+        //filter out, so visibility must be enforced here explicitly. The copy
+        //is still told to give up any highlight it holds, since the cursor is
+        //over nothing as far as a gizmo which is not on show is concerned.
+        if(!mVisible_){
+            active.clearIdleHighlight();
+            return true;
+        }
 
         return active.notifyNewQueryResults(results);
     }

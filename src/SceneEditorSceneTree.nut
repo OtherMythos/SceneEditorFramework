@@ -1750,29 +1750,38 @@
 
     function notifyBusEvent(event, data){
         if(event == SceneEditorFramework_BusEvents.SELECTED_POSITION_CHANGE){
-            assert(mCurrentPopulateAction_ != null);
+            if(mCurrentPopulateAction_ == null) return;
             setSelectedNodePosition(data);
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_CHANGE){
-            assert(mCurrentPopulateAction_ != null);
+            if(mCurrentPopulateAction_ == null) return;
             setSelectedNodeScale(
                 getScaleWithSnap_(mCurrentPopulateAction_.mOld_ - data*0.2));
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_SCALE_ONE_SIDED_CHANGE){
-            assert(mCurrentPopulateAction_ != null);
+            if(mCurrentPopulateAction_ == null) return;
             setSelectedNodeScaleOneSided(
                 getScaleWithSnap_(mCurrentPopulateAction_.mOld_ - data.amount*0.2),
                 data.direction);
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.SELECTED_ORIENTATION_CHANGE){
-            assert(mCurrentPopulateAction_ != null);
+            if(mCurrentPopulateAction_ == null) return;
             setSelectedNodeOrientationFromWorldDelta_(data);
             setOutlineBox(mCurrentSelectionIdx);
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_BEGAN){
+            //A drag of a gizmo which is not on anything has nothing to record
+            //and nothing to change, and the values an action would be built
+            //from are read out of the entry the primary selection points at.
+            //The gizmo goes away with the selection, so this is a drag which
+            //began against a gizmo that was already on its way out rather than
+            //one the user is really making. @see the change events above, which
+            //are left with no action to populate and do nothing in their turn.
+            if(mCurrentSelectionIdx == -1) return;
+
             mMultiTransformType_ = data;
             mMultiTransformChanges_ = beginMultipleTransformChanges_(data);
 
@@ -1786,14 +1795,24 @@
             }
         }
         else if(event == SceneEditorFramework_BusEvents.HANDLES_GIZMO_INTERACTION_ENDED){
+            //The end of a drag whose beginning recorded nothing. There is no
+            //action to finish and nothing was changed for one to describe.
+            if(mCurrentPopulateAction_ == null && mMultiTransformChanges_ == null &&
+                mScaleDragStates_ == null) return;
+
             local action = null;
             if(mMultiTransformChanges_ != null){
                 action = buildMultipleTransformAction_();
             }else{
                 mMultiTransformType_ = null;
-                mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
-
-                action = mCurrentPopulateAction_;
+                //The object the drag was made against can have left the tree
+                //while it ran - deleted, or taken away by an undo - and there
+                //is then no final value to read out of it and nothing worth
+                //recording, the same as for one of a multiple selection.
+                if(mCurrentSelectionIdx != -1){
+                    mCurrentPopulateAction_.mNew_ = getValueForObjectCoordsChange_(data);
+                    action = mCurrentPopulateAction_;
+                }
             }
 
             //A one-sided scale moved what it resized as well as resizing it, and
@@ -1813,6 +1832,9 @@
             }
             mScaleDragStates_ = null;
             mScaleDragMoved_ = false;
+            //Nothing is being dragged now, and the change events which populate
+            //this one only arrive while something is.
+            mCurrentPopulateAction_ = null;
 
             if(action != null) mActionStack_.pushAction_(action);
         }

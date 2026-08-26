@@ -358,6 +358,20 @@
         mHighlightAxis_ = null;
     }
 
+    /**
+     * Give up the highlight the cursor left on an arm, which is what a copy
+     * whose gizmo has stopped being on show is told.
+     *
+     * A drag keeps the arm it began against: beginActionState reads the
+     * highlight to know a drag is running against that arm, and to know how to
+     * end it, so a drag in progress is left holding its own.
+     */
+    function clearIdleHighlight(){
+        if(mPerformingAction_) return;
+
+        clearHighlight();
+    }
+
     function getAxisForSceneNodeArray(a){
         if(a == null) return null;
         foreach(i in a){
