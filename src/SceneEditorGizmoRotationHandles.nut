@@ -63,7 +63,7 @@
     }
 
     function update(){
-        local mouseDown = _input.getMouseButton(_MB_LEFT);
+        local mouseDown = _imgui.isMouseDown(_imgui.MouseButton_Left);
         if(!mPerformingAction_ && mouseDown && mHighlightAxis_ != null){
             mPerformingAction_ = true;
             mStartVector_ = null;

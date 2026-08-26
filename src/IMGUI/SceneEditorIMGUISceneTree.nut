@@ -142,10 +142,10 @@
             //Clicking unused space has the same clear-selection behaviour as
             //the old tree, while a child window remains responsible for scroll.
             if(_imgui.isWindowHovered(_imgui.HoveredFlags_ChildWindows) && !mItemClicked_){
-                if(_input.getMousePressed(_MB_LEFT)){
+                if(_imgui.isMouseClicked(_imgui.MouseButton_Left)){
                     mSceneTree_.notifySelectionChanged(null);
                     cancelRename_();
-                }else if(_input.getMousePressed(_MB_RIGHT)){
+                }else if(_imgui.isMouseClicked(_imgui.MouseButton_Right)){
                     //A right click which hit no row belongs to the scene's own
                     //child wrapper, so the menu is asked for with no entry.
                     mSceneTree_.notifySelectionChanged(null);
@@ -535,7 +535,7 @@
             return;
         }
 
-        local mouseDown = _input.getMouseButton(_MB_LEFT);
+        local mouseDown = _imgui.isMouseDown(_imgui.MouseButton_Left);
         if(!mDragging_ && mouseDown){
             local mouse = getMousePosition_();
             local dx = mouse[0] - mDragStartMouse_[0];
@@ -626,16 +626,8 @@
         resetDropTarget_();
     }
 
-    //The engine reports mouse coordinates in window units while ImGui uses the
-    //render target's pixel coordinates. They differ on HiDPI displays.
     function getMousePosition_(){
-        local windowSize = _window.getSize();
-        local pixelSize = _window.getActualSize();
-        if(windowSize.x <= 0 || windowSize.y <= 0) return [0.0, 0.0];
-        return [
-            _input.getMouseX() * (pixelSize.x / windowSize.x),
-            _input.getMouseY() * (pixelSize.y / windowSize.y)
-        ];
+        return _imgui.getMousePos();
     }
 
     function getSelectionModifiers_(){

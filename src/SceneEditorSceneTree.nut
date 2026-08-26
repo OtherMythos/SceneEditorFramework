@@ -42,10 +42,9 @@
     mCurrentSelectionDeferredAdditive_ = false;
 
     //Whether the left button was down last time the scene was picked.
-    //getMousePressed is cleared by the input manager's own update, which runs
-    //in the fixed-step loop after the events for the frame have been read and
-    //before sceneSafeUpdate runs again - so the press is found by watching the
-    //button rather than by asking for it.
+    //The state is sampled from ImGui during the fixed update and handed to the
+    //scene-safe update on the next frame. A press is found by watching the
+    //button transition rather than relying on a one-frame pressed flag.
     mLeftMouseDown_ = false;
 
     //The hits of the previous scene click, and which of them it selected.
@@ -2367,12 +2366,11 @@
      *
      * @param mousePos Position of the mouse in screen space. Can be null if the current position is invalid and the editor can respond in some way as a result of that.
      */
-    function updateSceneSafeMousePosition(mousePos){
+    function updateSceneSafeMousePosition(mousePos, down){
         //Watched before anything is given up on, so that a button which went
         //down somewhere else - over a panel, or outside the window - is not
         //read as a press when the cursor comes back into the viewport with it
         //still held. @see mLeftMouseDown_
-        local down = _input.getMouseButton(_MB_LEFT);
         local pressed = down && !mLeftMouseDown_;
         mLeftMouseDown_ = down;
 

@@ -10,8 +10,9 @@ function start(){
       //window is the middle of the scene.
         _test.assertFalse("normalisedSceneMousePosition" in defaultHelpers);
 
-        local windowSize = _window.getSize();
-        local expected = Vec2(_input.getMouseX(), _input.getMouseY()) / windowSize;
+        local mouse = _imgui.getMousePos();
+        local display = _imgui.getDisplaySize();
+        local expected = Vec2(mouse[0] / display[0], mouse[1] / display[1]);
         local found = ::SceneEditorFramework.getNormalisedSceneMousePosition();
 
         _test.assertEqual(expected.x, found.x);

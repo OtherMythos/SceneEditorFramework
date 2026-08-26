@@ -165,7 +165,7 @@
     }
 
     function update(){
-        beginActionState(_input.getMouseButton(_MB_LEFT));
+        beginActionState(_imgui.isMouseDown(_imgui.MouseButton_Left));
 
         //A drag which leaves the scene viewport is still a drag, so the position
         //is used whether or not it falls inside it. Null means there is no

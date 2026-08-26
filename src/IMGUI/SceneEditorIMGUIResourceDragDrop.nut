@@ -12,21 +12,22 @@
     static function beginCandidate(entry){
         if(entry == null || entry.isDirectory) return;
         mState_.candidate = entry;
-        mState_.startMouse = [_input.getMouseX(), _input.getMouseY()];
+        mState_.startMouse = _imgui.getMousePos();
     }
 
     //Called before panels are submitted so every target sees the same state.
     static function update(){
         mState_.dropCallback = null;
         if(mState_.draggedEntry != null || mState_.candidate == null) return;
-        if(!_input.getMouseButton(_MB_LEFT)){
+        if(!_imgui.isMouseDown(_imgui.MouseButton_Left)){
             mState_.candidate = null;
             mState_.startMouse = null;
             return;
         }
 
-        local x = _input.getMouseX() - mState_.startMouse[0];
-        local y = _input.getMouseY() - mState_.startMouse[1];
+        local mouse = _imgui.getMousePos();
+        local x = mouse[0] - mState_.startMouse[0];
+        local y = mouse[1] - mState_.startMouse[1];
         if(x * x + y * y >= DRAG_THRESHOLD * DRAG_THRESHOLD){
             mState_.draggedEntry = mState_.candidate;
             mState_.candidate = null;
@@ -37,10 +38,7 @@
     static function getDraggedEntry(){ return mState_.draggedEntry; }
 
     static function getMousePosition(){
-        local logical = _window.getSize();
-        local pixels = _window.getActualSize();
-        local scale = logical.x <= 0 ? 1.0 : pixels.x / logical.x;
-        return [_input.getMouseX() * scale, _input.getMouseY() * scale];
+        return _imgui.getMousePos();
     }
 
     static function offerTarget(kind, callback){
@@ -51,14 +49,16 @@
 
     //Called after all panels so the target hovered on the release frame wins.
     static function finishFrame(){
-        if(mState_.draggedEntry != null && _input.getMouseReleased(_MB_LEFT)){
+        if(mState_.draggedEntry != null &&
+            _imgui.isMouseReleased(_imgui.MouseButton_Left)){
             local entry = mState_.draggedEntry;
             local callback = mState_.dropCallback;
             clear();
             if(callback != null) callback(entry);
             return;
         }
-        if(mState_.draggedEntry == null && _input.getMouseReleased(_MB_LEFT)){
+        if(mState_.draggedEntry == null &&
+            _imgui.isMouseReleased(_imgui.MouseButton_Left)){
             mState_.candidate = null;
             mState_.startMouse = null;
         }

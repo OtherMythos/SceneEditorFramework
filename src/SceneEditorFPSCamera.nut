@@ -14,11 +14,11 @@
 //It also keeps the movement keys out of the way of anything else which wants
 //the keyboard, since nothing is listening for them the rest of the time.
 //
-//The mouse is read as a position rather than as a movement, because that is what
-//the engine reports, so a look is the difference between this frame's position
-//and the last one's. A cursor which is about to leave the window is put back to
-//where the look began, since a position which stops changing at the edge of the
-//screen is a look which stops part way through a turn.
+//The mouse is read from ImGui as a position rather than as a movement, so a look
+//is the difference between this frame's position and the last one's. A cursor
+//which is about to leave the window is put back to where the look began, since
+//a position which stops changing at the edge of the screen is a look which
+//stops part way through a turn.
 
 //SDL scancodes for the keys a camera is flown with. In the framework's namespace
 //rather than the root table, so that a project's own list of scancodes - which
@@ -177,15 +177,22 @@
      * @returns Whether the camera has the mouse, which it keeps until the button
      * is released whatever the cursor is over by then.
      */
-    function update(interactable = null, deltaSeconds = 1.0 / 60.0){
+    function update(interactable = null, deltaSeconds = 1.0 / 60.0,
+            mouseWheelAvailable = null){
         if(interactable == null){
             interactable = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
         }
 
-        local right = _input.getMouseButton(_MB_RIGHT);
+        //ImGui's wheel is a rendered-frame value. The engine may run several
+        //fixed updates in that frame, so only the first may consume it.
+        if(mouseWheelAvailable == null){
+            mouseWheelAvailable = _imgui.isFirstUpdateOfFrame();
+        }
+
+        local right = _imgui.isMouseDown(_imgui.MouseButton_Right);
         local rightPressed = right && !mRightHeld_;
         mRightHeld_ = right;
-        local middle = _input.getMouseButton(_MB_MIDDLE);
+        local middle = _imgui.isMouseDown(_imgui.MouseButton_Middle);
         local middlePressed = middle && !mMiddleHeld_;
         mMiddleHeld_ = middle;
 
@@ -201,8 +208,8 @@
         //The wheel belongs only to the hovered viewport, except during a drag
         //which this camera already owns. It is deliberately independent of FPS
         //and orbit mode: both arrive at exactly the same camera transform.
-        if(interactable || mNavigationMode_ != null){
-            local wheel = _input.getMouseWheelValue();
+        if(mouseWheelAvailable && (interactable || mNavigationMode_ != null)){
+            local wheel = _imgui.getMouseWheel()[0];
             if(wheel != 0) zoom(wheel);
         }
 
@@ -231,8 +238,9 @@
         //movement or look immediately into an orbit around the point ahead.
         syncOrbitTarget_();
 
-        mAnchorX_ = _input.getMouseX();
-        mAnchorY_ = _input.getMouseY();
+        local mouse = mousePositionInWindow_();
+        mAnchorX_ = mouse[0];
+        mAnchorY_ = mouse[1];
         mPrevMouseX_ = mAnchorX_;
         mPrevMouseY_ = mAnchorY_;
 
@@ -297,8 +305,9 @@
     //Read one frame of relative movement and keep a captured cursor away from
     //the edge. Both FPS look and middle-button navigation use the same stream.
     function readMouseMovement_(){
-        local mouseX = _input.getMouseX();
-        local mouseY = _input.getMouseY();
+        local mouse = mousePositionInWindow_();
+        local mouseX = mouse[0];
+        local mouseY = mouse[1];
 
         local movedX = mouseX - mPrevMouseX_;
         local movedY = mouseY - mPrevMouseY_;
@@ -320,6 +329,22 @@
         mPrevMouseY_ = mReturnY_;
 
         return [movedX, movedY];
+    }
+
+    //ImGui reports display pixels, while the window cursor and warp functions
+    //use logical window units. Convert after reading from ImGui so look speed,
+    //edge capture and cursor restoration stay unchanged on HiDPI displays.
+    function mousePositionInWindow_(){
+        local mouse = _imgui.getMousePos();
+        local display = _imgui.getDisplaySize();
+        local window = _window.getSize();
+        if(display[0] <= 0 || display[1] <= 0){
+            return [mouse[0].tointeger(), mouse[1].tointeger()];
+        }
+        return [
+            (mouse[0] * window.x / display[0]).tointeger(),
+            (mouse[1] * window.y / display[1]).tointeger()
+        ];
     }
 
     function cursorNearWindowEdge_(x, y){

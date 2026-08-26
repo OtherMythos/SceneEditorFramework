@@ -296,8 +296,10 @@
      * @returns Whether the camera has taken it, which it keeps until the button
      * is released however far the cursor wanders in the meantime.
      */
-    function updateCamera(interactable, deltaSeconds=1.0 / 60.0){
-        local flying = mFPSCamera_.update(interactable, deltaSeconds);
+    function updateCamera(interactable, deltaSeconds=1.0 / 60.0,
+            mouseWheelAvailable=true){
+        local flying = mFPSCamera_.update(
+            interactable, deltaSeconds, mouseWheelAvailable);
         //Zooming an orthographic camera cannot be moving it towards what it is
         //looking at, because that does not change what an orthographic
         //projection shows. It is the size of the window which has to follow the

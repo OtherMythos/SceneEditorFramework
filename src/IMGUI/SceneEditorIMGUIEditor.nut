@@ -57,9 +57,14 @@
     //while the gui is built, which are different points in the frame.
     mPendingSceneMenuEntry_ = null
     //Whether the right mouse button was held last time the scene was picked.
-    //getMouseReleased is cleared before sceneSafeUpdate runs again, so the
-    //release is found by watching the button rather than by asking for it.
+    //The release is found by watching the button rather than relying on a
+    //one-frame released flag.
     mRightMouseDown_ = false
+    //ImGui state sampled after the engine has dispatched input. sceneSafeUpdate
+    //runs before that dispatch, so it consumes this cached state instead of
+    //starting the next ImGui frame before its events have arrived.
+    mSceneSafeRightMouseDown_ = false
+    mImguiMousePosition_ = null
     //The same, watched where the cameras are updated instead, which is a
     //different point in the frame. @see updateRightHoldGesture_
     mRightHeldForCameras_ = false
@@ -346,7 +351,8 @@
     //gave them while the cursor is off editing a panel. Whether the scene can be
     //interacted with is a separate question. @see sceneEditorInteractable_
     function updateFocusedRenderWindow_(){
-        if(mFocusedRenderWindow_ != null && _input.getMouseButton(_MB_LEFT)) return;
+        if(mFocusedRenderWindow_ != null &&
+            _imgui.isMouseDown(_imgui.MouseButton_Left)) return;
         //A viewport being flown holds the cursor still and puts it back when it
         //nears the edge of the window, so where the cursor is says nothing about
         //where the user is working until the flight is over.
@@ -369,8 +375,8 @@
     //
     //Called on every update rather than once per rendered frame, so that the
     //distance a camera travels is the same however fast the editor is drawing.
-    function updateRenderWindowCameras_(deltaSeconds){
-        updateRightHoldGesture_();
+    function updateRenderWindowCameras_(deltaSeconds, mouseWheelAvailable){
+        updateRightHoldGesture_(mSceneSafeRightMouseDown_);
 
         foreach(window in mRenderWindows_){
             //A hold which belongs to the object chooser is not offered to any
@@ -379,7 +385,8 @@
             local interactable = !mRightHoldWasAlt_ &&
                 mFlyingRenderWindow_ == null && window.isHovered();
 
-            if(window.updateCamera(interactable, deltaSeconds)){
+            if(window.updateCamera(
+                interactable, deltaSeconds, mouseWheelAvailable)){
                 mFlyingRenderWindow_ = window;
             }else if(mFlyingRenderWindow_ == window){
                 mFlyingRenderWindow_ = null;
@@ -407,8 +414,7 @@
      * have happened before the cameras are updated and those two run at
      * different points in the frame.
      */
-    function updateRightHoldGesture_(){
-        local down = _input.getMouseButton(_MB_RIGHT);
+    function updateRightHoldGesture_(down){
         local pressed = down && !mRightHeldForCameras_;
         mRightHeldForCameras_ = down;
 
@@ -443,34 +449,18 @@
         _imgui.setGlobalScale(scale);
     }
 
-    //The mouse in imgui's coordinates. The engine reports it in window units,
-    //which are not imgui's on a display with a scale factor, so it is scaled by
-    //the same ratio the plugin uses when it feeds the mouse to imgui: imgui's
-    //display size is the window's render target, which is its size in pixels.
-    //
-    //Deliberately asks the window rather than imgui. This runs during the
-    //framework's scene update, before the gui for the frame is built, and every
-    //_imgui call begins the frame - which would throw away the gui built by the
-    //previous update and leave the window empty.
+    //The mouse in ImGui display coordinates, sampled once input has been
+    //dispatched and retained for the following scene-safe update.
     function imguiMousePosition_(){
-        local windowSize = _window.getSize();
-        if(windowSize.x <= 0 || windowSize.y <= 0) return null;
-
-        local pixelSize = _window.getActualSize();
-        return [
-            _input.getMouseX() * (pixelSize.x / windowSize.x),
-            _input.getMouseY() * (pixelSize.y / windowSize.y)
-        ];
+        return mImguiMousePosition_;
     }
 
     //The three questions the framework asks about the scene, all answered for
     //the viewport the cursor is working in.
     //
-    //None of them may call into imgui: the framework asks them during its scene
-    //update, before the gui for the frame is built, and every _imgui call begins
-    //the frame - which would throw away the gui built by the previous update and
-    //leave the window empty. What the viewports were told while they were drawn
-    //is remembered by them for exactly this reason.
+    //None of them begins a new ImGui frame. What the viewports were told while
+    //they were drawn and the mouse position sampled during update are retained
+    //for the scene-safe callback.
 
     //Whether the cursor is over the focused viewport rather than somewhere else
     //in the editor. It can be focused without being hovered - the cursor has
@@ -703,7 +693,8 @@
         //D is the camera's strafe key while the right button is held, and a
         //flight with shift held is a fast one rather than a request for a
         //duplicate.
-        if(shift && !_input.getMouseButton(_MB_RIGHT) && _input.getRawKeyScancodeInput(
+        if(shift && !_imgui.isMouseDown(_imgui.MouseButton_Right) &&
+            _input.getRawKeyScancodeInput(
             SceneEditorFramework_KeyScancode.D)) return KEY_COMMAND_DUPLICATE_SELECTION;
 
         //Backspace as well as Delete, as a keyboard without a delete key is
@@ -898,9 +889,20 @@
     }
 
     function update(deltaSeconds=1.0 / 60.0){
+        //Remember this before any mouse query begins the ImGui frame. A single
+        //rendered frame may contain several fixed updates; its GUI and wheel
+        //input must only be submitted/consumed once.
+        local firstUpdateOfFrame = _imgui.isFirstUpdateOfFrame();
+        //When a camera already owns the cursor, disable ImGui before NewFrame
+        //works out its hovered and active items.
+        _imgui.setMouseInputEnabled(mFlyingRenderWindow_ == null);
+        mImguiMousePosition_ = _imgui.getMousePos();
+        mSceneSafeRightMouseDown_ =
+            _imgui.isMouseDown(_imgui.MouseButton_Right);
+
         //Before the framework's update, so that the gizmos it sizes by their
         //distance from the camera are sized for where the camera is now.
-        updateRenderWindowCameras_(deltaSeconds);
+        updateRenderWindowCameras_(deltaSeconds, firstUpdateOfFrame);
         //This call does not begin an ImGui frame. The plugin applies Dear
         //ImGui's global NoMouse configuration before NewFrame determines
         //hovered widgets, so a hidden FPS/orbit cursor cannot interact with any
@@ -908,7 +910,7 @@
         _imgui.setMouseInputEnabled(mFlyingRenderWindow_ == null);
 
         mBase_.update();
-        if(!_imgui.isFirstUpdateOfFrame()) return;
+        if(!firstUpdateOfFrame) return;
 
         updateGuiScale_();
         //Both of these create and destroy render targets, so they come before
@@ -1197,7 +1199,7 @@
      * asking for a menu or the beginning of a flight.
      */
     function updateSceneRightClick_(){
-        local down = _input.getMouseButton(_MB_RIGHT);
+        local down = mSceneSafeRightMouseDown_;
         local released = !down && mRightMouseDown_;
         mRightMouseDown_ = down;
 

@@ -10,16 +10,22 @@ Features include:
 
 ## Loading
 
-Add the plugin directory to the project's `Plugins` array in `avSetup.cfg`:
+Add the ImGui plugin and then this plugin directory to the project's `Plugins`
+array in `avSetup.cfg`:
 
 ```json
-"Plugins": [ "res://sceneEditorFramework" ]
+"Plugins": [
+    "res://plugins/avImguiPlugin",
+    "res://sceneEditorFramework"
+]
 ```
 
 The engine reads `avPlugin.cfg` and loads `src/SceneEditorFramework.nut`, which defines all framework
 objects in the `::SceneEditorFramework` namespace. Projects must not load that file themselves.
 The plugin automatically registers its `res` directory, which contains the gizmo
-meshes and viewport compositor definitions.
+meshes and viewport compositor definitions. The ImGui plugin is also the
+framework's mouse-input source; its input layer owns pointer gestures over the
+editor, so it must be loaded before the framework.
 
 ## First-party editor
 

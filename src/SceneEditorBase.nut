@@ -87,7 +87,10 @@ here, so a project only has to describe its viewport once.
         return ::SceneEditorFramework.HelperFunctions.normalisedSceneMousePosition();
     }
 
-    return Vec2(_input.getMouseX(), _input.getMouseY()) / _window.getSize();
+    local mouse = _imgui.getMousePos();
+    local display = _imgui.getDisplaySize();
+    if(display[0] <= 0 || display[1] <= 0) return null;
+    return Vec2(mouse[0] / display[0], mouse[1] / display[1]);
 }
 
 /**
@@ -284,6 +287,11 @@ does not find a step twice the size of the others waiting for it there.
 ::SceneEditorFramework.Base <- class{
 
     mActiveTree_ = null;
+    //sceneSafeUpdate runs before the window dispatches the current frame's
+    //input. Querying ImGui there would begin its frame too early, so the mouse
+    //state it uses is sampled during the preceding fixed update instead.
+    mSceneSafeMousePosition_ = null;
+    mSceneSafeLeftMouseDown_ = false;
     mActiveIMGUIPanels_ = null;
     mBus_ = null;
     mEditorHelperFunctions_ = null;
@@ -358,6 +366,13 @@ does not find a step twice the size of the others waiting for it there.
     }
 
     function update(){
+        local mousePositionValid =
+            ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
+        mSceneSafeMousePosition_ = mousePositionValid ?
+            ::SceneEditorFramework.getNormalisedSceneMousePosition() : null;
+        mSceneSafeLeftMouseDown_ =
+            _imgui.isMouseDown(_imgui.MouseButton_Left);
+
         if(mActiveTree_ != null){
             mActiveTree_.update();
         }
@@ -473,14 +488,8 @@ does not find a step twice the size of the others waiting for it there.
     function sceneSafeUpdate(){
         if(!mActiveTree_) return;
 
-        //Determine the mouse position and whether to pass that over.
-        local mousePositionValid = ::SceneEditorFramework.HelperFunctions.sceneEditorInteractable();
-        local mouseTarget = null;
-        if(mousePositionValid){
-            mouseTarget = ::SceneEditorFramework.getNormalisedSceneMousePosition();
-        }
-
-        mActiveTree_.updateSceneSafeMousePosition(mouseTarget);
+        mActiveTree_.updateSceneSafeMousePosition(
+            mSceneSafeMousePosition_, mSceneSafeLeftMouseDown_);
     }
 
 
